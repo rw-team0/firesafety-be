@@ -1,12 +1,48 @@
 spring:
   application:
-    name: firesafety #???? ??
-  datasource: # ?????? ?? ??
-    url: jdbc:mysql://localhost:3306/firesafety
-    username: root
-    password: qaws7579
+    name: firesafety # 프로젝트 이름
 
-mybatis: # Mybatis ??
+  config:
+    import: optional:file:.env[.properties]
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+mybatis:
   configuration:
     map-underscore-to-camel-case: true
-  mapper-locations: mappers/**/*.xml #xml?? ??
+  mapper-locations: classpath:mappers/**/*.xml
+
+constants:
+  jwt:
+    issuer: ${JWT_ISSUER}
+    bearer-format: ${JWT_BEARER_FORMAT}
+    claim-key: ${JWT_CLAIM_KEY}
+    secret-key: ${JWT_SECRET_KEY}
+    access-token-cookie-name: ${JWT_ACCESS_TOKEN_COOKIE_NAME}
+    access-token-cookie-path: ${JWT_ACCESS_TOKEN_COOKIE_PATH}
+    access-token-cookie-validity-seconds: ${JWT_ACCESS_TOKEN_COOKIE_VALIDITY_SECONDS}
+    access-token-validity-milliseconds: ${JWT_ACCESS_TOKEN_VALIDITY_MILLISECONDS}
+    refresh-token-cookie-name: ${JWT_REFRESH_TOKEN_COOKIE_NAME}
+    refresh-token-cookie-path: ${JWT_REFRESH_TOKEN_COOKIE_PATH}
+    refresh-token-cookie-validity-seconds: ${JWT_REFRESH_TOKEN_COOKIE_VALIDITY_SECONDS}
+    refresh-token-validity-milliseconds: ${JWT_REFRESH_TOKEN_VALIDITY_MILLISECONDS}
+
+  bootstrap:
+    admin:
+      enabled: ${BOOTSTRAP_SUPER_ADMIN_ENABLED:false}
+      email: ${BOOTSTRAP_SUPER_ADMIN_EMAIL:}
+      password: ${BOOTSTRAP_SUPER_ADMIN_PASSWORD:}
+      name: ${BOOTSTRAP_SUPER_ADMIN_NAME:최고관리자}
+      phone: ${BOOTSTRAP_SUPER_ADMIN_PHONE:}
+
+  firebase:
+    credentials-path: ${FIREBASE_CREDENTIALS_PATH:}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
