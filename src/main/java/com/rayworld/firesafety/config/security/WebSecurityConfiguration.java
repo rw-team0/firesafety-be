@@ -23,6 +23,8 @@ import java.util.List;
 public class WebSecurityConfiguration {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
 
     // 인증/인가 필터 체인 구성
     @Bean
@@ -33,6 +35,10 @@ public class WebSecurityConfiguration {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                        .accessDeniedHandler(jwtAccessDeniedHandler)
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login", "/api/auth/logout", "/api/auth/reissue").permitAll()
                         .requestMatchers("/m_noUpload.php").permitAll()
