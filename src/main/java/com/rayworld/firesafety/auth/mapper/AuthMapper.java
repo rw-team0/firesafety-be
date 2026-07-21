@@ -2,8 +2,11 @@ package com.rayworld.firesafety.auth.mapper;
 
 import com.rayworld.firesafety.auth.model.RefreshToken;
 import com.rayworld.firesafety.auth.model.User;
+import com.rayworld.firesafety.auth.model.UserAuditLog;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
 
 // 로그인, 토큰, 계정관리에서 사용하는 auth 도메인 DB 접근 지점
 @Mapper
@@ -29,6 +32,15 @@ public interface AuthMapper {
 
     // 계정 등록 시 이메일 중복 여부 확인
     boolean existsUserByEmail(@Param("email") String email);
+
+    // SUPER_ADMIN 계정관리 화면에서 삭제되지 않은 사용자 목록 조회
+    List<User> findActiveUsers();
+
+    // 관리자 계정관리 화면에서 신규 사용자 등록
+    void insertUser(User user);
+
+    // 사용자 생성/수정/삭제/복구/비밀번호 변경 이력 기록
+    void insertUserAuditLog(UserAuditLog auditLog);
 
     // 서버 최초 기동 시 플랫폼관리자 계정 생성
     void insertBootstrapSuperAdmin(User user);

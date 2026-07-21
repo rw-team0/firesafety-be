@@ -31,6 +31,16 @@
         <result property="createdAt" column="created_at"/>
     </resultMap>
 
+    <resultMap id="userAuditLogResultMap" type="com.rayworld.firesafety.auth.model.UserAuditLog">
+        <id property="auditId" column="audit_id"/>
+        <result property="targetUserId" column="target_user_id"/>
+        <result property="actorUserId" column="actor_user_id"/>
+        <result property="action" column="action"/>
+        <result property="beforeData" column="before_data"/>
+        <result property="afterData" column="after_data"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
     <!-- 로그인 시 이메일로 사용자 조회 -->
     <select id="findUserByEmail" resultMap="userResultMap">
         SELECT
@@ -130,6 +140,75 @@
             WHERE email = #{email}
         )
     </select>
+
+    <!-- SUPER_ADMIN 계정관리 화면에서 삭제되지 않은 사용자 목록 조회 -->
+    <select id="findActiveUsers" resultMap="userResultMap">
+        SELECT
+            user_id,
+            email,
+            password,
+            name,
+            phone,
+            role,
+            account_status,
+            created_by,
+            updated_by,
+            deleted_by,
+            restored_at,
+            restored_by,
+            fcm_token,
+            created_at,
+            updated_at,
+            deleted_at
+        FROM `user`
+        WHERE deleted_at IS NULL
+          AND account_status = 'ACTIVE'
+        ORDER BY user_id DESC
+    </select>
+
+    <!-- 관리자 계정관리 화면에서 신규 사용자 등록 -->
+    <insert id="insertUser"
+            parameterType="com.rayworld.firesafety.auth.model.User"
+            useGeneratedKeys="true"
+            keyProperty="userId">
+        INSERT INTO `user` (
+            email,
+            password,
+            name,
+            phone,
+            role,
+            account_status,
+            created_by
+        ) VALUES (
+            #{email},
+            #{password},
+            #{name},
+            #{phone},
+            #{role},
+            #{accountStatus},
+            #{createdBy}
+        )
+    </insert>
+
+    <!-- 사용자 생성/수정/삭제/복구/비밀번호 변경 이력 기록 -->
+    <insert id="insertUserAuditLog"
+            parameterType="com.rayworld.firesafety.auth.model.UserAuditLog"
+            useGeneratedKeys="true"
+            keyProperty="auditId">
+        INSERT INTO user_audit_log (
+            target_user_id,
+            actor_user_id,
+            action,
+            before_data,
+            after_data
+        ) VALUES (
+            #{targetUserId},
+            #{actorUserId},
+            #{action},
+            #{beforeData},
+            #{afterData}
+        )
+    </insert>
 
     <!-- 서버 최초 기동 시 플랫폼관리자 계정 생성 -->
     <insert id="insertBootstrapSuperAdmin"
