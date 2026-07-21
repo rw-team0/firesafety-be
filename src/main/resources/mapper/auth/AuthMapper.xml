@@ -190,6 +190,20 @@
         )
     </insert>
 
+    <!-- 관리자 계정관리 화면에서 사용자 기본 정보 수정 -->
+    <update id="updateUser" parameterType="com.rayworld.firesafety.auth.model.User">
+        UPDATE `user`
+        SET email = #{email},
+            name = #{name},
+            phone = #{phone},
+            role = #{role},
+            updated_by = #{updatedBy},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = #{userId}
+          AND deleted_at IS NULL
+          AND account_status = 'ACTIVE'
+    </update>
+
     <!-- 사용자 생성/수정/삭제/복구/비밀번호 변경 이력 기록 -->
     <insert id="insertUserAuditLog"
             parameterType="com.rayworld.firesafety.auth.model.UserAuditLog"

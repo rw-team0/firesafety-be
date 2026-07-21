@@ -3,8 +3,10 @@ package com.rayworld.firesafety.auth.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rayworld.firesafety.auth.dto.req.UserCreateReq;
+import com.rayworld.firesafety.auth.dto.req.UserUpdateReq;
 import com.rayworld.firesafety.auth.dto.res.UserCreateRes;
 import com.rayworld.firesafety.auth.dto.res.UserListRes;
+import com.rayworld.firesafety.auth.dto.res.UserUpdateRes;
 import com.rayworld.firesafety.auth.exception.AuthErrorCode;
 import com.rayworld.firesafety.auth.mapper.AuthMapper;
 import com.rayworld.firesafety.auth.model.User;
@@ -66,6 +68,31 @@ public class UserService {
         return UserCreateRes.from(user);
     }
 
+    // 계정 수정은 관리자 화면의 계정 정보 변경이며, 비밀번호 변경은 별도 재설정 API에서 처리한다.
+    @Transactional
+    public UserUpdateRes updateUser(Long userId, UserUpdateReq req) {
+        UserPrincipal actor = getCurrentUser();
+        validateUpdateRequest(userId, req);
+
+        // 삭제된 사용자는 일반 수정 대상이 아니므로 복구 API를 먼저 거치게 한다.
+        User targetUser = findActiveTargetUser(userId);
+        validateUpdatableRole(actor, targetUser.getRole(), req.getRole());
+
+        if (!targetUser.getEmail().equals(req.getEmail())
+                && authMapper.existsUserByEmail(req.getEmail())) {
+            throw new BusinessException(AuthErrorCode.DUPLICATED_EMAIL);
+        }
+
+        String beforeData = toAuditJson(targetUser);
+        applyUpdate(targetUser, req, actor.getUserId());
+        authMapper.updateUser(targetUser);
+
+        // 변경 전/후를 함께 남기되 비밀번호와 토큰 정보는 감사 로그에 포함하지 않는다.
+        insertUserAuditLog(targetUser, actor.getUserId(), UserAuditAction.UPDATE, beforeData, toAuditJson(targetUser));
+
+        return UserUpdateRes.from(targetUser);
+    }
+
     private User buildUserForCreate(UserCreateReq req, Long actorUserId) {
         User user = new User();
         user.setEmail(req.getEmail());
@@ -93,6 +120,25 @@ public class UserService {
         throw new BusinessException(AuthErrorCode.FORBIDDEN_ROLE);
     }
 
+    // 현재 대상 등급과 수정 후 등급을 모두 검사해 ADMIN이 권한 밖 계정을 만지거나 승격시키지 못하게 한다.
+    private void validateUpdatableRole(UserPrincipal actor, UserRole currentRole, UserRole requestedRole) {
+        UserRole actorRole = UserRole.valueOf(actor.getRole());
+
+        if (actorRole == UserRole.SUPER_ADMIN
+                && currentRole != UserRole.SUPER_ADMIN
+                && requestedRole != UserRole.SUPER_ADMIN) {
+            return;
+        }
+
+        if (actorRole == UserRole.ADMIN
+                && currentRole == UserRole.GENERAL
+                && requestedRole == UserRole.GENERAL) {
+            return;
+        }
+
+        throw new BusinessException(AuthErrorCode.FORBIDDEN_ROLE);
+    }
+
     private void validateCreateRequest(UserCreateReq req) {
         if (req == null
                 || !StringUtils.hasText(req.getEmail())
@@ -101,6 +147,32 @@ public class UserService {
                 || req.getRole() == null) {
             throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
         }
+    }
+
+    private void validateUpdateRequest(Long userId, UserUpdateReq req) {
+        if (userId == null
+                || req == null
+                || !StringUtils.hasText(req.getEmail())
+                || !StringUtils.hasText(req.getName())
+                || req.getRole() == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+        }
+    }
+
+    private User findActiveTargetUser(Long userId) {
+        User targetUser = authMapper.findUserById(userId);
+        if (targetUser == null || targetUser.getDeletedAt() != null || targetUser.getAccountStatus() != UserAccountStatus.ACTIVE) {
+            throw new BusinessException(AuthErrorCode.USER_NOT_FOUND);
+        }
+        return targetUser;
+    }
+
+    private void applyUpdate(User targetUser, UserUpdateReq req, Long actorUserId) {
+        targetUser.setEmail(req.getEmail());
+        targetUser.setName(req.getName());
+        targetUser.setPhone(req.getPhone());
+        targetUser.setRole(req.getRole());
+        targetUser.setUpdatedBy(actorUserId);
     }
 
     private void requireSuperAdmin(UserPrincipal actor) {
