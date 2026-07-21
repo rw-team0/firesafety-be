@@ -32,4 +32,11 @@ public class AuthController {
         authService.logout(request, response);
         return ResultResponse.success("로그아웃 성공", null);
     }
+
+    // 재발급 성공 시 기존 rt는 유지하고 새 at 쿠키만 내려준다.
+    @PostMapping("/reissue")
+    public ResultResponse<Void> reissue(HttpServletRequest request, HttpServletResponse response) {
+        authService.reissue(request, response);
+        return ResultResponse.success("토큰 재발급 성공", null);
+    }
 }

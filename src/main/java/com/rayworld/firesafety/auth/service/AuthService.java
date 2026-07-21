@@ -72,6 +72,38 @@ public class AuthService {
         jwtTokenManager.expireCookies(response);
     }
 
+    // RT가 유효하면 기존 RT는 유지하고 새 AT만 HttpOnly Cookie로 재발급한다.
+    @Transactional(readOnly = true)
+    public void reissue(HttpServletRequest request, HttpServletResponse response) {
+        String refreshToken = jwtTokenManager.getRefreshTokenFromCookie(request);
+        if (!StringUtils.hasText(refreshToken)) {
+            failReissue(response);
+        }
+
+        // 1차 방어: JWT 서명/만료를 먼저 확인해 위조·만료 RT를 걸러낸다.
+        JwtUser jwtUser = jwtTokenProvider.getJwtUserFromToken(refreshToken);
+        if (jwtUser == null) {
+            failReissue(response);
+        }
+
+        // 2차 방어: RT 원문이 아니라 SHA-256 해시로 DB에 저장된 토큰을 찾는다.
+        RefreshToken savedToken = authMapper.findRefreshTokenByTokenHash(TokenHashUtil.sha256Hex(refreshToken));
+        if (!isUsableRefreshToken(savedToken, jwtUser)) {
+            failReissue(response);
+        }
+
+        // 3차 방어: 토큰이 살아있어도 삭제된 사용자는 인증을 연장할 수 없다.
+        User user = authMapper.findUserById(savedToken.getUserId());
+        if (user == null || isDeleted(user)) {
+            failReissue(response);
+        }
+
+        // 권한 변경이 있었을 수 있으므로 DB의 최신 role로 새 Access Token claim을 만든다.
+        JwtUser refreshedJwtUser = new JwtUser(user.getUserId(), user.getRole().name());
+        String accessToken = jwtTokenProvider.generateAccessToken(refreshedJwtUser);
+        jwtTokenManager.setAccessTokenInCookie(response, accessToken);
+    }
+
     // 로그인 요청 실패 사유가 계정 존재 여부로 이어지지 않도록 같은 인증 실패로 처리한다.
     private void validateLoginRequest(LoginReq req) {
         if (req == null || !StringUtils.hasText(req.getEmail()) || !StringUtils.hasText(req.getPassword())) {
@@ -81,6 +113,19 @@ public class AuthService {
 
     private boolean isDeleted(User user) {
         return user.getAccountStatus() == UserAccountStatus.DELETED || user.getDeletedAt() != null;
+    }
+
+    private boolean isUsableRefreshToken(RefreshToken savedToken, JwtUser jwtUser) {
+        return savedToken != null
+                && savedToken.getRevokedAt() == null
+                && savedToken.getExpiresAt().isAfter(LocalDateTime.now())
+                && savedToken.getUserId().equals(jwtUser.getUserId());
+    }
+
+    private void failReissue(HttpServletResponse response) {
+        // 실패한 인증 쿠키는 즉시 만료시켜 프론트가 같은 쿠키로 재시도 루프에 빠지지 않게 한다.
+        jwtTokenManager.expireCookies(response);
+        throw new BusinessException(AuthErrorCode.EXPIRED_AUTH);
     }
 
     private void saveRefreshToken(Long userId, String refreshToken) {
