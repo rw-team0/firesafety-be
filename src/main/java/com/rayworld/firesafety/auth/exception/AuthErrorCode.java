@@ -13,7 +13,9 @@ public enum AuthErrorCode implements ErrorCode {
     EXPIRED_AUTH("AUTH-002", "인증이 만료되었습니다", HttpStatus.UNAUTHORIZED),
     FORBIDDEN_ROLE("AUTH-003", "권한이 없습니다", HttpStatus.FORBIDDEN),
     USER_NOT_FOUND("AUTH-004", "사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
-    DUPLICATED_EMAIL("AUTH-005", "이미 사용 중인 이메일입니다", HttpStatus.CONFLICT);
+    DUPLICATED_EMAIL("AUTH-005", "이미 사용 중인 이메일입니다", HttpStatus.CONFLICT),
+    SELF_DELETE_NOT_ALLOWED("AUTH-006", "본인 계정은 삭제할 수 없습니다", HttpStatus.FORBIDDEN),
+    USER_ALREADY_DELETED("AUTH-007", "이미 삭제된 사용자입니다", HttpStatus.CONFLICT);
 
     private final String code;
     private final String message;

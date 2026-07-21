@@ -8,6 +8,7 @@ import com.rayworld.firesafety.auth.dto.res.UserUpdateRes;
 import com.rayworld.firesafety.auth.service.UserService;
 import com.rayworld.firesafety.common.response.ResultResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -44,5 +45,12 @@ public class UserController {
     public ResultResponse<UserUpdateRes> updateUser(@PathVariable Long userId, @RequestBody UserUpdateReq req) {
         UserUpdateRes user = userService.updateUser(userId, req);
         return ResultResponse.success("계정 수정 성공", user);
+    }
+
+    // 계정 삭제는 소프트 삭제로 처리하고, 삭제된 계정의 Refresh Token 재발급 경로도 함께 막는다.
+    @DeleteMapping("/{userId}")
+    public ResultResponse<Void> deleteUser(@PathVariable Long userId) {
+        userService.deleteUser(userId);
+        return ResultResponse.success("계정 삭제 성공", null);
     }
 }

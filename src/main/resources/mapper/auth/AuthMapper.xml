@@ -204,6 +204,18 @@
           AND account_status = 'ACTIVE'
     </update>
 
+    <!-- 계정 삭제 시 사용자 row는 보존하고 로그인/조회 대상에서만 제외 -->
+    <update id="softDeleteUser">
+        UPDATE `user`
+        SET account_status = 'DELETED',
+            deleted_by = #{deletedBy},
+            deleted_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = #{userId}
+          AND deleted_at IS NULL
+          AND account_status = 'ACTIVE'
+    </update>
+
     <!-- 사용자 생성/수정/삭제/복구/비밀번호 변경 이력 기록 -->
     <insert id="insertUserAuditLog"
             parameterType="com.rayworld.firesafety.auth.model.UserAuditLog"

@@ -42,6 +42,9 @@ public interface AuthMapper {
     // 관리자 계정관리 화면에서 사용자 기본 정보 수정
     void updateUser(User user);
 
+    // 계정 삭제 시 상태값과 삭제 감사 필드만 변경
+    int softDeleteUser(@Param("userId") Long userId, @Param("deletedBy") Long deletedBy);
+
     // 사용자 생성/수정/삭제/복구/비밀번호 변경 이력 기록
     void insertUserAuditLog(UserAuditLog auditLog);
 

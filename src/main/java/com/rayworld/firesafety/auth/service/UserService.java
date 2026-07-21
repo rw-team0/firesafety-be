@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -93,6 +94,28 @@ public class UserService {
         return UserUpdateRes.from(targetUser);
     }
 
+    // 계정 삭제는 복구 가능성을 남기기 위해 row를 지우지 않고 DELETED 상태로 전환한다.
+    @Transactional
+    public void deleteUser(Long userId) {
+        UserPrincipal actor = getCurrentUser();
+        validateDeleteRequest(userId);
+
+        User targetUser = findDeletableTargetUser(userId);
+        validateDeletableRole(actor, targetUser);
+
+        String beforeData = toAuditJson(targetUser);
+        int updatedRows = authMapper.softDeleteUser(targetUser.getUserId(), actor.getUserId());
+        if (updatedRows == 0) {
+            throw new BusinessException(AuthErrorCode.USER_ALREADY_DELETED);
+        }
+
+        // 삭제된 사용자가 보유한 rt 쿠키로 재발급하지 못하도록 기존 Refresh Token을 모두 폐기한다.
+        authMapper.revokeAllRefreshTokensByUserId(targetUser.getUserId());
+
+        markDeletedForAudit(targetUser, actor.getUserId());
+        insertUserAuditLog(targetUser, actor.getUserId(), UserAuditAction.DELETE, beforeData, toAuditJson(targetUser));
+    }
+
     private User buildUserForCreate(UserCreateReq req, Long actorUserId) {
         User user = new User();
         user.setEmail(req.getEmail());
@@ -139,6 +162,26 @@ public class UserService {
         throw new BusinessException(AuthErrorCode.FORBIDDEN_ROLE);
     }
 
+    // 삭제 권한은 계정 계층을 기준으로 판단하며, 자기 자신 삭제는 모든 역할에서 금지한다.
+    private void validateDeletableRole(UserPrincipal actor, User targetUser) {
+        if (actor.getUserId() == targetUser.getUserId()) {
+            throw new BusinessException(AuthErrorCode.SELF_DELETE_NOT_ALLOWED);
+        }
+
+        UserRole actorRole = UserRole.valueOf(actor.getRole());
+        UserRole targetRole = targetUser.getRole();
+
+        if (actorRole == UserRole.SUPER_ADMIN && targetRole != UserRole.SUPER_ADMIN) {
+            return;
+        }
+
+        if (actorRole == UserRole.ADMIN && targetRole == UserRole.GENERAL) {
+            return;
+        }
+
+        throw new BusinessException(AuthErrorCode.FORBIDDEN_ROLE);
+    }
+
     private void validateCreateRequest(UserCreateReq req) {
         if (req == null
                 || !StringUtils.hasText(req.getEmail())
@@ -159,10 +202,27 @@ public class UserService {
         }
     }
 
+    private void validateDeleteRequest(Long userId) {
+        if (userId == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+        }
+    }
+
     private User findActiveTargetUser(Long userId) {
         User targetUser = authMapper.findUserById(userId);
         if (targetUser == null || targetUser.getDeletedAt() != null || targetUser.getAccountStatus() != UserAccountStatus.ACTIVE) {
             throw new BusinessException(AuthErrorCode.USER_NOT_FOUND);
+        }
+        return targetUser;
+    }
+
+    private User findDeletableTargetUser(Long userId) {
+        User targetUser = authMapper.findUserById(userId);
+        if (targetUser == null) {
+            throw new BusinessException(AuthErrorCode.USER_NOT_FOUND);
+        }
+        if (targetUser.getDeletedAt() != null || targetUser.getAccountStatus() == UserAccountStatus.DELETED) {
+            throw new BusinessException(AuthErrorCode.USER_ALREADY_DELETED);
         }
         return targetUser;
     }
@@ -173,6 +233,12 @@ public class UserService {
         targetUser.setPhone(req.getPhone());
         targetUser.setRole(req.getRole());
         targetUser.setUpdatedBy(actorUserId);
+    }
+
+    private void markDeletedForAudit(User targetUser, Long actorUserId) {
+        targetUser.setAccountStatus(UserAccountStatus.DELETED);
+        targetUser.setDeletedBy(actorUserId);
+        targetUser.setDeletedAt(LocalDateTime.now());
     }
 
     private void requireSuperAdmin(UserPrincipal actor) {
@@ -212,6 +278,12 @@ public class UserService {
             auditData.put("phone", user.getPhone());
             auditData.put("role", user.getRole().name());
             auditData.put("accountStatus", user.getAccountStatus().name());
+            auditData.put("createdBy", user.getCreatedBy());
+            auditData.put("updatedBy", user.getUpdatedBy());
+            auditData.put("deletedBy", user.getDeletedBy());
+            auditData.put("deletedAt", user.getDeletedAt());
+            auditData.put("restoredAt", user.getRestoredAt());
+            auditData.put("restoredBy", user.getRestoredBy());
             return objectMapper.writeValueAsString(auditData);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("사용자 감사 로그 직렬화 실패", e);
