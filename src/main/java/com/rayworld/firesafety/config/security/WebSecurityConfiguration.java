@@ -34,7 +34,7 @@ public class WebSecurityConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login", "/api/auth/reissue").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/logout", "/api/auth/reissue").permitAll()
                         .requestMatchers("/m_noUpload.php").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()

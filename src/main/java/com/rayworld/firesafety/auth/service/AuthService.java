@@ -13,6 +13,7 @@ import com.rayworld.firesafety.common.security.JwtUser;
 import com.rayworld.firesafety.config.jwt.ConstJwt;
 import com.rayworld.firesafety.config.security.JwtTokenManager;
 import com.rayworld.firesafety.config.security.JwtTokenProvider;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -38,20 +39,37 @@ public class AuthService {
     public LoginRes login(LoginReq req, HttpServletResponse response) {
         validateLoginRequest(req);
 
+        // 계정 존재 여부, 삭제 여부, 비밀번호 오류를 모두 같은 401 메시지로 감춰 보안 기준을 맞춘다.
         User user = authMapper.findUserByEmail(req.getEmail());
         if (user == null || isDeleted(user) || !passwordEncoder.matches(req.getPassword(), user.getPassword())) {
             throw new BusinessException(AuthErrorCode.INVALID_LOGIN);
         }
 
+        // JWT claim에는 화면 정보가 아니라 인증 판단에 필요한 최소 사용자 컨텍스트만 담는다.
         JwtUser jwtUser = new JwtUser(user.getUserId(), user.getRole().name());
         String accessToken = jwtTokenProvider.generateAccessToken(jwtUser);
         String refreshToken = jwtTokenProvider.generateRefreshToken(jwtUser);
 
+        // RT 원문은 쿠키로만 전달하고 DB에는 해시와 만료시각만 저장한다.
         saveRefreshToken(user.getUserId(), refreshToken);
         jwtTokenManager.setAccessTokenInCookie(response, accessToken);
         jwtTokenManager.setRefreshTokenInCookie(response, refreshToken);
 
         return LoginRes.from(user);
+    }
+
+    // 로그아웃은 여러 번 호출되어도 안전해야 하므로 RT가 없어도 쿠키 만료 응답은 항상 내려준다.
+    @Transactional
+    public void logout(HttpServletRequest request, HttpServletResponse response) {
+        String refreshToken = jwtTokenManager.getRefreshTokenFromCookie(request);
+
+        // rt 쿠키가 요청에 포함된 경우에만 DB의 현재 Refresh Token을 폐기한다.
+        if (StringUtils.hasText(refreshToken)) {
+            authMapper.revokeRefreshToken(TokenHashUtil.sha256Hex(refreshToken));
+        }
+
+        // 프론트는 HttpOnly 쿠키를 직접 지울 수 없으므로 서버가 at/rt 만료 쿠키를 내려준다.
+        jwtTokenManager.expireCookies(response);
     }
 
     // 로그인 요청 실패 사유가 계정 존재 여부로 이어지지 않도록 같은 인증 실패로 처리한다.
@@ -68,6 +86,7 @@ public class AuthService {
     private void saveRefreshToken(Long userId, String refreshToken) {
         RefreshToken token = new RefreshToken();
         token.setUserId(userId);
+        // refresh_token.token_hash에는 RT 원문 대신 SHA-256 해시만 저장한다.
         token.setTokenHash(TokenHashUtil.sha256Hex(refreshToken));
         token.setExpiresAt(LocalDateTime.now().plus(Duration.ofMillis(constJwt.getRefreshTokenValidityMilliseconds())));
 

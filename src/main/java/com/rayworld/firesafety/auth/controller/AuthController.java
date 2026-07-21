@@ -4,6 +4,7 @@ import com.rayworld.firesafety.auth.dto.req.LoginReq;
 import com.rayworld.firesafety.auth.dto.res.LoginRes;
 import com.rayworld.firesafety.auth.service.AuthService;
 import com.rayworld.firesafety.common.response.ResultResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,5 +24,12 @@ public class AuthController {
     public ResultResponse<LoginRes> login(@RequestBody LoginReq req, HttpServletResponse response) {
         LoginRes loginRes = authService.login(req, response);
         return ResultResponse.success("로그인 성공", loginRes);
+    }
+
+    // 로그아웃은 RT 폐기 후 at/rt 쿠키를 만료시키고, 응답 body에는 토큰 정보를 담지 않는다.
+    @PostMapping("/logout")
+    public ResultResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+        authService.logout(request, response);
+        return ResultResponse.success("로그아웃 성공", null);
     }
 }
