@@ -19,8 +19,14 @@ public class User {
     private String name;
     private String phone;
     private UserRole role;
+    private UserAccountStatus accountStatus;
     private Long createdBy;
+    private Long updatedBy;
+    private Long deletedBy;
+    private LocalDateTime restoredAt;
+    private Long restoredBy;
     private String fcmToken;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime deletedAt;
 }

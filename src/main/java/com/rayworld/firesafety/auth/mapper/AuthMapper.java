@@ -29,4 +29,7 @@ public interface AuthMapper {
 
     // 계정 등록 시 이메일 중복 여부 확인
     boolean existsUserByEmail(@Param("email") String email);
+
+    // 서버 최초 기동 시 플랫폼관리자 계정 생성
+    void insertBootstrapSuperAdmin(User user);
 }

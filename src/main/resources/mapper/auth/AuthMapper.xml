@@ -10,10 +10,16 @@
         <result property="name" column="name"/>
         <result property="phone" column="phone"/>
         <result property="role" column="role"/>
+        <result property="accountStatus" column="account_status"/>
         <result property="createdBy" column="created_by"/>
+        <result property="updatedBy" column="updated_by"/>
+        <result property="deletedBy" column="deleted_by"/>
+        <result property="restoredAt" column="restored_at"/>
+        <result property="restoredBy" column="restored_by"/>
         <result property="fcmToken" column="fcm_token"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
+        <result property="deletedAt" column="deleted_at"/>
     </resultMap>
 
     <resultMap id="refreshTokenResultMap" type="com.rayworld.firesafety.auth.model.RefreshToken">
@@ -34,10 +40,16 @@
             name,
             phone,
             role,
+            account_status,
             created_by,
+            updated_by,
+            deleted_by,
+            restored_at,
+            restored_by,
             fcm_token,
             created_at,
-            updated_at
+            updated_at,
+            deleted_at
         FROM `user`
         WHERE email = #{email}
     </select>
@@ -51,10 +63,16 @@
             name,
             phone,
             role,
+            account_status,
             created_by,
+            updated_by,
+            deleted_by,
+            restored_at,
+            restored_by,
             fcm_token,
             created_at,
-            updated_at
+            updated_at,
+            deleted_at
         FROM `user`
         WHERE user_id = #{userId}
     </select>
@@ -112,4 +130,26 @@
             WHERE email = #{email}
         )
     </select>
+
+    <!-- 서버 최초 기동 시 플랫폼관리자 계정 생성 -->
+    <insert id="insertBootstrapSuperAdmin"
+            parameterType="com.rayworld.firesafety.auth.model.User"
+            useGeneratedKeys="true"
+            keyProperty="userId">
+        INSERT INTO `user` (
+            email,
+            password,
+            name,
+            phone,
+            role,
+            account_status
+        ) VALUES (
+            #{email},
+            #{password},
+            #{name},
+            #{phone},
+            #{role},
+            #{accountStatus}
+        )
+    </insert>
 </mapper>
