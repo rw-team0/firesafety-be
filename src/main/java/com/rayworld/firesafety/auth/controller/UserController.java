@@ -1,7 +1,9 @@
 package com.rayworld.firesafety.auth.controller;
 
+import com.rayworld.firesafety.auth.dto.req.UserBulkDeleteReq;
 import com.rayworld.firesafety.auth.dto.req.UserCreateReq;
 import com.rayworld.firesafety.auth.dto.req.UserUpdateReq;
+import com.rayworld.firesafety.auth.dto.res.UserBulkDeleteRes;
 import com.rayworld.firesafety.auth.dto.res.UserCreateRes;
 import com.rayworld.firesafety.auth.dto.res.UserListRes;
 import com.rayworld.firesafety.auth.dto.res.UserUpdateRes;
@@ -10,6 +12,7 @@ import com.rayworld.firesafety.common.response.ResultResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -52,5 +55,12 @@ public class UserController {
     public ResultResponse<Void> deleteUser(@PathVariable Long userId) {
         userService.deleteUser(userId);
         return ResultResponse.success("계정 삭제 성공", null);
+    }
+
+    // 체크박스 다중 선택 삭제는 대상 중 하나라도 실패하면 전체를 롤백한다.
+    @PatchMapping("/bulk-delete")
+    public ResultResponse<UserBulkDeleteRes> deleteUsers(@RequestBody UserBulkDeleteReq req) {
+        UserBulkDeleteRes result = userService.deleteUsers(req);
+        return ResultResponse.success("계정 일괄 삭제 성공", result);
     }
 }

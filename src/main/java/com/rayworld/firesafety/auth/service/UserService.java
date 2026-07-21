@@ -2,8 +2,10 @@ package com.rayworld.firesafety.auth.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rayworld.firesafety.auth.dto.req.UserBulkDeleteReq;
 import com.rayworld.firesafety.auth.dto.req.UserCreateReq;
 import com.rayworld.firesafety.auth.dto.req.UserUpdateReq;
+import com.rayworld.firesafety.auth.dto.res.UserBulkDeleteRes;
 import com.rayworld.firesafety.auth.dto.res.UserCreateRes;
 import com.rayworld.firesafety.auth.dto.res.UserListRes;
 import com.rayworld.firesafety.auth.dto.res.UserUpdateRes;
@@ -16,6 +18,7 @@ import com.rayworld.firesafety.auth.model.UserAuditLog;
 import com.rayworld.firesafety.auth.model.UserRole;
 import com.rayworld.firesafety.common.exception.BusinessException;
 import com.rayworld.firesafety.common.exception.CommonErrorCode;
+import com.rayworld.firesafety.common.exception.ErrorCode;
 import com.rayworld.firesafety.common.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -26,9 +29,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -102,7 +108,32 @@ public class UserService {
 
         User targetUser = findDeletableTargetUser(userId);
         validateDeletableRole(actor, targetUser);
+        deleteTargetUser(actor, targetUser);
+    }
 
+    // 일괄 삭제는 사전 검증을 모두 통과한 경우에만 대상별 소프트 삭제를 수행한다.
+    @Transactional
+    public UserBulkDeleteRes deleteUsers(UserBulkDeleteReq req) {
+        UserPrincipal actor = getCurrentUser();
+        List<Long> userIds = validateBulkDeleteRequest(req);
+
+        List<User> targetUsers = userIds.stream()
+                .map(this::findDeletableTargetUser)
+                .toList();
+
+        // 권한 밖 대상이 하나라도 섞이면 트랜잭션에서 아무 계정도 삭제하지 않는다.
+        targetUsers.forEach(targetUser -> validateBulkDeletableRole(actor, targetUser));
+
+        List<Long> deletedUserIds = new ArrayList<>();
+        for (User targetUser : targetUsers) {
+            deleteTargetUser(actor, targetUser);
+            deletedUserIds.add(targetUser.getUserId());
+        }
+
+        return UserBulkDeleteRes.from(deletedUserIds);
+    }
+
+    private void deleteTargetUser(UserPrincipal actor, User targetUser) {
         String beforeData = toAuditJson(targetUser);
         int updatedRows = authMapper.softDeleteUser(targetUser.getUserId(), actor.getUserId());
         if (updatedRows == 0) {
@@ -164,6 +195,15 @@ public class UserService {
 
     // 삭제 권한은 계정 계층을 기준으로 판단하며, 자기 자신 삭제는 모든 역할에서 금지한다.
     private void validateDeletableRole(UserPrincipal actor, User targetUser) {
+        validateDeletableRole(actor, targetUser, AuthErrorCode.FORBIDDEN_ROLE);
+    }
+
+    // 일괄 삭제는 화면에서 여러 대상을 한 번에 보내므로 권한 밖 대상 포함 여부를 별도 메시지로 알려준다.
+    private void validateBulkDeletableRole(UserPrincipal actor, User targetUser) {
+        validateDeletableRole(actor, targetUser, AuthErrorCode.BULK_DELETE_FORBIDDEN_TARGET);
+    }
+
+    private void validateDeletableRole(UserPrincipal actor, User targetUser, ErrorCode forbiddenErrorCode) {
         if (actor.getUserId() == targetUser.getUserId()) {
             throw new BusinessException(AuthErrorCode.SELF_DELETE_NOT_ALLOWED);
         }
@@ -179,7 +219,7 @@ public class UserService {
             return;
         }
 
-        throw new BusinessException(AuthErrorCode.FORBIDDEN_ROLE);
+        throw new BusinessException(forbiddenErrorCode);
     }
 
     private void validateCreateRequest(UserCreateReq req) {
@@ -206,6 +246,23 @@ public class UserService {
         if (userId == null) {
             throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
         }
+    }
+
+    private List<Long> validateBulkDeleteRequest(UserBulkDeleteReq req) {
+        if (req == null || req.getUserIds() == null || req.getUserIds().isEmpty()) {
+            throw new BusinessException(AuthErrorCode.BULK_DELETE_EMPTY);
+        }
+
+        if (req.getUserIds().stream().anyMatch(userId -> userId == null)) {
+            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+        }
+
+        Set<Long> uniqueUserIds = new LinkedHashSet<>(req.getUserIds());
+        if (uniqueUserIds.size() != req.getUserIds().size()) {
+            throw new BusinessException(AuthErrorCode.BULK_DELETE_DUPLICATED);
+        }
+
+        return req.getUserIds();
     }
 
     private User findActiveTargetUser(Long userId) {
