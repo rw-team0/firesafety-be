@@ -3,5 +3,113 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.rayworld.firesafety.auth.mapper.AuthMapper">
-    <!-- auth 도메인 Mapper. 실제 SQL은 Mapper 메서드가 정해질 때 함께 작성 -->
+    <resultMap id="userResultMap" type="com.rayworld.firesafety.auth.model.User">
+        <id property="userId" column="user_id"/>
+        <result property="email" column="email"/>
+        <result property="password" column="password"/>
+        <result property="name" column="name"/>
+        <result property="phone" column="phone"/>
+        <result property="role" column="role"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="fcmToken" column="fcm_token"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <resultMap id="refreshTokenResultMap" type="com.rayworld.firesafety.auth.model.RefreshToken">
+        <id property="tokenId" column="token_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="tokenHash" column="token_hash"/>
+        <result property="expiresAt" column="expires_at"/>
+        <result property="revokedAt" column="revoked_at"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <!-- 로그인 시 이메일로 사용자 조회 -->
+    <select id="findUserByEmail" resultMap="userResultMap">
+        SELECT
+            user_id,
+            email,
+            password,
+            name,
+            phone,
+            role,
+            created_by,
+            fcm_token,
+            created_at,
+            updated_at
+        FROM `user`
+        WHERE email = #{email}
+    </select>
+
+    <!-- 토큰 재발급과 보호 흐름에서 사용자 존재 여부 확인 -->
+    <select id="findUserById" resultMap="userResultMap">
+        SELECT
+            user_id,
+            email,
+            password,
+            name,
+            phone,
+            role,
+            created_by,
+            fcm_token,
+            created_at,
+            updated_at
+        FROM `user`
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 로그인 시 Refresh Token 원문 대신 SHA-256 해시 저장 -->
+    <insert id="insertRefreshToken"
+            parameterType="com.rayworld.firesafety.auth.model.RefreshToken"
+            useGeneratedKeys="true"
+            keyProperty="tokenId">
+        INSERT INTO refresh_token (
+            user_id,
+            token_hash,
+            expires_at
+        ) VALUES (
+            #{userId},
+            #{tokenHash},
+            #{expiresAt}
+        )
+    </insert>
+
+    <!-- 재발급/로그아웃 시 rt 쿠키 해시값으로 Refresh Token 조회 -->
+    <select id="findRefreshTokenByTokenHash" resultMap="refreshTokenResultMap">
+        SELECT
+            token_id,
+            user_id,
+            token_hash,
+            expires_at,
+            revoked_at,
+            created_at
+        FROM refresh_token
+        WHERE token_hash = #{tokenHash}
+    </select>
+
+    <!-- 로그아웃 시 현재 Refresh Token 폐기 처리 -->
+    <update id="revokeRefreshToken">
+        UPDATE refresh_token
+        SET revoked_at = CURRENT_TIMESTAMP
+        WHERE token_hash = #{tokenHash}
+          AND revoked_at IS NULL
+    </update>
+
+    <!-- 계정 삭제 시 대상 사용자의 모든 Refresh Token 폐기 처리 -->
+    <update id="revokeAllRefreshTokensByUserId">
+        UPDATE refresh_token
+        SET revoked_at = CURRENT_TIMESTAMP
+        WHERE user_id = #{userId}
+          AND revoked_at IS NULL
+    </update>
+
+    <!-- 계정 등록 시 이메일 중복 여부 확인 -->
+    <select id="existsUserByEmail" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM `user`
+            WHERE email = #{email}
+        )
+    </select>
 </mapper>
