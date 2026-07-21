@@ -45,6 +45,9 @@ public interface AuthMapper {
     // 계정 삭제 시 상태값과 삭제 감사 필드만 변경
     int softDeleteUser(@Param("userId") Long userId, @Param("deletedBy") Long deletedBy);
 
+    // 계정 복구 시 삭제 기준값을 해제하고 복구 감사 필드 기록
+    int restoreUser(@Param("userId") Long userId, @Param("restoredBy") Long restoredBy);
+
     // 사용자 생성/수정/삭제/복구/비밀번호 변경 이력 기록
     void insertUserAuditLog(UserAuditLog auditLog);
 

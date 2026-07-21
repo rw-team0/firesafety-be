@@ -63,4 +63,11 @@ public class UserController {
         UserBulkDeleteRes result = userService.deleteUsers(req);
         return ResultResponse.success("계정 일괄 삭제 성공", result);
     }
+
+    // 삭제된 계정을 ACTIVE 상태로 복구해 일반 목록과 로그인 대상에 다시 포함한다.
+    @PatchMapping("/{userId}/restore")
+    public ResultResponse<UserUpdateRes> restoreUser(@PathVariable Long userId) {
+        UserUpdateRes user = userService.restoreUser(userId);
+        return ResultResponse.success("계정 복구 성공", user);
+    }
 }

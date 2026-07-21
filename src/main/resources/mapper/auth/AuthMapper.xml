@@ -216,6 +216,19 @@
           AND account_status = 'ACTIVE'
     </update>
 
+    <!-- 계정 복구 시 일반 조회/로그인 대상에 다시 포함 -->
+    <update id="restoreUser">
+        UPDATE `user`
+        SET account_status = 'ACTIVE',
+            deleted_at = NULL,
+            restored_by = #{restoredBy},
+            restored_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = #{userId}
+          AND deleted_at IS NOT NULL
+          AND account_status = 'DELETED'
+    </update>
+
     <!-- 사용자 생성/수정/삭제/복구/비밀번호 변경 이력 기록 -->
     <insert id="insertUserAuditLog"
             parameterType="com.rayworld.firesafety.auth.model.UserAuditLog"

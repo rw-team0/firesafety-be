@@ -133,6 +133,27 @@ public class UserService {
         return UserBulkDeleteRes.from(deletedUserIds);
     }
 
+    // 계정 복구는 삭제 상태만 해제하며, 비밀번호나 토큰을 새로 발급하지 않는다.
+    @Transactional
+    public UserUpdateRes restoreUser(Long userId) {
+        UserPrincipal actor = getCurrentUser();
+        validateDeleteRequest(userId);
+
+        User targetUser = findRestorableTargetUser(userId);
+        validateRestorableRole(actor, targetUser);
+
+        String beforeData = toAuditJson(targetUser);
+        int updatedRows = authMapper.restoreUser(targetUser.getUserId(), actor.getUserId());
+        if (updatedRows == 0) {
+            throw new BusinessException(AuthErrorCode.USER_NOT_DELETED);
+        }
+
+        markRestoredForAudit(targetUser, actor.getUserId());
+        insertUserAuditLog(targetUser, actor.getUserId(), UserAuditAction.RESTORE, beforeData, toAuditJson(targetUser));
+
+        return UserUpdateRes.from(targetUser);
+    }
+
     private void deleteTargetUser(UserPrincipal actor, User targetUser) {
         String beforeData = toAuditJson(targetUser);
         int updatedRows = authMapper.softDeleteUser(targetUser.getUserId(), actor.getUserId());
@@ -201,6 +222,22 @@ public class UserService {
     // 일괄 삭제는 화면에서 여러 대상을 한 번에 보내므로 권한 밖 대상 포함 여부를 별도 메시지로 알려준다.
     private void validateBulkDeletableRole(UserPrincipal actor, User targetUser) {
         validateDeletableRole(actor, targetUser, AuthErrorCode.BULK_DELETE_FORBIDDEN_TARGET);
+    }
+
+    // 복구 가능 등급은 삭제 가능 등급과 동일하다.
+    private void validateRestorableRole(UserPrincipal actor, User targetUser) {
+        UserRole actorRole = UserRole.valueOf(actor.getRole());
+        UserRole targetRole = targetUser.getRole();
+
+        if (actorRole == UserRole.SUPER_ADMIN && targetRole != UserRole.SUPER_ADMIN) {
+            return;
+        }
+
+        if (actorRole == UserRole.ADMIN && targetRole == UserRole.GENERAL) {
+            return;
+        }
+
+        throw new BusinessException(AuthErrorCode.FORBIDDEN_ROLE);
     }
 
     private void validateDeletableRole(UserPrincipal actor, User targetUser, ErrorCode forbiddenErrorCode) {
@@ -284,6 +321,17 @@ public class UserService {
         return targetUser;
     }
 
+    private User findRestorableTargetUser(Long userId) {
+        User targetUser = authMapper.findUserById(userId);
+        if (targetUser == null) {
+            throw new BusinessException(AuthErrorCode.USER_NOT_FOUND);
+        }
+        if (targetUser.getDeletedAt() == null || targetUser.getAccountStatus() != UserAccountStatus.DELETED) {
+            throw new BusinessException(AuthErrorCode.USER_NOT_DELETED);
+        }
+        return targetUser;
+    }
+
     private void applyUpdate(User targetUser, UserUpdateReq req, Long actorUserId) {
         targetUser.setEmail(req.getEmail());
         targetUser.setName(req.getName());
@@ -296,6 +344,13 @@ public class UserService {
         targetUser.setAccountStatus(UserAccountStatus.DELETED);
         targetUser.setDeletedBy(actorUserId);
         targetUser.setDeletedAt(LocalDateTime.now());
+    }
+
+    private void markRestoredForAudit(User targetUser, Long actorUserId) {
+        targetUser.setAccountStatus(UserAccountStatus.ACTIVE);
+        targetUser.setDeletedAt(null);
+        targetUser.setRestoredBy(actorUserId);
+        targetUser.setRestoredAt(LocalDateTime.now());
     }
 
     private void requireSuperAdmin(UserPrincipal actor) {
