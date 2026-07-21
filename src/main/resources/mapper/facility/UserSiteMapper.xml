@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.rayworld.firesafety.facility.mapper.UserSiteMapper">
+    <!-- 사용자별 담당 현장(user_site) 배정/조회 SQL을 배치할 Mapper  -->
+</mapper>

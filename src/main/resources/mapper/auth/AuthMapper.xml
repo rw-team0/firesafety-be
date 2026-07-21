@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.rayworld.firesafety.auth.mapper.AuthMapper">
+    <!-- auth 도메인 Mapper. 실제 SQL은 Mapper 메서드가 정해질 때 함께 작성 -->
+</mapper>
