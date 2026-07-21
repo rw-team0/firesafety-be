@@ -5,9 +5,7 @@ build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
-AGENTS.md
 CLAUDE.md
-.agent-docs
 
 ### STS ###
 .apt_generated
