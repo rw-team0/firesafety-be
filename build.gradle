@@ -47,6 +47,9 @@ dependencies {
     // Firebase Admin SDK (FCM 서버 발송)
     implementation 'com.google.firebase:firebase-admin:9.4.3'
 
+    // Google SMTP 메일 발송 (비밀번호 재설정)
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-jdbc-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'

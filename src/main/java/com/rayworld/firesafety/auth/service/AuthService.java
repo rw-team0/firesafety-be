@@ -1,14 +1,23 @@
 package com.rayworld.firesafety.auth.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rayworld.firesafety.auth.config.PasswordResetProperties;
 import com.rayworld.firesafety.auth.dto.req.LoginReq;
+import com.rayworld.firesafety.auth.dto.req.PasswordResetConfirmReq;
+import com.rayworld.firesafety.auth.dto.req.PasswordResetRequestReq;
 import com.rayworld.firesafety.auth.dto.res.LoginRes;
 import com.rayworld.firesafety.auth.exception.AuthErrorCode;
 import com.rayworld.firesafety.auth.mapper.AuthMapper;
+import com.rayworld.firesafety.auth.model.PasswordResetToken;
 import com.rayworld.firesafety.auth.model.RefreshToken;
 import com.rayworld.firesafety.auth.model.User;
 import com.rayworld.firesafety.auth.model.UserAccountStatus;
+import com.rayworld.firesafety.auth.model.UserAuditAction;
+import com.rayworld.firesafety.auth.model.UserAuditLog;
 import com.rayworld.firesafety.auth.util.TokenHashUtil;
 import com.rayworld.firesafety.common.exception.BusinessException;
+import com.rayworld.firesafety.common.exception.CommonErrorCode;
 import com.rayworld.firesafety.common.security.JwtUser;
 import com.rayworld.firesafety.config.jwt.ConstJwt;
 import com.rayworld.firesafety.config.security.JwtTokenManager;
@@ -16,17 +25,25 @@ import com.rayworld.firesafety.config.security.JwtTokenProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     // user, refresh_token 테이블 접근
     private final AuthMapper authMapper;
@@ -42,6 +59,18 @@ public class AuthService {
 
     // JWT 만료시간 설정값
     private final ConstJwt constJwt;
+
+    // Google SMTP 메일 발송
+    private final JavaMailSender javaMailSender;
+
+    // 비밀번호 재설정 링크/만료/발신자 설정
+    private final PasswordResetProperties passwordResetProperties;
+
+    // 비밀번호 재설정 반복 요청 제한
+    private final PasswordResetRateLimiter passwordResetRateLimiter;
+
+    // 감사 로그 JSON 변환
+    private final ObjectMapper objectMapper;
 
     // 로그인 처리
     // 1. 요청값 확인 → 2. 이메일 조회/비밀번호 검증 → 3. AT/RT 발급 → 4. RT 해시 저장
@@ -116,10 +145,97 @@ public class AuthService {
         jwtTokenManager.setAccessTokenInCookie(response, accessToken);
     }
 
+    // 비밀번호 재설정 요청
+    // 1. 요청값 확인 → 2. 요청 횟수 제한 → 3. ACTIVE 계정이면 토큰 저장 → 4. 메일 발송
+    public void requestPasswordReset(PasswordResetRequestReq req, HttpServletRequest request) {
+        validatePasswordResetRequest(req);
+        passwordResetRateLimiter.check(req.getEmail(), getClientIp(request));
+        validatePasswordResetMailSettings();
+
+        // 계정 존재 여부는 응답에 노출하지 않음
+        User user = authMapper.findUserByEmail(req.getEmail());
+        if (user == null || isDeleted(user)) {
+            return;
+        }
+
+        // 새 토큰을 만들기 전에 이전 미사용 토큰은 만료 처리
+        authMapper.expireUnusedPasswordResetTokensByUserId(user.getUserId());
+
+        String originalToken = generatePasswordResetToken();
+        PasswordResetToken passwordResetToken = buildPasswordResetToken(user, originalToken, request);
+        authMapper.insertPasswordResetToken(passwordResetToken);
+
+        sendPasswordResetMail(user, originalToken);
+    }
+
+    // 비밀번호 재설정 확정
+    // 1. 토큰 검증 → 2. 새 비밀번호 저장 → 3. 토큰 사용 처리 → 4. RT 폐기 → 5. 감사 로그 저장
+    @Transactional
+    public void confirmPasswordReset(PasswordResetConfirmReq req) {
+        validatePasswordResetConfirmRequest(req);
+
+        PasswordResetToken token = authMapper.findPasswordResetTokenByTokenHash(TokenHashUtil.sha256Hex(req.getToken()));
+        validatePasswordResetToken(token);
+
+        User user = authMapper.findUserById(token.getUserId());
+        if (user == null || isDeleted(user)) {
+            throw new BusinessException(AuthErrorCode.PASSWORD_RESET_TOKEN_INVALID);
+        }
+
+        String beforeData = toPasswordResetAuditJson(user);
+        String encodedPassword = passwordEncoder.encode(req.getNewPassword());
+        int updatedRows = authMapper.updatePassword(user.getUserId(), encodedPassword);
+        if (updatedRows == 0) {
+            throw new BusinessException(AuthErrorCode.PASSWORD_RESET_TOKEN_INVALID);
+        }
+
+        int usedRows = authMapper.markPasswordResetTokenUsed(token.getTokenId());
+        if (usedRows == 0) {
+            throw new BusinessException(AuthErrorCode.PASSWORD_RESET_TOKEN_EXPIRED);
+        }
+
+        // 비밀번호 변경 후 기존 로그인 세션은 모두 무효화
+        authMapper.revokeAllRefreshTokensByUserId(user.getUserId());
+        insertPasswordResetAuditLog(user, beforeData);
+    }
+
     // 로그인 요청값 확인
     private void validateLoginRequest(LoginReq req) {
         if (req == null || !StringUtils.hasText(req.getEmail()) || !StringUtils.hasText(req.getPassword())) {
             throw new BusinessException(AuthErrorCode.INVALID_LOGIN);
+        }
+    }
+
+    // 비밀번호 재설정 요청값 확인
+    private void validatePasswordResetRequest(PasswordResetRequestReq req) {
+        if (req == null || !StringUtils.hasText(req.getEmail())) {
+            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+        }
+    }
+
+    // 비밀번호 재설정 확정 요청값 확인
+    private void validatePasswordResetConfirmRequest(PasswordResetConfirmReq req) {
+        if (req == null || !StringUtils.hasText(req.getToken()) || !StringUtils.hasText(req.getNewPassword())) {
+            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+        }
+    }
+
+    // 메일 발송에 꼭 필요한 설정값 확인
+    private void validatePasswordResetMailSettings() {
+        if (!StringUtils.hasText(passwordResetProperties.getBaseUrl())
+                || !StringUtils.hasText(passwordResetProperties.getMailFrom())) {
+            throw new IllegalStateException("비밀번호 재설정 메일 설정이 필요합니다");
+        }
+    }
+
+    // 비밀번호 재설정 토큰 상태 확인
+    private void validatePasswordResetToken(PasswordResetToken token) {
+        if (token == null) {
+            throw new BusinessException(AuthErrorCode.PASSWORD_RESET_TOKEN_INVALID);
+        }
+
+        if (token.getUsedAt() != null || !token.getExpiresAt().isAfter(LocalDateTime.now())) {
+            throw new BusinessException(AuthErrorCode.PASSWORD_RESET_TOKEN_EXPIRED);
         }
     }
 
@@ -151,5 +267,86 @@ public class AuthService {
         token.setExpiresAt(LocalDateTime.now().plus(Duration.ofMillis(constJwt.getRefreshTokenValidityMilliseconds())));
 
         authMapper.insertRefreshToken(token);
+    }
+
+    // 비밀번호 재설정 원본 토큰 생성
+    private String generatePasswordResetToken() {
+        byte[] randomBytes = new byte[32];
+        SECURE_RANDOM.nextBytes(randomBytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+    }
+
+    // DB에는 원본 토큰 대신 SHA-256 해시만 저장
+    private PasswordResetToken buildPasswordResetToken(User user, String originalToken, HttpServletRequest request) {
+        PasswordResetToken token = new PasswordResetToken();
+        token.setUserId(user.getUserId());
+        token.setTokenHash(TokenHashUtil.sha256Hex(originalToken));
+        token.setExpiresAt(LocalDateTime.now().plusMinutes(passwordResetProperties.getTokenExpirationMinutes()));
+        token.setRequestIp(getClientIp(request));
+        token.setUserAgent(getUserAgent(request));
+        return token;
+    }
+
+    // 비밀번호 재설정 링크 메일 발송
+    private void sendPasswordResetMail(User user, String originalToken) {
+        String resetLink = passwordResetProperties.getBaseUrl() + "?token=" + originalToken;
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(passwordResetProperties.getMailFrom());
+        message.setTo(user.getEmail());
+        message.setSubject("[전기화재 예방 시스템] 비밀번호 재설정 안내");
+        message.setText("""
+                비밀번호 재설정 요청이 접수되었습니다.
+
+                아래 링크에서 새 비밀번호를 설정해주세요.
+                %s
+
+                이 링크는 %d분 동안만 사용할 수 있습니다.
+                본인이 요청하지 않았다면 이 메일을 무시해주세요.
+                """.formatted(resetLink, passwordResetProperties.getTokenExpirationMinutes()));
+
+        javaMailSender.send(message);
+    }
+
+    // 프록시 환경이면 X-Forwarded-For 첫 번째 IP를 우선 사용
+    private String getClientIp(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (StringUtils.hasText(forwardedFor)) {
+            return forwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
+    }
+
+    // DB 컬럼 길이에 맞춰 User-Agent는 최대 255자로 저장
+    private String getUserAgent(HttpServletRequest request) {
+        String userAgent = request.getHeader("User-Agent");
+        if (!StringUtils.hasText(userAgent)) {
+            return null;
+        }
+        return userAgent.length() > 255 ? userAgent.substring(0, 255) : userAgent;
+    }
+
+    // 비밀번호 변경 감사 로그 저장
+    private void insertPasswordResetAuditLog(User user, String beforeData) {
+        UserAuditLog auditLog = new UserAuditLog();
+        auditLog.setTargetUserId(user.getUserId());
+        auditLog.setActorUserId(null);
+        auditLog.setAction(UserAuditAction.PASSWORD_RESET);
+        auditLog.setBeforeData(beforeData);
+        auditLog.setAfterData(toPasswordResetAuditJson(user));
+        authMapper.insertUserAuditLog(auditLog);
+    }
+
+    // 감사 로그에는 비밀번호 해시와 토큰을 저장하지 않음
+    private String toPasswordResetAuditJson(User user) {
+        try {
+            Map<String, Object> auditData = new LinkedHashMap<>();
+            auditData.put("userId", user.getUserId());
+            auditData.put("email", user.getEmail());
+            auditData.put("action", UserAuditAction.PASSWORD_RESET.name());
+            return objectMapper.writeValueAsString(auditData);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("비밀번호 재설정 감사 로그 직렬화 실패", e);
+        }
     }
 }

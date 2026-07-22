@@ -41,6 +41,17 @@
         <result property="createdAt" column="created_at"/>
     </resultMap>
 
+    <resultMap id="passwordResetTokenResultMap" type="com.rayworld.firesafety.auth.model.PasswordResetToken">
+        <id property="tokenId" column="token_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="tokenHash" column="token_hash"/>
+        <result property="expiresAt" column="expires_at"/>
+        <result property="usedAt" column="used_at"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="requestIp" column="request_ip"/>
+        <result property="userAgent" column="user_agent"/>
+    </resultMap>
+
     <!-- 로그인 시 이메일로 사용자 조회 -->
     <select id="findUserByEmail" resultMap="userResultMap">
         SELECT
@@ -218,6 +229,16 @@
           AND account_status = 'ACTIVE'
     </update>
 
+    <!-- 비밀번호 재설정 확정 시 새 비밀번호 해시 저장 -->
+    <update id="updatePassword">
+        UPDATE `user`
+        SET password = #{password},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = #{userId}
+          AND deleted_at IS NULL
+          AND account_status = 'ACTIVE'
+    </update>
+
     <!-- 현재 로그인 사용자의 FCM 토큰 저장 -->
     <update id="updateFcmToken">
         UPDATE `user`
@@ -226,6 +247,58 @@
         WHERE user_id = #{userId}
           AND deleted_at IS NULL
           AND account_status = 'ACTIVE'
+    </update>
+
+    <!-- 비밀번호 재설정 요청 전 기존 미사용 토큰 만료 처리 -->
+    <update id="expireUnusedPasswordResetTokensByUserId">
+        UPDATE password_reset_token
+        SET expires_at = CURRENT_TIMESTAMP
+        WHERE user_id = #{userId}
+          AND used_at IS NULL
+          AND expires_at > CURRENT_TIMESTAMP
+    </update>
+
+    <!-- 비밀번호 재설정 메일 발송 전 토큰 해시 저장 -->
+    <insert id="insertPasswordResetToken"
+            parameterType="com.rayworld.firesafety.auth.model.PasswordResetToken"
+            useGeneratedKeys="true"
+            keyProperty="tokenId">
+        INSERT INTO password_reset_token (
+            user_id,
+            token_hash,
+            expires_at,
+            request_ip,
+            user_agent
+        ) VALUES (
+            #{userId},
+            #{tokenHash},
+            #{expiresAt},
+            #{requestIp},
+            #{userAgent}
+        )
+    </insert>
+
+    <!-- 비밀번호 재설정 확정 시 토큰 해시로 토큰 조회 -->
+    <select id="findPasswordResetTokenByTokenHash" resultMap="passwordResetTokenResultMap">
+        SELECT
+            token_id,
+            user_id,
+            token_hash,
+            expires_at,
+            used_at,
+            created_at,
+            request_ip,
+            user_agent
+        FROM password_reset_token
+        WHERE token_hash = #{tokenHash}
+    </select>
+
+    <!-- 비밀번호 재설정 완료 후 토큰 재사용 방지 -->
+    <update id="markPasswordResetTokenUsed">
+        UPDATE password_reset_token
+        SET used_at = CURRENT_TIMESTAMP
+        WHERE token_id = #{tokenId}
+          AND used_at IS NULL
     </update>
 
     <!-- 계정 삭제 시 사용자 row는 보존하고 로그인/조회 대상에서만 제외 -->

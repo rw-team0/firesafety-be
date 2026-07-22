@@ -1,5 +1,6 @@
 package com.rayworld.firesafety.auth.mapper;
 
+import com.rayworld.firesafety.auth.model.PasswordResetToken;
 import com.rayworld.firesafety.auth.model.RefreshToken;
 import com.rayworld.firesafety.auth.model.User;
 import com.rayworld.firesafety.auth.model.UserAuditLog;
@@ -45,8 +46,23 @@ public interface AuthMapper {
     // 관리자 계정관리 화면에서 사용자 기본 정보 수정
     void updateUser(User user);
 
+    // 비밀번호 재설정 확정 시 새 비밀번호 해시 저장
+    int updatePassword(@Param("userId") Long userId, @Param("password") String password);
+
     // 현재 로그인 사용자의 FCM 토큰 저장
     int updateFcmToken(@Param("userId") Long userId, @Param("fcmToken") String fcmToken);
+
+    // 비밀번호 재설정 요청 전 기존 미사용 토큰 만료 처리
+    void expireUnusedPasswordResetTokensByUserId(@Param("userId") Long userId);
+
+    // 비밀번호 재설정 메일 발송 전 토큰 해시 저장
+    void insertPasswordResetToken(PasswordResetToken passwordResetToken);
+
+    // 비밀번호 재설정 확정 시 토큰 해시로 토큰 조회
+    PasswordResetToken findPasswordResetTokenByTokenHash(@Param("tokenHash") String tokenHash);
+
+    // 비밀번호 재설정 완료 후 토큰 재사용 방지
+    int markPasswordResetTokenUsed(@Param("tokenId") Long tokenId);
 
     // 계정 삭제 시 상태값과 삭제 감사 필드만 변경
     int softDeleteUser(@Param("userId") Long userId, @Param("deletedBy") Long deletedBy);

@@ -1,6 +1,8 @@
 package com.rayworld.firesafety.auth.controller;
 
 import com.rayworld.firesafety.auth.dto.req.LoginReq;
+import com.rayworld.firesafety.auth.dto.req.PasswordResetConfirmReq;
+import com.rayworld.firesafety.auth.dto.req.PasswordResetRequestReq;
 import com.rayworld.firesafety.auth.dto.res.LoginRes;
 import com.rayworld.firesafety.auth.service.AuthService;
 import com.rayworld.firesafety.common.response.ResultResponse;
@@ -41,5 +43,22 @@ public class AuthController {
     public ResultResponse<Void> reissue(HttpServletRequest request, HttpServletResponse response) {
         authService.reissue(request, response);
         return ResultResponse.success("토큰 재발급 성공", null);
+    }
+
+    // 비밀번호 재설정 요청 (POST /api/auth/password-reset/request)
+    // 계정 존재 여부와 관계없이 같은 응답 반환
+    @PostMapping("/password-reset/request")
+    public ResultResponse<Void> requestPasswordReset(@RequestBody PasswordResetRequestReq req,
+                                                     HttpServletRequest request) {
+        authService.requestPasswordReset(req, request);
+        return ResultResponse.success("비밀번호 재설정 안내 메일을 발송했습니다", null);
+    }
+
+    // 비밀번호 재설정 확정 (POST /api/auth/password-reset/confirm)
+    // 메일 링크의 일회용 토큰 검증 후 새 비밀번호 저장
+    @PostMapping("/password-reset/confirm")
+    public ResultResponse<Void> confirmPasswordReset(@RequestBody PasswordResetConfirmReq req) {
+        authService.confirmPasswordReset(req);
+        return ResultResponse.success("비밀번호가 변경되었습니다", null);
     }
 }
