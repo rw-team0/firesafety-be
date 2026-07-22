@@ -10,17 +10,16 @@ import org.springframework.stereotype.Component;
 public class MyCookieUtil {
 
     // HttpOnly Cookie 저장
-    public void setCookie(HttpServletResponse response, String key, String value, int maxAge, String path) {
+    public void setCookie(HttpServletResponse response, String key, String value, int maxAge, String path, boolean secure) {
         Cookie cookie = new Cookie(key, value);
         cookie.setMaxAge(maxAge);
         cookie.setHttpOnly(true);
+        cookie.setSecure(secure);
 
         if (path != null) {
             cookie.setPath(path);
         }
 
-        // 운영 HTTPS 환경 Secure 속성 활성화 위치
-        // cookie.setSecure(true);
         response.addCookie(cookie);
     }
 

@@ -85,7 +85,8 @@ class AuthServiceTest {
                 "rt",
                 "/api/auth",
                 604800,
-                604800000
+                604800000,
+                false
         );
 
         passwordResetProperties = new PasswordResetProperties();

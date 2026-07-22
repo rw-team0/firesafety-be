@@ -45,7 +45,8 @@ public class JwtTokenManager {
                 constJwt.getAccessTokenCookieName(),
                 accessToken,
                 constJwt.getAccessTokenCookieValiditySeconds(),
-                constJwt.getAccessTokenCookiePath()
+                constJwt.getAccessTokenCookiePath(),
+                constJwt.isCookieSecure()
         );
     }
 
@@ -56,7 +57,8 @@ public class JwtTokenManager {
                 constJwt.getRefreshTokenCookieName(),
                 refreshToken,
                 constJwt.getRefreshTokenCookieValiditySeconds(),
-                constJwt.getRefreshTokenCookiePath()
+                constJwt.getRefreshTokenCookiePath(),
+                constJwt.isCookieSecure()
         );
     }
 
@@ -72,8 +74,8 @@ public class JwtTokenManager {
 
     // 인증 쿠키 만료 처리
     public void expireCookies(HttpServletResponse response) {
-        myCookieUtil.setCookie(response, constJwt.getAccessTokenCookieName(), "", 0, constJwt.getAccessTokenCookiePath());
-        myCookieUtil.setCookie(response, constJwt.getRefreshTokenCookieName(), "", 0, constJwt.getRefreshTokenCookiePath());
+        myCookieUtil.setCookie(response, constJwt.getAccessTokenCookieName(), "", 0, constJwt.getAccessTokenCookiePath(), constJwt.isCookieSecure());
+        myCookieUtil.setCookie(response, constJwt.getRefreshTokenCookieName(), "", 0, constJwt.getRefreshTokenCookiePath(), constJwt.isCookieSecure());
     }
 
     // Security Authentication 생성

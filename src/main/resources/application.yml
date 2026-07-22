@@ -1,3 +1,7 @@
+server:
+  address: ${SERVER_ADDRESS:0.0.0.0}
+  port: ${SERVER_PORT:8080}
+
 spring:
   application:
     name: firesafety # 프로젝트 이름
@@ -43,6 +47,7 @@ constants:
     refresh-token-cookie-path: ${JWT_REFRESH_TOKEN_COOKIE_PATH}
     refresh-token-cookie-validity-seconds: ${JWT_REFRESH_TOKEN_COOKIE_VALIDITY_SECONDS}
     refresh-token-validity-milliseconds: ${JWT_REFRESH_TOKEN_VALIDITY_MILLISECONDS}
+    cookie-secure: ${JWT_COOKIE_SECURE:false}
 
   bootstrap:
     admin:
