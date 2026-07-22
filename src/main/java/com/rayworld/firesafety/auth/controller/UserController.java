@@ -1,5 +1,6 @@
 package com.rayworld.firesafety.auth.controller;
 
+import com.rayworld.firesafety.auth.dto.req.FcmTokenReq;
 import com.rayworld.firesafety.auth.dto.req.UserBulkDeleteReq;
 import com.rayworld.firesafety.auth.dto.req.UserCreateReq;
 import com.rayworld.firesafety.auth.dto.req.UserUpdateReq;
@@ -44,6 +45,14 @@ public class UserController {
     public ResultResponse<List<UserAuditLogRes>> getUserAuditLogs() {
         List<UserAuditLogRes> logs = userService.getUserAuditLogs();
         return ResultResponse.success(String.format("%d rows", logs.size()), logs);
+    }
+
+    // FCM 토큰 등록 (PATCH /api/users/me/fcm-token)
+    // 프론트에서 발급받은 현재 기기 토큰을 로그인 사용자에게 저장
+    @PatchMapping("/me/fcm-token")
+    public ResultResponse<Void> updateFcmToken(@RequestBody FcmTokenReq req) {
+        userService.updateFcmToken(req);
+        return ResultResponse.success("FCM 토큰 등록 성공", null);
     }
 
     // 계정 등록 (POST /api/users)

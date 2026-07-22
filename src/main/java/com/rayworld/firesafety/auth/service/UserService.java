@@ -3,6 +3,7 @@ package com.rayworld.firesafety.auth.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rayworld.firesafety.auth.dto.req.FcmTokenReq;
 import com.rayworld.firesafety.auth.dto.req.UserBulkDeleteReq;
 import com.rayworld.firesafety.auth.dto.req.UserCreateReq;
 import com.rayworld.firesafety.auth.dto.req.UserUpdateReq;
@@ -76,6 +77,19 @@ public class UserService {
                         toAuditJsonNode(auditLog.getAfterData())
                 ))
                 .toList();
+    }
+
+    // FCM 토큰 등록
+    // 1. 현재 사용자 확인 → 2. 토큰값 확인 → 3. 현재 사용자에게 토큰 저장
+    @Transactional
+    public void updateFcmToken(FcmTokenReq req) {
+        UserPrincipal actor = getCurrentUser();
+        validateFcmTokenRequest(req);
+
+        int updatedRows = authMapper.updateFcmToken(actor.getUserId(), req.getFcmToken());
+        if (updatedRows == 0) {
+            throw new BusinessException(AuthErrorCode.USER_NOT_FOUND);
+        }
     }
 
     // 계정 등록
@@ -313,6 +327,13 @@ public class UserService {
     // 삭제/복구 대상 ID 확인
     private void validateDeleteRequest(Long userId) {
         if (userId == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+        }
+    }
+
+    // FCM 토큰 요청값 확인
+    private void validateFcmTokenRequest(FcmTokenReq req) {
+        if (req == null || !StringUtils.hasText(req.getFcmToken())) {
             throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
         }
     }

@@ -45,6 +45,9 @@ public interface AuthMapper {
     // 관리자 계정관리 화면에서 사용자 기본 정보 수정
     void updateUser(User user);
 
+    // 현재 로그인 사용자의 FCM 토큰 저장
+    int updateFcmToken(@Param("userId") Long userId, @Param("fcmToken") String fcmToken);
+
     // 계정 삭제 시 상태값과 삭제 감사 필드만 변경
     int softDeleteUser(@Param("userId") Long userId, @Param("deletedBy") Long deletedBy);
 
