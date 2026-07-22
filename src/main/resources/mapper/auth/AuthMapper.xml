@@ -166,6 +166,20 @@
         ORDER BY user_id DESC
     </select>
 
+    <!-- SUPER_ADMIN 계정관리 이력 화면에서 최신 변경 이력부터 조회 -->
+    <select id="findUserAuditLogs" resultMap="userAuditLogResultMap">
+        SELECT
+            audit_id,
+            target_user_id,
+            actor_user_id,
+            action,
+            before_data,
+            after_data,
+            created_at
+        FROM user_audit_log
+        ORDER BY audit_id DESC
+    </select>
+
     <!-- 관리자 계정관리 화면에서 신규 사용자 등록 -->
     <insert id="insertUser"
             parameterType="com.rayworld.firesafety.auth.model.User"

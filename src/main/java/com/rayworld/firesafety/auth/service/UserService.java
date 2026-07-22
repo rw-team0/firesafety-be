@@ -1,10 +1,12 @@
 package com.rayworld.firesafety.auth.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rayworld.firesafety.auth.dto.req.UserBulkDeleteReq;
 import com.rayworld.firesafety.auth.dto.req.UserCreateReq;
 import com.rayworld.firesafety.auth.dto.req.UserUpdateReq;
+import com.rayworld.firesafety.auth.dto.res.UserAuditLogRes;
 import com.rayworld.firesafety.auth.dto.res.UserBulkDeleteRes;
 import com.rayworld.firesafety.auth.dto.res.UserCreateRes;
 import com.rayworld.firesafety.auth.dto.res.UserListRes;
@@ -52,6 +54,21 @@ public class UserService {
 
         return authMapper.findActiveUsers().stream()
                 .map(UserListRes::from)
+                .toList();
+    }
+
+    // 감사 이력은 SUPER_ADMIN만 확인하며, before/after JSON은 화면에서 비교하기 쉽게 객체로 내려준다.
+    @Transactional(readOnly = true)
+    public List<UserAuditLogRes> getUserAuditLogs() {
+        UserPrincipal actor = getCurrentUser();
+        requireSuperAdmin(actor);
+
+        return authMapper.findUserAuditLogs().stream()
+                .map(auditLog -> UserAuditLogRes.from(
+                        auditLog,
+                        toAuditJsonNode(auditLog.getBeforeData()),
+                        toAuditJsonNode(auditLog.getAfterData())
+                ))
                 .toList();
     }
 
@@ -399,6 +416,18 @@ public class UserService {
             return objectMapper.writeValueAsString(auditData);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("사용자 감사 로그 직렬화 실패", e);
+        }
+    }
+
+    private JsonNode toAuditJsonNode(String auditData) {
+        if (!StringUtils.hasText(auditData)) {
+            return null;
+        }
+
+        try {
+            return objectMapper.readTree(auditData);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("사용자 감사 로그 역직렬화 실패", e);
         }
     }
 }

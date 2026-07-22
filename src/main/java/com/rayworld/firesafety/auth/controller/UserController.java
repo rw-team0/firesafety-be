@@ -3,6 +3,7 @@ package com.rayworld.firesafety.auth.controller;
 import com.rayworld.firesafety.auth.dto.req.UserBulkDeleteReq;
 import com.rayworld.firesafety.auth.dto.req.UserCreateReq;
 import com.rayworld.firesafety.auth.dto.req.UserUpdateReq;
+import com.rayworld.firesafety.auth.dto.res.UserAuditLogRes;
 import com.rayworld.firesafety.auth.dto.res.UserBulkDeleteRes;
 import com.rayworld.firesafety.auth.dto.res.UserCreateRes;
 import com.rayworld.firesafety.auth.dto.res.UserListRes;
@@ -34,6 +35,13 @@ public class UserController {
     public ResultResponse<List<UserListRes>> getUsers() {
         List<UserListRes> users = userService.getUsers();
         return ResultResponse.success(String.format("%d rows", users.size()), users);
+    }
+
+    // SUPER_ADMIN 전용 계정 변경 이력. 감사 로그는 삭제하지 않고 최신순으로 조회한다.
+    @GetMapping("/audit-logs")
+    public ResultResponse<List<UserAuditLogRes>> getUserAuditLogs() {
+        List<UserAuditLogRes> logs = userService.getUserAuditLogs();
+        return ResultResponse.success(String.format("%d rows", logs.size()), logs);
     }
 
     // 관리자 화면에서 하위 계정을 생성한다. 공개 회원가입 API가 아니다.

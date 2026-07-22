@@ -36,6 +36,9 @@ public interface AuthMapper {
     // SUPER_ADMIN 계정관리 화면에서 삭제되지 않은 사용자 목록 조회
     List<User> findActiveUsers();
 
+    // SUPER_ADMIN 계정관리 이력 화면에서 사용자 변경 감사 로그 조회
+    List<UserAuditLog> findUserAuditLogs();
+
     // 관리자 계정관리 화면에서 신규 사용자 등록
     void insertUser(User user);
 
