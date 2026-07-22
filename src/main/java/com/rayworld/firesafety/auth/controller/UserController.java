@@ -30,49 +30,56 @@ public class UserController {
 
     private final UserService userService;
 
-    // SUPER_ADMIN 전용 계정 목록. 삭제된 사용자는 운영 목록에서 제외한다.
+    // 계정 목록 조회 (GET /api/users)
+    // SUPER_ADMIN 전용, 삭제된 사용자는 제외
     @GetMapping
     public ResultResponse<List<UserListRes>> getUsers() {
         List<UserListRes> users = userService.getUsers();
         return ResultResponse.success(String.format("%d rows", users.size()), users);
     }
 
-    // SUPER_ADMIN 전용 계정 변경 이력. 감사 로그는 삭제하지 않고 최신순으로 조회한다.
+    // 계정 변경 이력 조회 (GET /api/users/audit-logs)
+    // SUPER_ADMIN 전용, user_audit_log 최신순 조회
     @GetMapping("/audit-logs")
     public ResultResponse<List<UserAuditLogRes>> getUserAuditLogs() {
         List<UserAuditLogRes> logs = userService.getUserAuditLogs();
         return ResultResponse.success(String.format("%d rows", logs.size()), logs);
     }
 
-    // 관리자 화면에서 하위 계정을 생성한다. 공개 회원가입 API가 아니다.
+    // 계정 등록 (POST /api/users)
+    // 공개 회원가입이 아니라 관리자가 하위 계정을 생성
     @PostMapping
     public ResultResponse<UserCreateRes> createUser(@RequestBody UserCreateReq req) {
         UserCreateRes user = userService.createUser(req);
         return ResultResponse.success("계정 등록 성공", user);
     }
 
-    // 계정 수정은 대상 등급과 수정 후 등급을 모두 기준으로 권한을 검증한다.
+    // 계정 수정 (PUT /api/users/{userId})
+    // 대상 등급과 수정 후 등급을 함께 권한 검증
     @PutMapping("/{userId}")
     public ResultResponse<UserUpdateRes> updateUser(@PathVariable Long userId, @RequestBody UserUpdateReq req) {
         UserUpdateRes user = userService.updateUser(userId, req);
         return ResultResponse.success("계정 수정 성공", user);
     }
 
-    // 계정 삭제는 소프트 삭제로 처리하고, 삭제된 계정의 Refresh Token 재발급 경로도 함께 막는다.
+    // 계정 삭제 (DELETE /api/users/{userId})
+    // 소프트 삭제 처리 후 대상 RT 전체 폐기
     @DeleteMapping("/{userId}")
     public ResultResponse<Void> deleteUser(@PathVariable Long userId) {
         userService.deleteUser(userId);
         return ResultResponse.success("계정 삭제 성공", null);
     }
 
-    // 체크박스 다중 선택 삭제는 대상 중 하나라도 실패하면 전체를 롤백한다.
+    // 계정 일괄 삭제 (PATCH /api/users/bulk-delete)
+    // 대상 중 하나라도 삭제 불가하면 전체 롤백
     @PatchMapping("/bulk-delete")
     public ResultResponse<UserBulkDeleteRes> deleteUsers(@RequestBody UserBulkDeleteReq req) {
         UserBulkDeleteRes result = userService.deleteUsers(req);
         return ResultResponse.success("계정 일괄 삭제 성공", result);
     }
 
-    // 삭제된 계정을 ACTIVE 상태로 복구해 일반 목록과 로그인 대상에 다시 포함한다.
+    // 계정 복구 (PATCH /api/users/{userId}/restore)
+    // 삭제된 계정을 ACTIVE 상태로 전환
     @PatchMapping("/{userId}/restore")
     public ResultResponse<UserUpdateRes> restoreUser(@PathVariable Long userId) {
         UserUpdateRes user = userService.restoreUser(userId);
