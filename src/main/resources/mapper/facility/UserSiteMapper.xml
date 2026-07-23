@@ -3,6 +3,15 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.rayworld.firesafety.facility.mapper.UserSiteMapper">
+    <resultMap id="userSiteResultMap" type="com.rayworld.firesafety.facility.model.UserSite">
+        <id property="mappingId" column="mapping_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="siteId" column="site_id"/>
+        <result property="assignedAt" column="assigned_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="deletedAt" column="deleted_at"/>
+    </resultMap>
+
     <resultMap id="userSiteAssignmentResultMap"
                type="com.rayworld.firesafety.facility.model.UserSiteAssignment">
         <id property="mappingId" column="mapping_id"/>
@@ -29,4 +38,120 @@
           AND s.deleted_at IS NULL
         ORDER BY s.site_id DESC
     </select>
+
+    <!-- ADMIN은 본인이 담당하는 현장 범위 안에서만 대상 사용자 배정 조회 -->
+    <select id="findActiveAssignmentsByUserIdWithinManagerSites" resultMap="userSiteAssignmentResultMap">
+        SELECT
+            target_us.mapping_id,
+            target_us.user_id,
+            target_us.site_id,
+            s.name AS site_name,
+            s.address AS site_address,
+            target_us.assigned_at
+        FROM user_site target_us
+        INNER JOIN site s ON s.site_id = target_us.site_id
+        INNER JOIN user_site manager_us ON manager_us.site_id = target_us.site_id
+        WHERE target_us.user_id = #{userId}
+          AND manager_us.user_id = #{managerUserId}
+          AND target_us.deleted_at IS NULL
+          AND manager_us.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+        ORDER BY s.site_id DESC
+    </select>
+
+    <!-- 재배정 판단을 위해 삭제 row까지 포함해서 조회 -->
+    <select id="findAssignmentsByUserId" resultMap="userSiteResultMap">
+        SELECT
+            mapping_id,
+            user_id,
+            site_id,
+            assigned_at,
+            updated_at,
+            deleted_at
+        FROM user_site
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 요청된 현장 ID가 모두 활성 현장인지 개수로 확인 -->
+    <select id="countActiveSitesBySiteIds" resultType="int">
+        SELECT COUNT(*)
+        FROM site
+        WHERE deleted_at IS NULL
+          AND site_id IN
+          <foreach collection="siteIds" item="siteId" open="(" separator="," close=")">
+              #{siteId}
+          </foreach>
+    </select>
+
+    <!-- ADMIN은 본인에게 배정된 활성 현장 안에서만 다른 사용자에게 배정 가능 -->
+    <select id="countActiveAssignmentsByUserIdAndSiteIds" resultType="int">
+        SELECT COUNT(*)
+        FROM user_site us
+        INNER JOIN site s ON s.site_id = us.site_id
+        WHERE us.user_id = #{userId}
+          AND us.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+          AND us.site_id IN
+          <foreach collection="siteIds" item="siteId" open="(" separator="," close=")">
+              #{siteId}
+          </foreach>
+    </select>
+
+    <!-- 기존 row가 없으면 신규 담당 현장으로 배정 -->
+    <insert id="insertAssignment" parameterType="com.rayworld.firesafety.facility.model.UserSite">
+        INSERT INTO user_site (
+            user_id,
+            site_id
+        ) VALUES (
+            #{userId},
+            #{siteId}
+        )
+    </insert>
+
+    <!-- 기존에 해제된 row가 있으면 새 row를 만들지 않고 재활성화 -->
+    <update id="reactivateAssignment">
+        UPDATE user_site
+        SET deleted_at = NULL,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = #{userId}
+          AND site_id = #{siteId}
+          AND deleted_at IS NOT NULL
+    </update>
+
+    <!-- 선택 목록에서 빠진 활성 배정은 row를 보존하고 해제 처리 -->
+    <update id="softDeleteAssignmentsNotIn">
+        UPDATE user_site
+        SET deleted_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = #{userId}
+          AND deleted_at IS NULL
+        <if test="siteIds != null and siteIds.size() > 0">
+          AND site_id NOT IN
+          <foreach collection="siteIds" item="siteId" open="(" separator="," close=")">
+              #{siteId}
+          </foreach>
+        </if>
+    </update>
+
+    <!-- ADMIN은 본인이 담당하는 현장 범위 안에서만 대상 사용자 배정을 해제 -->
+    <update id="softDeleteAssignmentsNotInWithinManagerSites">
+        UPDATE user_site target_us
+        INNER JOIN user_site manager_us
+            ON manager_us.site_id = target_us.site_id
+           AND manager_us.user_id = #{managerUserId}
+           AND manager_us.deleted_at IS NULL
+        INNER JOIN site s
+            ON s.site_id = manager_us.site_id
+           AND s.deleted_at IS NULL
+        SET target_us.deleted_at = CURRENT_TIMESTAMP,
+            target_us.updated_at = CURRENT_TIMESTAMP
+        WHERE target_us.user_id = #{userId}
+          AND target_us.deleted_at IS NULL
+        <if test="siteIds != null and siteIds.size() > 0">
+          AND target_us.site_id NOT IN
+          <foreach collection="siteIds" item="siteId" open="(" separator="," close=")">
+              #{siteId}
+          </foreach>
+        </if>
+    </update>
 </mapper>
