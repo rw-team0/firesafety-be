@@ -18,4 +18,6 @@ public class Circuit {
     private Integer channelNo;
     private String loadType;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private LocalDateTime deletedAt;
 }
