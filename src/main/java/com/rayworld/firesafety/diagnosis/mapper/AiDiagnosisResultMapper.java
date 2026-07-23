@@ -1,6 +1,7 @@
 package com.rayworld.firesafety.diagnosis.mapper;
 
 import com.rayworld.firesafety.diagnosis.dto.req.AiPredictionSampleReq;
+import com.rayworld.firesafety.diagnosis.dto.res.DiagnosisResultRes;
 import com.rayworld.firesafety.diagnosis.model.AiDiagnosisResult;
 import com.rayworld.firesafety.diagnosis.model.AiPredictionCircuitTarget;
 import com.rayworld.firesafety.diagnosis.model.AiPredictionPanelTarget;
@@ -26,4 +27,12 @@ public interface AiDiagnosisResultMapper {
     // AI 요청에 사용할 회로별 최근 샘플 조회
     List<AiPredictionSampleReq> findRecentSamples(@Param("circuitId") Long circuitId,
                                                   @Param("sampleSize") int sampleSize);
+
+    // 회로별 AI 판정 이력 조회
+    List<DiagnosisResultRes> findDiagnosisResults(@Param("circuitId") Long circuitId,
+                                                  @Param("size") int size,
+                                                  @Param("offset") int offset);
+
+    // 회로별 AI 판정 이력 개수 조회
+    long countDiagnosisResults(@Param("circuitId") Long circuitId);
 }
