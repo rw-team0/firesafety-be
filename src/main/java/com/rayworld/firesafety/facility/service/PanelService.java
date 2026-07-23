@@ -43,6 +43,9 @@ public class PanelService {
     private static final BigDecimal DEFAULT_TEMP_THRESHOLD = BigDecimal.valueOf(80.0);
     private static final BigDecimal DEFAULT_HUMIDITY_THRESHOLD = BigDecimal.valueOf(80.0);
     private static final BigDecimal DEFAULT_OVERCURRENT_THRESHOLD = BigDecimal.valueOf(30.0);
+    // 가스/불꽃 원시값 기준 방향(>=)만 확정, 정확한 수치는 하드웨어 확정 전까지 잠정값
+    private static final Integer DEFAULT_GAS_THRESHOLD = 5000;
+    private static final Integer DEFAULT_FIRE_THRESHOLD = 5000;
 
     // panel 테이블 접근
     private final PanelMapper panelMapper;
@@ -219,8 +222,8 @@ public class PanelService {
         panel.setTempThreshold(defaultIfNull(req.getTempThreshold(), DEFAULT_TEMP_THRESHOLD));
         panel.setHumidityThreshold(defaultIfNull(req.getHumidityThreshold(), DEFAULT_HUMIDITY_THRESHOLD));
         panel.setOvercurrentThreshold(defaultIfNull(req.getOvercurrentThreshold(), DEFAULT_OVERCURRENT_THRESHOLD));
-        panel.setGasThreshold(req.getGasThreshold());
-        panel.setFireThreshold(req.getFireThreshold());
+        panel.setGasThreshold(defaultIfNull(req.getGasThreshold(), DEFAULT_GAS_THRESHOLD));
+        panel.setFireThreshold(defaultIfNull(req.getFireThreshold(), DEFAULT_FIRE_THRESHOLD));
         return panel;
     }
 
@@ -235,12 +238,17 @@ public class PanelService {
         panel.setTempThreshold(defaultIfNull(req.getTempThreshold(), DEFAULT_TEMP_THRESHOLD));
         panel.setHumidityThreshold(defaultIfNull(req.getHumidityThreshold(), DEFAULT_HUMIDITY_THRESHOLD));
         panel.setOvercurrentThreshold(defaultIfNull(req.getOvercurrentThreshold(), DEFAULT_OVERCURRENT_THRESHOLD));
-        panel.setGasThreshold(req.getGasThreshold());
-        panel.setFireThreshold(req.getFireThreshold());
+        panel.setGasThreshold(defaultIfNull(req.getGasThreshold(), DEFAULT_GAS_THRESHOLD));
+        panel.setFireThreshold(defaultIfNull(req.getFireThreshold(), DEFAULT_FIRE_THRESHOLD));
     }
 
     // 임계치 미입력 시 기본값 적용
     private BigDecimal defaultIfNull(BigDecimal value, BigDecimal defaultValue) {
+        return value == null ? defaultValue : value;
+    }
+
+    // 임계치 미입력 시 기본값 적용
+    private Integer defaultIfNull(Integer value, Integer defaultValue) {
         return value == null ? defaultValue : value;
     }
 

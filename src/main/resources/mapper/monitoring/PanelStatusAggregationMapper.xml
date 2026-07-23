@@ -108,6 +108,34 @@
                               AND recover_sf.total_current &lt; p.overcurrent_threshold
                         )
                   )
+                  OR EXISTS (
+                      SELECT 1
+                      FROM sensor_frame start_sf
+                      WHERE start_sf.panel_id = p.panel_id
+                        AND start_sf.received_at &lt;= #{thresholdAt}
+                        AND start_sf.gas_raw &gt;= p.gas_threshold
+                        AND NOT EXISTS (
+                            SELECT 1
+                            FROM sensor_frame recover_sf
+                            WHERE recover_sf.panel_id = p.panel_id
+                              AND recover_sf.received_at &gt; start_sf.received_at
+                              AND recover_sf.gas_raw &lt; p.gas_threshold
+                        )
+                  )
+                  OR EXISTS (
+                      SELECT 1
+                      FROM sensor_frame start_sf
+                      WHERE start_sf.panel_id = p.panel_id
+                        AND start_sf.received_at &lt;= #{thresholdAt}
+                        AND start_sf.fire_raw &gt;= p.fire_threshold
+                        AND NOT EXISTS (
+                            SELECT 1
+                            FROM sensor_frame recover_sf
+                            WHERE recover_sf.panel_id = p.panel_id
+                              AND recover_sf.received_at &gt; start_sf.received_at
+                              AND recover_sf.fire_raw &lt; p.fire_threshold
+                        )
+                  )
               )
         )
     </select>

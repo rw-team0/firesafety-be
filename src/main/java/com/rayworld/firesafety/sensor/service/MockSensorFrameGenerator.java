@@ -17,6 +17,8 @@ public class MockSensorFrameGenerator {
     private static final double ANOMALY_PROBABILITY = 0.1;
     // ALARM bit 종류 수, 순서는 DeviceAlertService와 동일 (누전/과열/습도/가스/불꽃/문열림/과전류)
     private static final int ALARM_BIT_COUNT = 7;
+    private static final int ALARM_BIT_GAS = 3;
+    private static final int ALARM_BIT_FIRE = 4;
     private static final int ALARM_BIT_DOOR_OPEN = 5;
 
     private final SecureRandom random = new SecureRandom();
@@ -43,8 +45,9 @@ public class MockSensorFrameGenerator {
         params.put("s_circuit", pad(random.nextInt(5), 2));
         params.put("tem", pad(200 + random.nextInt(100), 3));
         params.put("humi", pad(400 + random.nextInt(200), 3));
-        params.put("fire", pad(500 + random.nextInt(9000), 4));
-        params.put("gas", pad(500 + random.nextInt(9000), 4));
+        // panel.gasThreshold/fireThreshold 기본값(5000)보다 한참 낮게 두고, 해당 ALARM bit일 때만 기준 이상으로 올림
+        params.put("fire", pad(alarmBitIndex == ALARM_BIT_FIRE ? 6000 + random.nextInt(3000) : 100 + random.nextInt(900), 4));
+        params.put("gas", pad(alarmBitIndex == ALARM_BIT_GAS ? 6000 + random.nextInt(3000) : 100 + random.nextInt(900), 4));
         params.put("door", alarmBitIndex == ALARM_BIT_DOOR_OPEN ? "1" : "0");
         params.put("total_circuit", pad(random.nextInt(20), 2));
         params.put("e_energy", pad(random.nextInt(20000), 5));
