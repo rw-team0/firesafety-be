@@ -4,6 +4,7 @@ import com.rayworld.firesafety.monitoring.model.CircuitStatusSnapshot;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 // 분전반 상태 집계용 MyBatis Mapper
@@ -15,6 +16,10 @@ public interface PanelStatusAggregationMapper {
 
     // 분전반 회로별 최신 하드웨어/AI 판정 조회
     List<CircuitStatusSnapshot> findCircuitStatusSnapshots(@Param("panelId") Long panelId);
+
+    // 서버 수치 기준값이 30초 이상 지속됐는지 확인
+    boolean hasSustainedThresholdCaution(@Param("panelId") Long panelId,
+                                         @Param("thresholdAt") LocalDateTime thresholdAt);
 
     // 집계된 분전반 상태 저장
     int updatePanelStatus(@Param("panelId") Long panelId, @Param("status") String status);

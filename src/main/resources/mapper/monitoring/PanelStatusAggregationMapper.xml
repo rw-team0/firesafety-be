@@ -44,6 +44,74 @@
         ORDER BY c.channel_no ASC
     </select>
 
+    <!-- 분전반 서버 주의 기준값이 30초 이상 지속되는지 확인 -->
+    <select id="hasSustainedThresholdCaution" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM panel p
+            WHERE p.panel_id = #{panelId}
+              AND p.deleted_at IS NULL
+              AND (
+                  EXISTS (
+                      SELECT 1
+                      FROM sensor_frame start_sf
+                      WHERE start_sf.panel_id = p.panel_id
+                        AND start_sf.received_at &lt;= #{thresholdAt}
+                        AND start_sf.leak_ma &gt;= p.leak_ma_threshold
+                        AND NOT EXISTS (
+                            SELECT 1
+                            FROM sensor_frame recover_sf
+                            WHERE recover_sf.panel_id = p.panel_id
+                              AND recover_sf.received_at &gt; start_sf.received_at
+                              AND recover_sf.leak_ma &lt; p.leak_ma_threshold
+                        )
+                  )
+                  OR EXISTS (
+                      SELECT 1
+                      FROM sensor_frame start_sf
+                      WHERE start_sf.panel_id = p.panel_id
+                        AND start_sf.received_at &lt;= #{thresholdAt}
+                        AND start_sf.temperature &gt;= p.temp_threshold
+                        AND NOT EXISTS (
+                            SELECT 1
+                            FROM sensor_frame recover_sf
+                            WHERE recover_sf.panel_id = p.panel_id
+                              AND recover_sf.received_at &gt; start_sf.received_at
+                              AND recover_sf.temperature &lt; p.temp_threshold
+                        )
+                  )
+                  OR EXISTS (
+                      SELECT 1
+                      FROM sensor_frame start_sf
+                      WHERE start_sf.panel_id = p.panel_id
+                        AND start_sf.received_at &lt;= #{thresholdAt}
+                        AND start_sf.humidity &gt;= p.humidity_threshold
+                        AND NOT EXISTS (
+                            SELECT 1
+                            FROM sensor_frame recover_sf
+                            WHERE recover_sf.panel_id = p.panel_id
+                              AND recover_sf.received_at &gt; start_sf.received_at
+                              AND recover_sf.humidity &lt; p.humidity_threshold
+                        )
+                  )
+                  OR EXISTS (
+                      SELECT 1
+                      FROM sensor_frame start_sf
+                      WHERE start_sf.panel_id = p.panel_id
+                        AND start_sf.received_at &lt;= #{thresholdAt}
+                        AND start_sf.total_current &gt;= p.overcurrent_threshold
+                        AND NOT EXISTS (
+                            SELECT 1
+                            FROM sensor_frame recover_sf
+                            WHERE recover_sf.panel_id = p.panel_id
+                              AND recover_sf.received_at &gt; start_sf.received_at
+                              AND recover_sf.total_current &lt; p.overcurrent_threshold
+                        )
+                  )
+              )
+        )
+    </select>
+
     <!-- 집계 결과를 분전반 현재 상태로 저장 -->
     <update id="updatePanelStatus">
         UPDATE panel

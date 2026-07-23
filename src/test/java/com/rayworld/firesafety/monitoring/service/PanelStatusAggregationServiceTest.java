@@ -11,6 +11,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,10 +27,18 @@ class PanelStatusAggregationServiceTest {
     private PanelStatusAggregationMapper panelStatusAggregationMapper;
 
     private PanelStatusAggregationService panelStatusAggregationService;
+    private LocalDateTime thresholdAt;
 
     @BeforeEach
     void setUp() {
-        panelStatusAggregationService = new PanelStatusAggregationService(panelStatusAggregationMapper);
+        LocalDateTime fixedNow = LocalDateTime.of(2026, 7, 23, 12, 0);
+        Clock fixedClock = Clock.fixed(
+                fixedNow.atZone(ZoneId.systemDefault()).toInstant(),
+                ZoneId.systemDefault()
+        );
+
+        thresholdAt = fixedNow.minusSeconds(30);
+        panelStatusAggregationService = new PanelStatusAggregationService(panelStatusAggregationMapper, fixedClock);
     }
 
     @Test
@@ -66,6 +77,7 @@ class PanelStatusAggregationServiceTest {
         // given
         when(panelStatusAggregationMapper.findLatestErrorBitsByPanelId(10L)).thenReturn("00000000");
         when(panelStatusAggregationMapper.findCircuitStatusSnapshots(10L)).thenReturn(List.of(snapshot(false, Verdict.NORMAL)));
+        when(panelStatusAggregationMapper.hasSustainedThresholdCaution(10L, thresholdAt)).thenReturn(false);
 
         // when
         PanelStatus status = panelStatusAggregationService.aggregatePanelStatus(10L);
@@ -73,6 +85,22 @@ class PanelStatusAggregationServiceTest {
         // then
         assertThat(status).isEqualTo(PanelStatus.NORMAL);
         verify(panelStatusAggregationMapper).updatePanelStatus(10L, "NORMAL");
+    }
+
+    @Test
+    @DisplayName("FR-03-03: 서버 주의 기준값이 30초 이상 지속되면 분전반 상태를 CAUTION으로 집계한다")
+    void sustainedThresholdAggregatesPanelAsCaution() {
+        // given
+        when(panelStatusAggregationMapper.findLatestErrorBitsByPanelId(10L)).thenReturn("00000000");
+        when(panelStatusAggregationMapper.findCircuitStatusSnapshots(10L)).thenReturn(List.of(snapshot(false, Verdict.NORMAL)));
+        when(panelStatusAggregationMapper.hasSustainedThresholdCaution(10L, thresholdAt)).thenReturn(true);
+
+        // when
+        PanelStatus status = panelStatusAggregationService.aggregatePanelStatus(10L);
+
+        // then
+        assertThat(status).isEqualTo(PanelStatus.CAUTION);
+        verify(panelStatusAggregationMapper).updatePanelStatus(10L, "CAUTION");
     }
 
     private CircuitStatusSnapshot snapshot(boolean deviceArcFlag, Verdict verdict) {

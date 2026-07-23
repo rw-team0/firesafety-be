@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -19,11 +21,13 @@ import java.util.regex.Pattern;
 public class PanelStatusAggregationService {
 
     private static final Pattern HEX_8 = Pattern.compile("^[0-9A-Fa-f]{8}$");
+    private static final long THRESHOLD_CAUTION_SECONDS = 30L;
 
     private final PanelStatusAggregationMapper panelStatusAggregationMapper;
+    private final Clock clock;
 
     // 분전반 상태 집계
-    // 1. 최신 하드웨어 판정 확인 → 2. 최신 회로별 판정 확인 → 3. 최고 위험도 계산 → 4. panel.status 저장
+    // 1. 최신 하드웨어 판정 확인 → 2. 최신 AI/서버 수치 판정 확인 → 3. 최고 위험도 계산 → 4. panel.status 저장
     @Transactional
     public PanelStatus aggregatePanelStatus(Long panelId) {
         if (panelId == null) {
@@ -32,21 +36,30 @@ public class PanelStatusAggregationService {
 
         String latestErrorBits = panelStatusAggregationMapper.findLatestErrorBitsByPanelId(panelId);
         List<CircuitStatusSnapshot> snapshots = panelStatusAggregationMapper.findCircuitStatusSnapshots(panelId);
-        PanelStatus status = resolvePanelStatus(latestErrorBits, snapshots);
+        PanelStatus status = resolvePanelStatus(panelId, latestErrorBits, snapshots);
 
         panelStatusAggregationMapper.updatePanelStatus(panelId, status.name());
         return status;
     }
 
     // 하드웨어 위험은 AI 결과보다 우선한다.
-    private PanelStatus resolvePanelStatus(String latestErrorBits, List<CircuitStatusSnapshot> snapshots) {
+    private PanelStatus resolvePanelStatus(Long panelId, String latestErrorBits, List<CircuitStatusSnapshot> snapshots) {
         if (hasDeviceRisk(latestErrorBits) || hasDeviceArc(snapshots)) {
             return PanelStatus.RISK;
         }
         if (hasAiArc(snapshots)) {
             return PanelStatus.CAUTION;
         }
+        if (hasSustainedThresholdCaution(panelId)) {
+            return PanelStatus.CAUTION;
+        }
         return PanelStatus.NORMAL;
+    }
+
+    // 하드웨어는 정상이어도 서버 주의 기준값이 30초 이상 지속되면 CAUTION
+    private boolean hasSustainedThresholdCaution(Long panelId) {
+        LocalDateTime thresholdAt = LocalDateTime.now(clock).minusSeconds(THRESHOLD_CAUTION_SECONDS);
+        return panelStatusAggregationMapper.hasSustainedThresholdCaution(panelId, thresholdAt);
     }
 
     // aerror ARC/ERROR/ALARM bit가 하나라도 있으면 하드웨어 위험
