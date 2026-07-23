@@ -10,18 +10,23 @@ import com.rayworld.firesafety.facility.dto.req.PanelCreateReq;
 import com.rayworld.firesafety.facility.dto.req.PanelListReq;
 import com.rayworld.firesafety.facility.dto.req.PanelUpdateReq;
 import com.rayworld.firesafety.facility.dto.res.PanelDetailRes;
+import com.rayworld.firesafety.facility.dto.res.PanelCircuitStatusRes;
+import com.rayworld.firesafety.facility.dto.res.PanelRecentAlertRes;
 import com.rayworld.firesafety.facility.dto.res.PanelCreateRes;
 import com.rayworld.firesafety.facility.dto.res.PanelListRes;
 import com.rayworld.firesafety.facility.dto.res.PanelUpdateRes;
 import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
 import com.rayworld.firesafety.facility.mapper.PanelMapper;
 import com.rayworld.firesafety.facility.mapper.SiteMapper;
+import com.rayworld.firesafety.facility.model.CircuitStatusRow;
 import com.rayworld.firesafety.facility.model.FacilityAuditAction;
 import com.rayworld.firesafety.facility.model.FacilityAuditLog;
 import com.rayworld.firesafety.facility.model.FacilityAuditTargetType;
 import com.rayworld.firesafety.facility.model.Panel;
 import com.rayworld.firesafety.facility.model.PanelStatus;
 import com.rayworld.firesafety.facility.model.Site;
+import com.rayworld.firesafety.diagnosis.model.Verdict;
+import com.rayworld.firesafety.sensor.model.SensorFrame;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -46,6 +51,7 @@ public class PanelService {
     // 가스/불꽃 원시값 기준 방향(>=)만 확정, 정확한 수치는 하드웨어 확정 전까지 잠정값
     private static final Integer DEFAULT_GAS_THRESHOLD = 5000;
     private static final Integer DEFAULT_FIRE_THRESHOLD = 5000;
+    private static final int RECENT_ALERT_LIMIT = 5;
 
     // panel 테이블 접근
     private final PanelMapper panelMapper;
@@ -101,7 +107,7 @@ public class PanelService {
     }
 
     // 분전반 상세 조회
-    // 1. 현재 사용자 확인 → 2. 활성 분전반 조회 → 3. 현장 접근 권한 확인
+    // 1. 현재 사용자 확인 → 2. 활성 분전반 조회 → 3. 현장 접근 권한 확인 → 4. 최신 센서값/회로상태/최근경보 조립
     @Transactional(readOnly = true)
     public PanelDetailRes getPanel(Long panelId) {
         UserPrincipal actor = getCurrentUser();
@@ -110,7 +116,52 @@ public class PanelService {
         Panel panel = findActivePanel(panelId);
         validateSiteAccess(actor, panel.getSiteId());
 
-        return PanelDetailRes.from(panel);
+        SensorFrame latestFrame = panelMapper.findLatestSensorFrameByPanelId(panelId);
+        List<PanelCircuitStatusRes> circuits = resolveCircuitStatuses(panel);
+        List<PanelRecentAlertRes> recentAlerts = panelMapper.findRecentAlertsByPanelId(panelId, RECENT_ALERT_LIMIT);
+
+        return PanelDetailRes.from(
+                panel,
+                latestFrame == null ? null : latestFrame.getTotalCurrent(),
+                latestFrame == null ? null : latestFrame.getVoltV(),
+                latestFrame == null ? null : latestFrame.getTotalPower(),
+                latestFrame == null ? null : latestFrame.getDoorStatus(),
+                latestFrame == null ? null : latestFrame.getTemperature(),
+                latestFrame == null ? null : latestFrame.getHumidity(),
+                latestFrame == null ? null : latestFrame.getFireRaw(),
+                latestFrame == null ? null : latestFrame.getGasRaw(),
+                circuits,
+                recentAlerts
+        );
+    }
+
+    // 회로별 상태 계산 (FR-03-03). 분전반이 OFFLINE이면 소속 회로 전부 OFFLINE으로 본다.
+    private List<PanelCircuitStatusRes> resolveCircuitStatuses(Panel panel) {
+        List<CircuitStatusRow> rows = panelMapper.findCircuitStatusRowsByPanelId(panel.getPanelId());
+        return rows.stream()
+                .map(row -> new PanelCircuitStatusRes(
+                        row.getCircuitId(),
+                        row.getChannelNo(),
+                        row.getLoadType(),
+                        row.getCurrentA(),
+                        row.getArcCounter(),
+                        resolveCircuitStatus(panel, row)
+                ))
+                .toList();
+    }
+
+    // 하드웨어 ARC가 위험, 하드웨어 정상+AI ARC는 주의, 둘 다 정상이면 정상
+    private PanelStatus resolveCircuitStatus(Panel panel, CircuitStatusRow row) {
+        if (panel.getStatus() == PanelStatus.OFFLINE) {
+            return PanelStatus.OFFLINE;
+        }
+        if (Boolean.TRUE.equals(row.getDeviceArcFlag())) {
+            return PanelStatus.RISK;
+        }
+        if (row.getLatestAiVerdict() == Verdict.ARC) {
+            return PanelStatus.CAUTION;
+        }
+        return PanelStatus.NORMAL;
     }
 
     // 분전반 수정

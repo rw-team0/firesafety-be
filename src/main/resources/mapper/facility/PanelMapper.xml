@@ -250,4 +250,100 @@
         WHERE panel_id = #{panelId}
           AND deleted_at IS NULL
     </update>
+
+    <resultMap id="sensorFrameResultMap" type="com.rayworld.firesafety.sensor.model.SensorFrame">
+        <id property="frameId" column="frame_id"/>
+        <result property="panelId" column="panel_id"/>
+        <result property="receivedAt" column="received_at"/>
+        <result property="mode" column="mode"/>
+        <result property="voltV" column="volt_v"/>
+        <result property="leakMa" column="leak_ma"/>
+        <result property="temperature" column="temperature"/>
+        <result property="humidity" column="humidity"/>
+        <result property="fireRaw" column="fire_raw"/>
+        <result property="gasRaw" column="gas_raw"/>
+        <result property="errorBits" column="error_bits"/>
+        <result property="doorStatus" column="door_status"/>
+        <result property="totalCurrent" column="total_current"/>
+        <result property="totalPower" column="total_power"/>
+    </resultMap>
+
+    <!-- 분전반 상세용 최신 센서 프레임 조회 -->
+    <select id="findLatestSensorFrameByPanelId" resultMap="sensorFrameResultMap">
+        SELECT
+            sf.frame_id,
+            sf.panel_id,
+            sf.received_at,
+            sf.mode,
+            sf.volt_v,
+            sf.leak_ma,
+            sf.temperature,
+            sf.humidity,
+            sf.fire_raw,
+            sf.gas_raw,
+            sf.error_bits,
+            sf.door_status,
+            sf.total_current,
+            sf.total_power
+        FROM sensor_frame sf
+        WHERE sf.panel_id = #{panelId}
+        ORDER BY sf.frame_id DESC
+        LIMIT 1
+    </select>
+
+    <resultMap id="circuitStatusRowResultMap" type="com.rayworld.firesafety.facility.model.CircuitStatusRow">
+        <id property="circuitId" column="circuit_id"/>
+        <result property="channelNo" column="channel_no"/>
+        <result property="loadType" column="load_type"/>
+        <result property="currentA" column="current_a"/>
+        <result property="arcCounter" column="arc_counter"/>
+        <result property="deviceArcFlag" column="device_arc_flag"/>
+        <result property="latestAiVerdict" column="latest_ai_verdict"/>
+    </resultMap>
+
+    <!-- 분전반 상세용 회로별 최신 전류/아크/AI 판정 원시값 조회 -->
+    <select id="findCircuitStatusRowsByPanelId" resultMap="circuitStatusRowResultMap">
+        SELECT
+            c.circuit_id,
+            c.channel_no,
+            c.load_type,
+            latest_sfc.current_a,
+            latest_sfc.arc_counter,
+            latest_sfc.device_arc_flag,
+            latest_ai.verdict AS latest_ai_verdict
+        FROM circuit c
+        LEFT JOIN sensor_frame_circuit latest_sfc
+            ON latest_sfc.reading_id = (
+                SELECT MAX(sfc.reading_id)
+                FROM sensor_frame_circuit sfc
+                WHERE sfc.circuit_id = c.circuit_id
+            )
+        LEFT JOIN ai_diagnosis_result latest_ai
+            ON latest_ai.result_id = (
+                SELECT MAX(ai.result_id)
+                FROM ai_diagnosis_result ai
+                WHERE ai.circuit_id = c.circuit_id
+            )
+        WHERE c.panel_id = #{panelId}
+          AND c.deleted_at IS NULL
+        ORDER BY c.channel_no ASC
+    </select>
+
+    <resultMap id="panelRecentAlertResultMap" type="com.rayworld.firesafety.facility.dto.res.PanelRecentAlertRes">
+        <id property="alertId" column="alert_id"/>
+        <result property="type" column="type"/>
+        <result property="triggeredAt" column="triggered_at"/>
+    </resultMap>
+
+    <!-- 분전반 상세용 최근 경보 조회 (최신순) -->
+    <select id="findRecentAlertsByPanelId" resultMap="panelRecentAlertResultMap">
+        SELECT
+            a.alert_id,
+            a.type,
+            a.triggered_at
+        FROM alert a
+        WHERE a.panel_id = #{panelId}
+        ORDER BY a.triggered_at DESC, a.alert_id DESC
+        LIMIT #{limit}
+    </select>
 </mapper>

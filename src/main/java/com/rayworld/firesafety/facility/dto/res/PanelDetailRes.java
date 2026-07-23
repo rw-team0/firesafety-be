@@ -9,6 +9,7 @@ import lombok.Getter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @AllArgsConstructor
@@ -48,7 +49,38 @@ public class PanelDetailRes {
     @Schema(description = "불꽃 서버 주의 기준값(선택, 미입력 시 5000 기본값, 원시값 fire_raw >= 기준값 30초 지속 시 CAUTION)", example = "5000")
     private Integer fireThreshold;
 
-    public static PanelDetailRes from(Panel panel) {
+    @Schema(description = "최신 전체전류(A). 최근 수신 프레임이 없으면 null", example = "77.0")
+    private BigDecimal totalCurrent;
+    @Schema(description = "최신 전압(V)", example = "220.0")
+    private BigDecimal voltV;
+    @Schema(description = "최신 전체전력(W)", example = "555")
+    private Integer totalPower;
+    @Schema(description = "최신 도어 상태. true=열림, false=닫힘", example = "false")
+    private Boolean doorStatus;
+    @Schema(description = "최신 온도(도)", example = "35.0")
+    private BigDecimal temperature;
+    @Schema(description = "최신 습도(%)", example = "35.35")
+    private BigDecimal humidity;
+    @Schema(description = "최신 불꽃센서 원시값", example = "7777")
+    private Integer fireRaw;
+    @Schema(description = "최신 가스센서 원시값", example = "8888")
+    private Integer gasRaw;
+    @Schema(description = "회로별 상태 목록")
+    private List<PanelCircuitStatusRes> circuits;
+    @Schema(description = "최근 경보 목록(최신순)")
+    private List<PanelRecentAlertRes> recentAlerts;
+
+    public static PanelDetailRes from(Panel panel,
+                                       BigDecimal totalCurrent,
+                                       BigDecimal voltV,
+                                       Integer totalPower,
+                                       Boolean doorStatus,
+                                       BigDecimal temperature,
+                                       BigDecimal humidity,
+                                       Integer fireRaw,
+                                       Integer gasRaw,
+                                       List<PanelCircuitStatusRes> circuits,
+                                       List<PanelRecentAlertRes> recentAlerts) {
         return new PanelDetailRes(
                 panel.getPanelId(),
                 panel.getSiteId(),
@@ -65,7 +97,17 @@ public class PanelDetailRes {
                 panel.getHumidityThreshold(),
                 panel.getOvercurrentThreshold(),
                 panel.getGasThreshold(),
-                panel.getFireThreshold()
+                panel.getFireThreshold(),
+                totalCurrent,
+                voltV,
+                totalPower,
+                doorStatus,
+                temperature,
+                humidity,
+                fireRaw,
+                gasRaw,
+                circuits,
+                recentAlerts
         );
     }
 }

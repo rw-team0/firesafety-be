@@ -1,6 +1,9 @@
 package com.rayworld.firesafety.facility.mapper;
 
+import com.rayworld.firesafety.facility.model.CircuitStatusRow;
+import com.rayworld.firesafety.facility.dto.res.PanelRecentAlertRes;
 import com.rayworld.firesafety.facility.model.Panel;
+import com.rayworld.firesafety.sensor.model.SensorFrame;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -42,4 +45,13 @@ public interface PanelMapper {
 
     // 디바이스 수신 성공 시 마지막 통신시각과 온라인 상태 갱신
     int updatePanelCommunication(@Param("panelId") Long panelId);
+
+    // 분전반 상세용 최신 센서 프레임 조회 (없으면 null)
+    SensorFrame findLatestSensorFrameByPanelId(@Param("panelId") Long panelId);
+
+    // 분전반 상세용 회로별 최신 전류/아크/AI 판정 원시값 조회
+    List<CircuitStatusRow> findCircuitStatusRowsByPanelId(@Param("panelId") Long panelId);
+
+    // 분전반 상세용 최근 경보 조회
+    List<PanelRecentAlertRes> findRecentAlertsByPanelId(@Param("panelId") Long panelId, @Param("limit") int limit);
 }
