@@ -173,4 +173,42 @@
             WHERE device_serial = #{deviceSerial}
         )
     </select>
+
+    <!-- 수정 시 자기 자신을 제외한 장비 시리얼 중복 방지 -->
+    <select id="existsPanelByDeviceSerialExceptSelf" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM panel
+            WHERE device_serial = #{deviceSerial}
+              AND panel_id != #{panelId}
+        )
+    </select>
+
+    <!-- 관리자 분전반 기본 정보와 임계치 수정 -->
+    <update id="updatePanel" parameterType="com.rayworld.firesafety.facility.model.Panel">
+        UPDATE panel
+        SET name = #{name},
+            device_serial = #{deviceSerial},
+            m_no = #{mNo},
+            installed_at = #{installedAt},
+            circuit_count = #{circuitCount},
+            leak_ma_threshold = #{leakMaThreshold},
+            temp_threshold = #{tempThreshold},
+            humidity_threshold = #{humidityThreshold},
+            overcurrent_threshold = #{overcurrentThreshold},
+            gas_threshold = #{gasThreshold},
+            fire_threshold = #{fireThreshold},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE panel_id = #{panelId}
+          AND deleted_at IS NULL
+    </update>
+
+    <!-- 분전반 row는 보존하고 일반 조회 대상에서 제외 -->
+    <update id="softDeletePanel">
+        UPDATE panel
+        SET deleted_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE panel_id = #{panelId}
+          AND deleted_at IS NULL
+    </update>
 </mapper>

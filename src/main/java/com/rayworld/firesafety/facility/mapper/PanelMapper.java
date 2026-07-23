@@ -26,4 +26,14 @@ public interface PanelMapper {
 
     // 장비 시리얼 중복 확인
     boolean existsPanelByDeviceSerial(@Param("deviceSerial") String deviceSerial);
+
+    // 수정 시 자기 자신을 제외한 장비 시리얼 중복 확인
+    boolean existsPanelByDeviceSerialExceptSelf(@Param("panelId") Long panelId,
+                                                @Param("deviceSerial") String deviceSerial);
+
+    // 분전반 기본 정보와 임계치 수정
+    int updatePanel(Panel panel);
+
+    // 분전반 소프트 삭제
+    int softDeletePanel(@Param("panelId") Long panelId);
 }

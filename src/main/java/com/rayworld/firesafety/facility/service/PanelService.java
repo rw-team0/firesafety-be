@@ -8,9 +8,11 @@ import com.rayworld.firesafety.common.exception.CommonErrorCode;
 import com.rayworld.firesafety.common.security.UserPrincipal;
 import com.rayworld.firesafety.facility.dto.req.PanelCreateReq;
 import com.rayworld.firesafety.facility.dto.req.PanelListReq;
+import com.rayworld.firesafety.facility.dto.req.PanelUpdateReq;
 import com.rayworld.firesafety.facility.dto.res.PanelDetailRes;
 import com.rayworld.firesafety.facility.dto.res.PanelCreateRes;
 import com.rayworld.firesafety.facility.dto.res.PanelListRes;
+import com.rayworld.firesafety.facility.dto.res.PanelUpdateRes;
 import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
 import com.rayworld.firesafety.facility.mapper.PanelMapper;
 import com.rayworld.firesafety.facility.mapper.SiteMapper;
@@ -28,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -107,10 +110,80 @@ public class PanelService {
         return PanelDetailRes.from(panel);
     }
 
+    // 분전반 수정
+    // 1. 현재 사용자 확인 → 2. ADMIN 이상 확인 → 3. 분전반/현장 권한 확인 → 4. 수정 → 5. 감사 로그 저장
+    @Transactional
+    public PanelUpdateRes updatePanel(Long panelId, PanelUpdateReq req) {
+        UserPrincipal actor = getCurrentUser();
+        requireAdminOrSuperAdmin(actor);
+        validateUpdateRequest(panelId, req);
+
+        Panel panel = findActivePanel(panelId);
+        validateSiteAccess(actor, panel.getSiteId());
+
+        if (!panel.getDeviceSerial().equals(req.getDeviceSerial())
+                && panelMapper.existsPanelByDeviceSerialExceptSelf(panelId, req.getDeviceSerial())) {
+            throw new BusinessException(FacilityErrorCode.DUPLICATED_DEVICE_SERIAL);
+        }
+
+        String beforeData = toAuditJson(panel);
+        applyUpdate(panel, req);
+
+        int updatedRows = panelMapper.updatePanel(panel);
+        if (updatedRows == 0) {
+            throw new BusinessException(FacilityErrorCode.PANEL_NOT_FOUND);
+        }
+
+        Panel updatedPanel = findActivePanel(panelId);
+        insertFacilityAuditLog(updatedPanel, actor.getUserId(), FacilityAuditAction.UPDATE, beforeData, toAuditJson(updatedPanel));
+
+        return PanelUpdateRes.from(updatedPanel);
+    }
+
+    // 분전반 소프트 삭제
+    // 1. 현재 사용자 확인 → 2. ADMIN 이상 확인 → 3. 분전반/현장 권한 확인 → 4. deleted_at 기록 → 5. 감사 로그 저장
+    @Transactional
+    public void deletePanel(Long panelId) {
+        UserPrincipal actor = getCurrentUser();
+        requireAdminOrSuperAdmin(actor);
+        validatePanelId(panelId);
+
+        Panel panel = findActivePanel(panelId);
+        validateSiteAccess(actor, panel.getSiteId());
+        String beforeData = toAuditJson(panel);
+
+        int updatedRows = panelMapper.softDeletePanel(panelId);
+        if (updatedRows == 0) {
+            throw new BusinessException(FacilityErrorCode.PANEL_NOT_FOUND);
+        }
+
+        // 삭제 후 일반 조회에서 빠지므로 감사 로그용 상태는 메모리에서 반영
+        panel.setDeletedAt(LocalDateTime.now());
+        panel.setUpdatedAt(LocalDateTime.now());
+        insertFacilityAuditLog(panel, actor.getUserId(), FacilityAuditAction.DELETE, beforeData, toAuditJson(panel));
+    }
+
     // 등록 요청값 확인
     private void validateCreateRequest(Long siteId, PanelCreateReq req) {
         if (siteId == null
                 || req == null
+                || !StringUtils.hasText(req.getName())
+                || !StringUtils.hasText(req.getDeviceSerial())
+                || !StringUtils.hasText(req.getMNo())
+                || req.getMNo().length() > 5) {
+            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+        }
+
+        Integer circuitCount = req.getCircuitCount() == null ? 10 : req.getCircuitCount();
+        if (circuitCount < 1 || circuitCount > 10) {
+            throw new BusinessException(FacilityErrorCode.INVALID_CIRCUIT_COUNT);
+        }
+    }
+
+    // 수정 요청값 확인
+    private void validateUpdateRequest(Long panelId, PanelUpdateReq req) {
+        validatePanelId(panelId);
+        if (req == null
                 || !StringUtils.hasText(req.getName())
                 || !StringUtils.hasText(req.getDeviceSerial())
                 || !StringUtils.hasText(req.getMNo())
@@ -149,6 +222,21 @@ public class PanelService {
         panel.setGasThreshold(req.getGasThreshold());
         panel.setFireThreshold(req.getFireThreshold());
         return panel;
+    }
+
+    // 수정값을 Panel 객체에 반영
+    private void applyUpdate(Panel panel, PanelUpdateReq req) {
+        panel.setName(req.getName());
+        panel.setDeviceSerial(req.getDeviceSerial());
+        panel.setMNo(req.getMNo());
+        panel.setInstalledAt(req.getInstalledAt());
+        panel.setCircuitCount(req.getCircuitCount() == null ? 10 : req.getCircuitCount());
+        panel.setLeakMaThreshold(defaultIfNull(req.getLeakMaThreshold(), DEFAULT_LEAK_MA_THRESHOLD));
+        panel.setTempThreshold(defaultIfNull(req.getTempThreshold(), DEFAULT_TEMP_THRESHOLD));
+        panel.setHumidityThreshold(defaultIfNull(req.getHumidityThreshold(), DEFAULT_HUMIDITY_THRESHOLD));
+        panel.setOvercurrentThreshold(defaultIfNull(req.getOvercurrentThreshold(), DEFAULT_OVERCURRENT_THRESHOLD));
+        panel.setGasThreshold(req.getGasThreshold());
+        panel.setFireThreshold(req.getFireThreshold());
     }
 
     // 임계치 미입력 시 기본값 적용
