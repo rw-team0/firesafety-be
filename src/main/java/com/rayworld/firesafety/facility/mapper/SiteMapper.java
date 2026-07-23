@@ -23,6 +23,12 @@ public interface SiteMapper {
     // ADMIN/GENERAL 담당 현장 목록 조회
     List<Site> findActiveSitesByUserId(@Param("userId") Long userId);
 
+    // 현장 기본 정보 수정
+    int updateSite(Site site);
+
+    // 현장 소프트 삭제
+    int softDeleteSite(@Param("siteId") Long siteId);
+
     // 현장/분전반/회로 변경 감사 로그 저장
     void insertFacilityAuditLog(FacilityAuditLog auditLog);
 }

@@ -82,6 +82,25 @@
         ORDER BY s.site_id DESC
     </select>
 
+    <!-- 최고관리자가 현장 기본 정보를 수정 -->
+    <update id="updateSite" parameterType="com.rayworld.firesafety.facility.model.Site">
+        UPDATE site
+        SET name = #{name},
+            address = #{address},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE site_id = #{siteId}
+          AND deleted_at IS NULL
+    </update>
+
+    <!-- 현장 row는 보존하고 일반 조회 대상에서 제외 -->
+    <update id="softDeleteSite">
+        UPDATE site
+        SET deleted_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE site_id = #{siteId}
+          AND deleted_at IS NULL
+    </update>
+
     <!-- 현장/분전반/회로 등록·수정·삭제 이력 저장 -->
     <insert id="insertFacilityAuditLog"
             parameterType="com.rayworld.firesafety.facility.model.FacilityAuditLog"
