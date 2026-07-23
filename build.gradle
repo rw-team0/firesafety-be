@@ -55,6 +55,9 @@ dependencies {
     // SMTP 메일 발송 (Gmail, Amazon SES 등 제공자 교체 가능)
     implementation 'org.springframework.boot:spring-boot-starter-mail'
 
+    // .env 파일 로드 (UTF-8로 정확히 읽음, Java Properties 규격 ISO-8859-1 깨짐 방지)
+    implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-jdbc-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
