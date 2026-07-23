@@ -8,6 +8,8 @@ import com.rayworld.firesafety.common.exception.CommonErrorCode;
 import com.rayworld.firesafety.common.security.UserPrincipal;
 import com.rayworld.firesafety.facility.dto.req.CircuitCreateReq;
 import com.rayworld.firesafety.facility.dto.res.CircuitCreateRes;
+import com.rayworld.firesafety.facility.dto.res.CircuitDetailRes;
+import com.rayworld.firesafety.facility.dto.res.CircuitListRes;
 import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
 import com.rayworld.firesafety.facility.mapper.CircuitMapper;
 import com.rayworld.firesafety.facility.mapper.PanelMapper;
@@ -25,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -69,6 +72,36 @@ public class CircuitService {
         return CircuitCreateRes.from(savedCircuit);
     }
 
+    // 회로 목록 조회
+    // 1. 현재 사용자 확인 → 2. 분전반/현장 권한 확인 → 3. 삭제되지 않은 회로만 조회
+    @Transactional(readOnly = true)
+    public List<CircuitListRes> getCircuits(Long panelId) {
+        UserPrincipal actor = getCurrentUser();
+        validatePanelId(panelId);
+
+        Panel panel = findActivePanel(panelId);
+        validateSiteAccess(actor, panel.getSiteId());
+
+        return circuitMapper.findActiveCircuitsByPanelId(panelId)
+                .stream()
+                .map(CircuitListRes::from)
+                .toList();
+    }
+
+    // 회로 상세 조회
+    // 회로 기준으로 상위 분전반과 현장을 다시 확인해서 삭제된 상위 설비 접근을 차단
+    @Transactional(readOnly = true)
+    public CircuitDetailRes getCircuit(Long circuitId) {
+        UserPrincipal actor = getCurrentUser();
+        validateCircuitId(circuitId);
+
+        Circuit circuit = findActiveCircuit(circuitId);
+        Panel panel = findActivePanel(circuit.getPanelId());
+        validateSiteAccess(actor, panel.getSiteId());
+
+        return CircuitDetailRes.from(circuit);
+    }
+
     // 등록 요청값 확인
     private void validateCreateRequest(Long panelId, CircuitCreateReq req) {
         if (panelId == null || req == null || req.getChannelNo() == null) {
@@ -76,6 +109,20 @@ public class CircuitService {
         }
 
         if (StringUtils.hasText(req.getLoadType()) && req.getLoadType().length() > 50) {
+            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+        }
+    }
+
+    // 목록 조회용 분전반 ID 확인
+    private void validatePanelId(Long panelId) {
+        if (panelId == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+        }
+    }
+
+    // 상세 조회용 회로 ID 확인
+    private void validateCircuitId(Long circuitId) {
+        if (circuitId == null) {
             throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
         }
     }

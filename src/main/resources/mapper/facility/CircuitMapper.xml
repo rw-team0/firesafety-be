@@ -48,6 +48,26 @@
           AND s.deleted_at IS NULL
     </select>
 
+    <!-- 분전반 아래 활성 회로 목록 조회 -->
+    <select id="findActiveCircuitsByPanelId" resultMap="circuitResultMap">
+        SELECT
+            c.circuit_id,
+            c.panel_id,
+            c.channel_no,
+            c.load_type,
+            c.created_at,
+            c.updated_at,
+            c.deleted_at
+        FROM circuit c
+        INNER JOIN panel p ON p.panel_id = c.panel_id
+        INNER JOIN site s ON s.site_id = p.site_id
+        WHERE c.panel_id = #{panelId}
+          AND c.deleted_at IS NULL
+          AND p.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+        ORDER BY c.channel_no ASC
+    </select>
+
     <!-- DB UNIQUE(panel_id, channel_no) 제약과 같은 범위로 중복 확인 -->
     <select id="existsCircuitByPanelIdAndChannelNo" resultType="boolean">
         SELECT EXISTS(
