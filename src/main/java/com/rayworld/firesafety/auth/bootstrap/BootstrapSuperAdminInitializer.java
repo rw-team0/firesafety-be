@@ -4,6 +4,7 @@ import com.rayworld.firesafety.auth.mapper.AuthMapper;
 import com.rayworld.firesafety.auth.model.User;
 import com.rayworld.firesafety.auth.model.UserAccountStatus;
 import com.rayworld.firesafety.auth.model.UserRole;
+import com.rayworld.firesafety.auth.validation.CredentialPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -19,6 +20,7 @@ public class BootstrapSuperAdminInitializer implements ApplicationRunner {
     private final BootstrapSuperAdminProperties properties;
     private final AuthMapper authMapper;
     private final PasswordEncoder passwordEncoder;
+    private final CredentialPolicy credentialPolicy;
 
     // 설정이 켜져 있고 같은 이메일이 없을 때 최초 1회만 플랫폼관리자를 생성한다.
     @Override
@@ -28,13 +30,15 @@ public class BootstrapSuperAdminInitializer implements ApplicationRunner {
         }
 
         validateRequiredProperties();
+        String email = credentialPolicy.normalizeEmail(properties.getEmail());
+        credentialPolicy.validatePassword(properties.getPassword());
 
-        if (authMapper.existsUserByEmail(properties.getEmail())) {
+        if (authMapper.existsUserByEmail(email)) {
             return;
         }
 
         User superAdmin = new User();
-        superAdmin.setEmail(properties.getEmail());
+        superAdmin.setEmail(email);
         superAdmin.setPassword(passwordEncoder.encode(properties.getPassword()));
         superAdmin.setName(properties.getName());
         superAdmin.setPhone(properties.getPhone());

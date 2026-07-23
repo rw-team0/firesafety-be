@@ -22,7 +22,10 @@ public enum AuthErrorCode implements ErrorCode {
     USER_NOT_DELETED("AUTH-011", "삭제된 사용자만 복구할 수 있습니다", HttpStatus.CONFLICT),
     PASSWORD_RESET_TOKEN_INVALID("AUTH-012", "비밀번호 재설정 토큰이 유효하지 않습니다", HttpStatus.UNAUTHORIZED),
     PASSWORD_RESET_TOKEN_EXPIRED("AUTH-013", "비밀번호 재설정 토큰이 만료되었습니다", HttpStatus.UNAUTHORIZED),
-    PASSWORD_RESET_RATE_LIMIT("AUTH-014", "비밀번호 재설정 요청이 너무 많습니다", HttpStatus.TOO_MANY_REQUESTS);
+    PASSWORD_RESET_RATE_LIMIT("AUTH-014", "비밀번호 재설정 요청이 너무 많습니다", HttpStatus.TOO_MANY_REQUESTS),
+    INVALID_EMAIL_FORMAT("AUTH-015", "이메일 형식이 올바르지 않습니다", HttpStatus.BAD_REQUEST),
+    INVALID_PASSWORD_FORMAT("AUTH-016", "비밀번호는 공백 없이 영문과 숫자를 포함하여 8자 이상 입력해 주세요", HttpStatus.BAD_REQUEST),
+    PASSWORD_RESET_MAIL_SEND_FAILED("AUTH-017", "비밀번호 재설정 메일 발송에 실패했습니다", HttpStatus.SERVICE_UNAVAILABLE);
 
     private final String code;
     private final String message;

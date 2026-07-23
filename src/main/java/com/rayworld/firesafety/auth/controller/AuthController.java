@@ -8,6 +8,7 @@ import com.rayworld.firesafety.auth.service.AuthService;
 import com.rayworld.firesafety.common.response.ResultResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,7 +25,7 @@ public class AuthController {
     // 로그인 (POST /api/auth/login)
     // 성공 시 AT/RT를 HttpOnly Cookie로 발급, body에는 사용자 정보만 반환
     @PostMapping("/login")
-    public ResultResponse<LoginRes> login(@RequestBody LoginReq req, HttpServletResponse response) {
+    public ResultResponse<LoginRes> login(@Valid @RequestBody LoginReq req, HttpServletResponse response) {
         LoginRes loginRes = authService.login(req, response);
         return ResultResponse.success("로그인 성공", loginRes);
     }
@@ -48,7 +49,7 @@ public class AuthController {
     // 비밀번호 재설정 요청 (POST /api/auth/password-reset/request)
     // 계정 존재 여부와 관계없이 같은 응답 반환
     @PostMapping("/password-reset/request")
-    public ResultResponse<Void> requestPasswordReset(@RequestBody PasswordResetRequestReq req,
+    public ResultResponse<Void> requestPasswordReset(@Valid @RequestBody PasswordResetRequestReq req,
                                                      HttpServletRequest request) {
         authService.requestPasswordReset(req, request);
         return ResultResponse.success("비밀번호 재설정 안내 메일을 발송했습니다", null);
@@ -57,7 +58,7 @@ public class AuthController {
     // 비밀번호 재설정 확정 (POST /api/auth/password-reset/confirm)
     // 메일 링크의 일회용 토큰 검증 후 새 비밀번호 저장
     @PostMapping("/password-reset/confirm")
-    public ResultResponse<Void> confirmPasswordReset(@RequestBody PasswordResetConfirmReq req) {
+    public ResultResponse<Void> confirmPasswordReset(@Valid @RequestBody PasswordResetConfirmReq req) {
         authService.confirmPasswordReset(req);
         return ResultResponse.success("비밀번호가 변경되었습니다", null);
     }

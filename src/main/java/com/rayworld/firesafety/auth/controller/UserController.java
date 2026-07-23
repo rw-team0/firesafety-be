@@ -11,6 +11,7 @@ import com.rayworld.firesafety.auth.dto.res.UserListRes;
 import com.rayworld.firesafety.auth.dto.res.UserUpdateRes;
 import com.rayworld.firesafety.auth.service.UserService;
 import com.rayworld.firesafety.common.response.ResultResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -58,7 +59,7 @@ public class UserController {
     // 계정 등록 (POST /api/users)
     // 공개 회원가입이 아니라 관리자가 하위 계정을 생성
     @PostMapping
-    public ResultResponse<UserCreateRes> createUser(@RequestBody UserCreateReq req) {
+    public ResultResponse<UserCreateRes> createUser(@Valid @RequestBody UserCreateReq req) {
         UserCreateRes user = userService.createUser(req);
         return ResultResponse.success("계정 등록 성공", user);
     }
@@ -66,7 +67,7 @@ public class UserController {
     // 계정 수정 (PUT /api/users/{userId})
     // 대상 등급과 수정 후 등급을 함께 권한 검증
     @PutMapping("/{userId}")
-    public ResultResponse<UserUpdateRes> updateUser(@PathVariable Long userId, @RequestBody UserUpdateReq req) {
+    public ResultResponse<UserUpdateRes> updateUser(@PathVariable Long userId, @Valid @RequestBody UserUpdateReq req) {
         UserUpdateRes user = userService.updateUser(userId, req);
         return ResultResponse.success("계정 수정 성공", user);
     }

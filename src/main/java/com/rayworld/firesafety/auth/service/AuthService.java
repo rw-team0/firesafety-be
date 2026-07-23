@@ -16,8 +16,8 @@ import com.rayworld.firesafety.auth.model.UserAccountStatus;
 import com.rayworld.firesafety.auth.model.UserAuditAction;
 import com.rayworld.firesafety.auth.model.UserAuditLog;
 import com.rayworld.firesafety.auth.util.TokenHashUtil;
+import com.rayworld.firesafety.auth.validation.CredentialPolicy;
 import com.rayworld.firesafety.common.exception.BusinessException;
-import com.rayworld.firesafety.common.exception.CommonErrorCode;
 import com.rayworld.firesafety.common.security.JwtUser;
 import com.rayworld.firesafety.config.jwt.ConstJwt;
 import com.rayworld.firesafety.config.security.JwtTokenManager;
@@ -25,8 +25,6 @@ import com.rayworld.firesafety.config.security.JwtTokenProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,14 +58,17 @@ public class AuthService {
     // JWT 만료시간 설정값
     private final ConstJwt constJwt;
 
-    // Google SMTP 메일 발송
-    private final JavaMailSender javaMailSender;
+    // 비밀번호 재설정 메일 발송
+    private final PasswordResetMailService passwordResetMailService;
 
     // 비밀번호 재설정 링크/만료/발신자 설정
     private final PasswordResetProperties passwordResetProperties;
 
     // 비밀번호 재설정 반복 요청 제한
     private final PasswordResetRateLimiter passwordResetRateLimiter;
+
+    // 이메일/비밀번호 형식 정책
+    private final CredentialPolicy credentialPolicy;
 
     // 감사 로그 JSON 변환
     private final ObjectMapper objectMapper;
@@ -77,9 +78,10 @@ public class AuthService {
     @Transactional
     public LoginRes login(LoginReq req, HttpServletResponse response) {
         validateLoginRequest(req);
+        String email = credentialPolicy.normalizeEmail(req.getEmail());
 
         // 계정 존재/삭제/비밀번호 오류는 모두 같은 로그인 실패로 처리
-        User user = authMapper.findUserByEmail(req.getEmail());
+        User user = authMapper.findUserByEmail(email);
         if (user == null || isDeleted(user) || !passwordEncoder.matches(req.getPassword(), user.getPassword())) {
             throw new BusinessException(AuthErrorCode.INVALID_LOGIN);
         }
@@ -149,11 +151,11 @@ public class AuthService {
     // 1. 요청값 확인 → 2. 요청 횟수 제한 → 3. ACTIVE 계정이면 토큰 저장 → 4. 메일 발송
     public void requestPasswordReset(PasswordResetRequestReq req, HttpServletRequest request) {
         validatePasswordResetRequest(req);
-        passwordResetRateLimiter.check(req.getEmail(), getClientIp(request));
-        validatePasswordResetMailSettings();
+        String email = credentialPolicy.normalizeEmail(req.getEmail());
+        passwordResetRateLimiter.check(email, getClientIp(request));
 
         // 계정 존재 여부는 응답에 노출하지 않음
-        User user = authMapper.findUserByEmail(req.getEmail());
+        User user = authMapper.findUserByEmail(email);
         if (user == null || isDeleted(user)) {
             return;
         }
@@ -165,7 +167,7 @@ public class AuthService {
         PasswordResetToken passwordResetToken = buildPasswordResetToken(user, originalToken, request);
         authMapper.insertPasswordResetToken(passwordResetToken);
 
-        sendPasswordResetMail(user, originalToken);
+        passwordResetMailService.sendPasswordResetMail(user, originalToken);
     }
 
     // 비밀번호 재설정 확정
@@ -173,6 +175,7 @@ public class AuthService {
     @Transactional
     public void confirmPasswordReset(PasswordResetConfirmReq req) {
         validatePasswordResetConfirmRequest(req);
+        credentialPolicy.validatePassword(req.getNewPassword());
 
         PasswordResetToken token = authMapper.findPasswordResetTokenByTokenHash(TokenHashUtil.sha256Hex(req.getToken()));
         validatePasswordResetToken(token);
@@ -209,22 +212,14 @@ public class AuthService {
     // 비밀번호 재설정 요청값 확인
     private void validatePasswordResetRequest(PasswordResetRequestReq req) {
         if (req == null || !StringUtils.hasText(req.getEmail())) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(AuthErrorCode.INVALID_EMAIL_FORMAT);
         }
     }
 
     // 비밀번호 재설정 확정 요청값 확인
     private void validatePasswordResetConfirmRequest(PasswordResetConfirmReq req) {
         if (req == null || !StringUtils.hasText(req.getToken()) || !StringUtils.hasText(req.getNewPassword())) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
-        }
-    }
-
-    // 메일 발송에 꼭 필요한 설정값 확인
-    private void validatePasswordResetMailSettings() {
-        if (!StringUtils.hasText(passwordResetProperties.getBaseUrl())
-                || !StringUtils.hasText(passwordResetProperties.getMailFrom())) {
-            throw new IllegalStateException("비밀번호 재설정 메일 설정이 필요합니다");
+            throw new BusinessException(AuthErrorCode.INVALID_PASSWORD_FORMAT);
         }
     }
 
@@ -285,27 +280,6 @@ public class AuthService {
         token.setRequestIp(getClientIp(request));
         token.setUserAgent(getUserAgent(request));
         return token;
-    }
-
-    // 비밀번호 재설정 링크 메일 발송
-    private void sendPasswordResetMail(User user, String originalToken) {
-        String resetLink = passwordResetProperties.getBaseUrl() + "?token=" + originalToken;
-
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(passwordResetProperties.getMailFrom());
-        message.setTo(user.getEmail());
-        message.setSubject("[전기화재 예방 시스템] 비밀번호 재설정 안내");
-        message.setText("""
-                비밀번호 재설정 요청이 접수되었습니다.
-
-                아래 링크에서 새 비밀번호를 설정해주세요.
-                %s
-
-                이 링크는 %d분 동안만 사용할 수 있습니다.
-                본인이 요청하지 않았다면 이 메일을 무시해주세요.
-                """.formatted(resetLink, passwordResetProperties.getTokenExpirationMinutes()));
-
-        javaMailSender.send(message);
     }
 
     // 프록시 환경이면 X-Forwarded-For 첫 번째 IP를 우선 사용

@@ -7,6 +7,7 @@ import com.rayworld.firesafety.auth.mapper.AuthMapper;
 import com.rayworld.firesafety.auth.model.User;
 import com.rayworld.firesafety.auth.model.UserAccountStatus;
 import com.rayworld.firesafety.auth.model.UserRole;
+import com.rayworld.firesafety.auth.validation.CredentialPolicy;
 import com.rayworld.firesafety.common.exception.BusinessException;
 import com.rayworld.firesafety.common.security.JwtUser;
 import com.rayworld.firesafety.common.security.UserPrincipal;
@@ -42,7 +43,7 @@ class UserServiceAuthTest {
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(authMapper, passwordEncoder, new ObjectMapper());
+        userService = new UserService(authMapper, passwordEncoder, new ObjectMapper(), new CredentialPolicy());
     }
 
     @AfterEach
@@ -56,12 +57,12 @@ class UserServiceAuthTest {
         // given
         loginAs(1L, UserRole.SUPER_ADMIN);
         when(authMapper.existsUserByEmail("admin@example.com")).thenReturn(false);
-        when(passwordEncoder.encode("password")).thenReturn("encoded-password");
+        when(passwordEncoder.encode("password1")).thenReturn("encoded-password");
 
         // when
         userService.createUser(new UserCreateReq(
                 "admin@example.com",
-                "password",
+                "password1",
                 "관리자",
                 "010-0000-0000",
                 UserRole.ADMIN
@@ -84,7 +85,7 @@ class UserServiceAuthTest {
         // when & then
         assertThatThrownBy(() -> userService.createUser(new UserCreateReq(
                 "admin2@example.com",
-                "password",
+                "password1",
                 "관리자2",
                 "010-0000-0001",
                 UserRole.ADMIN
@@ -101,12 +102,12 @@ class UserServiceAuthTest {
         // given
         loginAs(2L, UserRole.ADMIN);
         when(authMapper.existsUserByEmail("general@example.com")).thenReturn(false);
-        when(passwordEncoder.encode("password")).thenReturn("encoded-password");
+        when(passwordEncoder.encode("password1")).thenReturn("encoded-password");
 
         // when
         userService.createUser(new UserCreateReq(
                 "general@example.com",
-                "password",
+                "password1",
                 "일반직원",
                 "010-0000-0002",
                 UserRole.GENERAL
@@ -134,6 +135,50 @@ class UserServiceAuthTest {
 
         verify(authMapper, never()).softDeleteUser(any(), any());
         verify(authMapper, never()).revokeAllRefreshTokensByUserId(any());
+    }
+
+    @Test
+    @DisplayName("관리자 계정 생성: 이메일 앞뒤 공백은 제거하고 소문자로 저장한다")
+    void createUserTrimsAndLowercasesEmail() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        when(authMapper.existsUserByEmail("admin@example.com")).thenReturn(false);
+        when(passwordEncoder.encode("password1")).thenReturn("encoded-password");
+
+        // when
+        userService.createUser(new UserCreateReq(
+                "  ADMIN@Example.COM  ",
+                "password1",
+                "관리자",
+                "010-0000-0000",
+                UserRole.ADMIN
+        ));
+
+        // then
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(authMapper).insertUser(userCaptor.capture());
+        assertThat(userCaptor.getValue().getEmail()).isEqualTo("admin@example.com");
+    }
+
+    @Test
+    @DisplayName("관리자 계정 생성: 중복 이메일이면 409를 반환한다")
+    void createUserWithDuplicatedEmailFails() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        when(authMapper.existsUserByEmail("admin@example.com")).thenReturn(true);
+
+        // when & then
+        assertThatThrownBy(() -> userService.createUser(new UserCreateReq(
+                "admin@example.com",
+                "password1",
+                "관리자",
+                "010-0000-0000",
+                UserRole.ADMIN
+        )))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(AuthErrorCode.DUPLICATED_EMAIL));
+
+        verify(authMapper, never()).insertUser(any());
     }
 
     private void loginAs(Long userId, UserRole role) {

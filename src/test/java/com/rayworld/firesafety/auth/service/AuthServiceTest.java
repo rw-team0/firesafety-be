@@ -13,6 +13,7 @@ import com.rayworld.firesafety.auth.model.RefreshToken;
 import com.rayworld.firesafety.auth.model.User;
 import com.rayworld.firesafety.auth.model.UserAccountStatus;
 import com.rayworld.firesafety.auth.model.UserRole;
+import com.rayworld.firesafety.auth.validation.CredentialPolicy;
 import com.rayworld.firesafety.common.exception.BusinessException;
 import com.rayworld.firesafety.common.security.JwtUser;
 import com.rayworld.firesafety.config.jwt.ConstJwt;
@@ -27,8 +28,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
@@ -57,7 +56,7 @@ class AuthServiceTest {
     private JwtTokenManager jwtTokenManager;
 
     @Mock
-    private JavaMailSender javaMailSender;
+    private PasswordResetMailService passwordResetMailService;
 
     @Mock
     private PasswordResetRateLimiter passwordResetRateLimiter;
@@ -92,7 +91,8 @@ class AuthServiceTest {
         passwordResetProperties = new PasswordResetProperties();
         passwordResetProperties.setBaseUrl("http://localhost:5173/reset-password");
         passwordResetProperties.setTokenExpirationMinutes(30);
-        passwordResetProperties.setMailFrom("noreply@example.com");
+        passwordResetProperties.setMailFromAddress("noreply@example.com");
+        passwordResetProperties.setMailFromName("전기화재 안전관리 시스템");
         passwordResetProperties.setRateLimitWindowMinutes(10);
         passwordResetProperties.setRateLimitMaxCount(5);
 
@@ -102,9 +102,10 @@ class AuthServiceTest {
                 jwtTokenProvider,
                 jwtTokenManager,
                 constJwt,
-                javaMailSender,
+                passwordResetMailService,
                 passwordResetProperties,
                 passwordResetRateLimiter,
+                new CredentialPolicy(),
                 new ObjectMapper()
         );
     }
@@ -177,7 +178,7 @@ class AuthServiceTest {
 
         // then
         verify(authMapper, never()).insertPasswordResetToken(any());
-        verify(javaMailSender, never()).send(any(SimpleMailMessage.class));
+        verify(passwordResetMailService, never()).sendPasswordResetMail(any(), anyString());
     }
 
     @Test
@@ -202,7 +203,7 @@ class AuthServiceTest {
         assertThat(tokenCaptor.getValue().getRequestIp()).isEqualTo("127.0.0.1");
         assertThat(tokenCaptor.getValue().getUserAgent()).isEqualTo("JUnit");
 
-        verify(javaMailSender).send(any(SimpleMailMessage.class));
+        verify(passwordResetMailService).sendPasswordResetMail(any(User.class), anyString());
     }
 
     @Test
@@ -214,12 +215,12 @@ class AuthServiceTest {
 
         when(authMapper.findPasswordResetTokenByTokenHash(anyString())).thenReturn(token);
         when(authMapper.findUserById(7L)).thenReturn(user);
-        when(passwordEncoder.encode("new-password")).thenReturn("encoded-new-password");
+        when(passwordEncoder.encode("new-password1")).thenReturn("encoded-new-password");
         when(authMapper.updatePassword(7L, "encoded-new-password")).thenReturn(1);
         when(authMapper.markPasswordResetTokenUsed(10L)).thenReturn(1);
 
         // when
-        authService.confirmPasswordReset(new PasswordResetConfirmReq("original-token", "new-password"));
+        authService.confirmPasswordReset(new PasswordResetConfirmReq("original-token", "new-password1"));
 
         // then
         verify(authMapper).updatePassword(7L, "encoded-new-password");
@@ -236,7 +237,7 @@ class AuthServiceTest {
         when(authMapper.findPasswordResetTokenByTokenHash(anyString())).thenReturn(token);
 
         // when & then
-        assertThatThrownBy(() -> authService.confirmPasswordReset(new PasswordResetConfirmReq("original-token", "new-password")))
+        assertThatThrownBy(() -> authService.confirmPasswordReset(new PasswordResetConfirmReq("original-token", "new-password1")))
                 .isInstanceOfSatisfying(BusinessException.class, e ->
                         assertThat(e.getErrorCode()).isEqualTo(AuthErrorCode.PASSWORD_RESET_TOKEN_EXPIRED));
 

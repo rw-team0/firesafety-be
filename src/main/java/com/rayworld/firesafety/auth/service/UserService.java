@@ -19,6 +19,7 @@ import com.rayworld.firesafety.auth.model.UserAccountStatus;
 import com.rayworld.firesafety.auth.model.UserAuditAction;
 import com.rayworld.firesafety.auth.model.UserAuditLog;
 import com.rayworld.firesafety.auth.model.UserRole;
+import com.rayworld.firesafety.auth.validation.CredentialPolicy;
 import com.rayworld.firesafety.common.exception.BusinessException;
 import com.rayworld.firesafety.common.exception.CommonErrorCode;
 import com.rayworld.firesafety.common.security.UserPrincipal;
@@ -50,6 +51,9 @@ public class UserService {
 
     // 감사 로그 before/after JSON 변환
     private final ObjectMapper objectMapper;
+
+    // 이메일/비밀번호 형식 정책
+    private final CredentialPolicy credentialPolicy;
 
     // 계정 목록 조회
     // 1. 현재 사용자 확인 → 2. SUPER_ADMIN 권한 확인 → 3. 삭제되지 않은 사용자 조회
@@ -98,13 +102,15 @@ public class UserService {
     public UserCreateRes createUser(UserCreateReq req) {
         UserPrincipal actor = getCurrentUser();
         validateCreateRequest(req);
+        String email = credentialPolicy.normalizeEmail(req.getEmail());
+        credentialPolicy.validatePassword(req.getPassword());
         validateCreatableRole(actor, req.getRole());
 
-        if (authMapper.existsUserByEmail(req.getEmail())) {
+        if (authMapper.existsUserByEmail(email)) {
             throw new BusinessException(AuthErrorCode.DUPLICATED_EMAIL);
         }
 
-        User user = buildUserForCreate(req, actor.getUserId());
+        User user = buildUserForCreate(req, email, actor.getUserId());
         authMapper.insertUser(user);
 
         // 감사 로그에는 비밀번호 원문/해시를 저장하지 않음
@@ -119,18 +125,19 @@ public class UserService {
     public UserUpdateRes updateUser(Long userId, UserUpdateReq req) {
         UserPrincipal actor = getCurrentUser();
         validateUpdateRequest(userId, req);
+        String email = credentialPolicy.normalizeEmail(req.getEmail());
 
         // 삭제된 사용자는 수정하지 않고 복구 API를 먼저 사용
         User targetUser = findActiveTargetUser(userId);
         validateUpdatableRole(actor, targetUser.getRole(), req.getRole());
 
-        if (!targetUser.getEmail().equals(req.getEmail())
-                && authMapper.existsUserByEmail(req.getEmail())) {
+        if (!targetUser.getEmail().equals(email)
+                && authMapper.existsUserByEmail(email)) {
             throw new BusinessException(AuthErrorCode.DUPLICATED_EMAIL);
         }
 
         String beforeData = toAuditJson(targetUser);
-        applyUpdate(targetUser, req, actor.getUserId());
+        applyUpdate(targetUser, req, email, actor.getUserId());
         authMapper.updateUser(targetUser);
 
         // 변경 전/후를 함께 저장
@@ -212,9 +219,9 @@ public class UserService {
     }
 
     // 등록용 User 객체 생성
-    private User buildUserForCreate(UserCreateReq req, Long actorUserId) {
+    private User buildUserForCreate(UserCreateReq req, String email, Long actorUserId) {
         User user = new User();
-        user.setEmail(req.getEmail());
+        user.setEmail(email);
         user.setPassword(passwordEncoder.encode(req.getPassword()));
         user.setName(req.getName());
         user.setPhone(req.getPhone());
@@ -390,8 +397,8 @@ public class UserService {
     }
 
     // 수정값을 User 객체에 반영
-    private void applyUpdate(User targetUser, UserUpdateReq req, Long actorUserId) {
-        targetUser.setEmail(req.getEmail());
+    private void applyUpdate(User targetUser, UserUpdateReq req, String email, Long actorUserId) {
+        targetUser.setEmail(email);
         targetUser.setName(req.getName());
         targetUser.setPhone(req.getPhone());
         targetUser.setRole(req.getRole());

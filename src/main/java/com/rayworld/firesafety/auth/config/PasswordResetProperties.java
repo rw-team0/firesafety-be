@@ -13,7 +13,8 @@ public class PasswordResetProperties {
 
     private String baseUrl;
     private int tokenExpirationMinutes;
-    private String mailFrom;
+    private String mailFromAddress;
+    private String mailFromName;
     private int rateLimitWindowMinutes;
     private int rateLimitMaxCount;
 }
