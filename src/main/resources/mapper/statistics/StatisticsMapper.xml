@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.rayworld.firesafety.statistics.mapper.StatisticsMapper">
+    <resultMap id="statisticsGroupCountResultMap" type="com.rayworld.firesafety.statistics.dto.res.StatisticsGroupCount">
+        <result property="key" column="stat_key"/>
+        <result property="count" column="stat_count"/>
+    </resultMap>
+
+    <resultMap id="dailyAlertCountResultMap" type="com.rayworld.firesafety.statistics.dto.res.DailyAlertCountRes">
+        <result property="date" column="stat_date"/>
+        <result property="count" column="stat_count"/>
+    </resultMap>
+
+    <sql id="alertStatisticsFilter">
+        <where>
+            <if test="siteId != null">
+                AND p.site_id = #{siteId}
+            </if>
+            <if test="fromAt != null">
+                AND a.triggered_at &gt;= #{fromAt}
+            </if>
+            <if test="toAt != null">
+                AND a.triggered_at &lt; #{toAt}
+            </if>
+            <if test="!superAdmin">
+                AND EXISTS (
+                    SELECT 1
+                    FROM user_site us
+                    WHERE us.user_id = #{userId}
+                      AND us.site_id = p.site_id
+                      AND us.deleted_at IS NULL
+                )
+            </if>
+        </where>
+    </sql>
+
+    <sql id="diagnosisStatisticsFilter">
+        <where>
+            <if test="siteId != null">
+                AND p.site_id = #{siteId}
+            </if>
+            <if test="fromAt != null">
+                AND ai.diagnosed_at &gt;= #{fromAt}
+            </if>
+            <if test="toAt != null">
+                AND ai.diagnosed_at &lt; #{toAt}
+            </if>
+            <if test="!superAdmin">
+                AND EXISTS (
+                    SELECT 1
+                    FROM user_site us
+                    WHERE us.user_id = #{userId}
+                      AND us.site_id = p.site_id
+                      AND us.deleted_at IS NULL
+                )
+            </if>
+        </where>
+    </sql>
+
+    <sql id="activePanelStatisticsFilter">
+        p.deleted_at IS NULL
+        AND s.deleted_at IS NULL
+        <if test="siteId != null">
+            AND p.site_id = #{siteId}
+        </if>
+        <if test="!superAdmin">
+            AND EXISTS (
+                SELECT 1
+                FROM user_site us
+                WHERE us.user_id = #{userId}
+                  AND us.site_id = p.site_id
+                  AND us.deleted_at IS NULL
+            )
+        </if>
+    </sql>
+
+    <!-- 삭제 여부와 관계없이 통계 필터 대상 현장 존재 여부 확인 -->
+    <select id="existsSiteById" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM site
+            WHERE site_id = #{siteId}
+        )
+    </select>
+
+    <!-- 삭제 여부와 관계없이 현재 유지 중인 담당 배정 여부 확인 -->
+    <select id="existsSiteAssignment" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM user_site
+            WHERE user_id = #{userId}
+              AND site_id = #{siteId}
+              AND deleted_at IS NULL
+        )
+    </select>
+
+    <!-- 기간/권한 범위 안의 경보 전체 개수 조회 -->
+    <select id="countAlerts" resultType="long">
+        SELECT COUNT(*)
+        FROM alert a
+        LEFT JOIN panel p ON p.panel_id = a.panel_id
+        <include refid="alertStatisticsFilter"/>
+    </select>
+
+    <!-- 경보 처리상태별 개수 조회 -->
+    <select id="countAlertsByStatus" resultMap="statisticsGroupCountResultMap">
+        SELECT
+            a.status AS stat_key,
+            COUNT(*) AS stat_count
+        FROM alert a
+        LEFT JOIN panel p ON p.panel_id = a.panel_id
+        <include refid="alertStatisticsFilter"/>
+        GROUP BY a.status
+    </select>
+
+    <!-- 경보 유형별 개수 조회 -->
+    <select id="countAlertsByType" resultMap="statisticsGroupCountResultMap">
+        SELECT
+            a.type AS stat_key,
+            COUNT(*) AS stat_count
+        FROM alert a
+        LEFT JOIN panel p ON p.panel_id = a.panel_id
+        <include refid="alertStatisticsFilter"/>
+        GROUP BY a.type
+    </select>
+
+    <!-- 경보 소스별 개수 조회 -->
+    <select id="countAlertsBySource" resultMap="statisticsGroupCountResultMap">
+        SELECT
+            a.source AS stat_key,
+            COUNT(*) AS stat_count
+        FROM alert a
+        LEFT JOIN panel p ON p.panel_id = a.panel_id
+        <include refid="alertStatisticsFilter"/>
+        GROUP BY a.source
+    </select>
+
+    <!-- 일자별 경보 발생 개수 조회 -->
+    <select id="countDailyAlerts" resultMap="dailyAlertCountResultMap">
+        SELECT
+            DATE(a.triggered_at) AS stat_date,
+            COUNT(*) AS stat_count
+        FROM alert a
+        LEFT JOIN panel p ON p.panel_id = a.panel_id
+        <include refid="alertStatisticsFilter"/>
+        GROUP BY DATE(a.triggered_at)
+        ORDER BY stat_date ASC
+    </select>
+
+    <!-- 기간/권한 범위 안의 AI 진단 전체 개수 조회 -->
+    <select id="countDiagnoses" resultType="long">
+        SELECT COUNT(*)
+        FROM ai_diagnosis_result ai
+        INNER JOIN circuit c ON c.circuit_id = ai.circuit_id
+        INNER JOIN panel p ON p.panel_id = c.panel_id
+        <include refid="diagnosisStatisticsFilter"/>
+    </select>
+
+    <!-- AI 판정별 개수 조회 -->
+    <select id="countDiagnosesByVerdict" resultMap="statisticsGroupCountResultMap">
+        SELECT
+            ai.verdict AS stat_key,
+            COUNT(*) AS stat_count
+        FROM ai_diagnosis_result ai
+        INNER JOIN circuit c ON c.circuit_id = ai.circuit_id
+        INNER JOIN panel p ON p.panel_id = c.panel_id
+        <include refid="diagnosisStatisticsFilter"/>
+        GROUP BY ai.verdict
+    </select>
+
+    <!-- 활성 분전반 전체 개수 조회 -->
+    <select id="countActivePanels" resultType="long">
+        SELECT COUNT(*)
+        FROM panel p
+        INNER JOIN site s ON s.site_id = p.site_id
+        WHERE <include refid="activePanelStatisticsFilter"/>
+    </select>
+
+    <!-- 활성 분전반 상태별 개수 조회 -->
+    <select id="countActivePanelsByStatus" resultMap="statisticsGroupCountResultMap">
+        SELECT
+            p.status AS stat_key,
+            COUNT(*) AS stat_count
+        FROM panel p
+        INNER JOIN site s ON s.site_id = p.site_id
+        WHERE <include refid="activePanelStatisticsFilter"/>
+        GROUP BY p.status
+    </select>
+</mapper>
