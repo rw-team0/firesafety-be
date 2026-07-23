@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.rayworld.firesafety.monitoring.mapper.DashboardMapper">
+    <resultMap id="dashboardPanelResultMap" type="com.rayworld.firesafety.monitoring.dto.res.DashboardPanelRes">
+        <id property="panelId" column="panel_id"/>
+        <result property="siteId" column="site_id"/>
+        <result property="siteName" column="site_name"/>
+        <result property="name" column="name"/>
+        <result property="status" column="status"/>
+        <result property="lastCommunicatedAt" column="last_communicated_at"/>
+        <result property="unconfirmedAlertCount" column="unconfirmed_alert_count"/>
+    </resultMap>
+
+    <sql id="accessibleActivePanelFilter">
+        p.deleted_at IS NULL
+        AND s.deleted_at IS NULL
+        <if test="!superAdmin">
+            AND EXISTS (
+                SELECT 1
+                FROM user_site us
+                WHERE us.user_id = #{userId}
+                  AND us.site_id = p.site_id
+                  AND us.deleted_at IS NULL
+            )
+        </if>
+    </sql>
+
+    <!-- 접근 가능한 활성 분전반 전체 개수 조회 -->
+    <select id="countAccessiblePanels" resultType="long">
+        SELECT COUNT(*)
+        FROM panel p
+        INNER JOIN site s ON s.site_id = p.site_id
+        WHERE <include refid="accessibleActivePanelFilter"/>
+    </select>
+
+    <!-- 접근 가능한 활성 분전반 상태별 개수 조회 -->
+    <select id="countAccessiblePanelsByStatus" resultType="long">
+        SELECT COUNT(*)
+        FROM panel p
+        INNER JOIN site s ON s.site_id = p.site_id
+        WHERE <include refid="accessibleActivePanelFilter"/>
+          AND p.status = #{status}
+    </select>
+
+    <!-- 접근 가능한 활성 분전반의 미확인 경보 개수 조회 -->
+    <select id="countUnconfirmedAlerts" resultType="long">
+        SELECT COUNT(*)
+        FROM alert a
+        INNER JOIN panel p ON p.panel_id = a.panel_id
+        INNER JOIN site s ON s.site_id = p.site_id
+        WHERE <include refid="accessibleActivePanelFilter"/>
+          AND a.status = 'UNCONFIRMED'
+    </select>
+
+    <!-- 접근 가능한 활성 분전반의 미조치 경보 개수 조회 -->
+    <select id="countUnresolvedAlerts" resultType="long">
+        SELECT COUNT(*)
+        FROM alert a
+        INNER JOIN panel p ON p.panel_id = a.panel_id
+        INNER JOIN site s ON s.site_id = p.site_id
+        WHERE <include refid="accessibleActivePanelFilter"/>
+          AND a.status IN ('UNCONFIRMED', 'CONFIRMED')
+    </select>
+
+    <!-- 대시보드 분전반 목록: 오프라인/위험/주의/정상 순으로 노출 -->
+    <select id="findDashboardPanels" resultMap="dashboardPanelResultMap">
+        SELECT
+            p.panel_id,
+            p.site_id,
+            s.name AS site_name,
+            p.name,
+            p.status,
+            p.last_communicated_at,
+            COUNT(a.alert_id) AS unconfirmed_alert_count
+        FROM panel p
+        INNER JOIN site s ON s.site_id = p.site_id
+        LEFT JOIN alert a ON a.panel_id = p.panel_id
+            AND a.status = 'UNCONFIRMED'
+        WHERE <include refid="accessibleActivePanelFilter"/>
+        GROUP BY
+            p.panel_id,
+            p.site_id,
+            s.name,
+            p.name,
+            p.status,
+            p.last_communicated_at
+        ORDER BY
+            CASE p.status
+                WHEN 'OFFLINE' THEN 1
+                WHEN 'RISK' THEN 2
+                WHEN 'CAUTION' THEN 3
+                WHEN 'NORMAL' THEN 4
+                ELSE 5
+            END,
+            COUNT(a.alert_id) DESC,
+            p.last_communicated_at DESC,
+            p.panel_id DESC
+    </select>
+</mapper>
