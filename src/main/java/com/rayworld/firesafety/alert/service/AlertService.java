@@ -3,7 +3,10 @@ package com.rayworld.firesafety.alert.service;
 import com.rayworld.firesafety.alert.dto.req.AlertListReq;
 import com.rayworld.firesafety.alert.dto.res.AlertListPageRes;
 import com.rayworld.firesafety.alert.dto.res.AlertListRes;
+import com.rayworld.firesafety.alert.exception.AlertErrorCode;
 import com.rayworld.firesafety.alert.mapper.AlertMapper;
+import com.rayworld.firesafety.alert.model.Alert;
+import com.rayworld.firesafety.alert.model.AlertStatus;
 import com.rayworld.firesafety.auth.model.UserRole;
 import com.rayworld.firesafety.common.exception.BusinessException;
 import com.rayworld.firesafety.common.exception.CommonErrorCode;
@@ -67,6 +70,61 @@ public class AlertService {
         );
 
         return new AlertListPageRes(content, totalElements, page, size);
+    }
+
+    // 경보 확인 처리
+    // 1. 현재 사용자 확인 → 2. 권한 범위 안의 경보 조회 → 3. UNCONFIRMED 확인 → 4. CONFIRMED 전환
+    @Transactional
+    public void confirmAlert(Long alertId) {
+        UserPrincipal actor = getCurrentUser();
+        Alert alert = findAccessibleAlert(actor, alertId);
+        validateCanConfirm(alert);
+
+        int updatedRows = alertMapper.confirmAlert(alertId, actor.getUserId());
+        if (updatedRows == 0) {
+            throw new BusinessException(AlertErrorCode.ALERT_CANNOT_CONFIRM);
+        }
+    }
+
+    // 경보 조치완료 처리
+    // 1. 현재 사용자 확인 → 2. 권한 범위 안의 경보 조회 → 3. CONFIRMED 확인 → 4. RESOLVED 전환
+    @Transactional
+    public void resolveAlert(Long alertId) {
+        UserPrincipal actor = getCurrentUser();
+        Alert alert = findAccessibleAlert(actor, alertId);
+        validateCanResolve(alert);
+
+        int updatedRows = alertMapper.resolveAlert(alertId);
+        if (updatedRows == 0) {
+            throw new BusinessException(AlertErrorCode.ALERT_NOT_CONFIRMED);
+        }
+    }
+
+    // 현재 사용자가 접근할 수 있는 경보만 조회
+    private Alert findAccessibleAlert(UserPrincipal actor, Long alertId) {
+        if (alertId == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+        }
+        boolean superAdmin = UserRole.SUPER_ADMIN.name().equals(actor.getRole());
+        Alert alert = alertMapper.findAccessibleAlertById(actor.getUserId(), superAdmin, alertId);
+        if (alert == null) {
+            throw new BusinessException(AlertErrorCode.ALERT_NOT_FOUND);
+        }
+        return alert;
+    }
+
+    // 미확인 경보만 확인 처리 가능
+    private void validateCanConfirm(Alert alert) {
+        if (alert.getStatus() != AlertStatus.UNCONFIRMED) {
+            throw new BusinessException(AlertErrorCode.ALERT_CANNOT_CONFIRM);
+        }
+    }
+
+    // 확인된 경보만 조치완료 처리 가능
+    private void validateCanResolve(Alert alert) {
+        if (alert.getStatus() != AlertStatus.CONFIRMED) {
+            throw new BusinessException(AlertErrorCode.ALERT_NOT_CONFIRMED);
+        }
     }
 
     // null 요청도 기본 목록 조회로 처리

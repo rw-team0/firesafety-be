@@ -3,7 +3,9 @@ package com.rayworld.firesafety.alert.service;
 import com.rayworld.firesafety.alert.dto.req.AlertListReq;
 import com.rayworld.firesafety.alert.dto.res.AlertListPageRes;
 import com.rayworld.firesafety.alert.dto.res.AlertListRes;
+import com.rayworld.firesafety.alert.exception.AlertErrorCode;
 import com.rayworld.firesafety.alert.mapper.AlertMapper;
+import com.rayworld.firesafety.alert.model.Alert;
 import com.rayworld.firesafety.alert.model.AlertStatus;
 import com.rayworld.firesafety.alert.model.AlertType;
 import com.rayworld.firesafety.auth.model.UserRole;
@@ -111,6 +113,62 @@ class AlertServiceTest {
                         assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_PARAMETER));
     }
 
+    @Test
+    @DisplayName("API-021: UNCONFIRMED 경보를 CONFIRMED로 확인 처리한다")
+    void confirmUnconfirmedAlert() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(alertMapper.findAccessibleAlertById(2L, false, 10L)).thenReturn(alert(10L, AlertStatus.UNCONFIRMED));
+        when(alertMapper.confirmAlert(10L, 2L)).thenReturn(1);
+
+        // when
+        alertService.confirmAlert(10L);
+
+        // then
+        verify(alertMapper).confirmAlert(10L, 2L);
+    }
+
+    @Test
+    @DisplayName("API-021: 이미 확인된 경보는 다시 확인 처리할 수 없다")
+    void confirmedAlertCannotBeConfirmedAgain() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(alertMapper.findAccessibleAlertById(2L, false, 10L)).thenReturn(alert(10L, AlertStatus.CONFIRMED));
+
+        // when & then
+        assertThatThrownBy(() -> alertService.confirmAlert(10L))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(AlertErrorCode.ALERT_CANNOT_CONFIRM));
+    }
+
+    @Test
+    @DisplayName("API-022: CONFIRMED 경보를 RESOLVED로 조치완료 처리한다")
+    void resolveConfirmedAlert() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(alertMapper.findAccessibleAlertById(2L, false, 10L)).thenReturn(alert(10L, AlertStatus.CONFIRMED));
+        when(alertMapper.resolveAlert(10L)).thenReturn(1);
+
+        // when
+        alertService.resolveAlert(10L);
+
+        // then
+        verify(alertMapper).resolveAlert(10L);
+    }
+
+    @Test
+    @DisplayName("API-022: UNCONFIRMED 경보는 바로 조치완료 처리할 수 없다")
+    void unconfirmedAlertCannotBeResolved() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(alertMapper.findAccessibleAlertById(2L, false, 10L)).thenReturn(alert(10L, AlertStatus.UNCONFIRMED));
+
+        // when & then
+        assertThatThrownBy(() -> alertService.resolveAlert(10L))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(AlertErrorCode.ALERT_NOT_CONFIRMED));
+    }
+
     private void loginAs(Long userId, UserRole role) {
         UserPrincipal principal = new UserPrincipal(new JwtUser(userId, role.name()));
         UsernamePasswordAuthenticationToken authentication =
@@ -127,5 +185,13 @@ class AlertServiceTest {
         res.setStatus(AlertStatus.UNCONFIRMED);
         res.setTriggeredAt(LocalDateTime.of(2026, 7, 23, 10, 0));
         return res;
+    }
+
+    private Alert alert(Long alertId, AlertStatus status) {
+        Alert alert = new Alert();
+        alert.setAlertId(alertId);
+        alert.setPanelId(1L);
+        alert.setStatus(status);
+        return alert;
     }
 }

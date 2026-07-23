@@ -3,6 +3,20 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.rayworld.firesafety.alert.mapper.AlertMapper">
+    <resultMap id="alertResultMap" type="com.rayworld.firesafety.alert.model.Alert">
+        <id property="alertId" column="alert_id"/>
+        <result property="circuitId" column="circuit_id"/>
+        <result property="panelId" column="panel_id"/>
+        <result property="source" column="source"/>
+        <result property="type" column="type"/>
+        <result property="resultId" column="result_id"/>
+        <result property="status" column="status"/>
+        <result property="triggeredAt" column="triggered_at"/>
+        <result property="confirmedBy" column="confirmed_by"/>
+        <result property="confirmedAt" column="confirmed_at"/>
+        <result property="resolvedAt" column="resolved_at"/>
+    </resultMap>
+
     <resultMap id="alertListResultMap" type="com.rayworld.firesafety.alert.dto.res.AlertListRes">
         <id property="alertId" column="alert_id"/>
         <result property="panelName" column="panel_name"/>
@@ -94,4 +108,51 @@
         SELECT COUNT(*)
         <include refid="alertListFromAndFilter"/>
     </select>
+
+    <!-- 상태 전이 전 권한 범위 안의 경보 조회 -->
+    <select id="findAccessibleAlertById" resultMap="alertResultMap">
+        SELECT
+            a.alert_id,
+            a.circuit_id,
+            a.panel_id,
+            a.source,
+            a.type,
+            a.result_id,
+            a.status,
+            a.triggered_at,
+            a.confirmed_by,
+            a.confirmed_at,
+            a.resolved_at
+        FROM alert a
+        LEFT JOIN panel p ON p.panel_id = a.panel_id
+        WHERE a.alert_id = #{alertId}
+        <if test="!superAdmin">
+            AND EXISTS (
+                SELECT 1
+                FROM user_site us
+                WHERE us.user_id = #{userId}
+                  AND us.site_id = p.site_id
+                  AND us.deleted_at IS NULL
+            )
+        </if>
+    </select>
+
+    <!-- UNCONFIRMED 경보만 CONFIRMED로 전환 -->
+    <update id="confirmAlert">
+        UPDATE alert
+        SET status = 'CONFIRMED',
+            confirmed_by = #{userId},
+            confirmed_at = CURRENT_TIMESTAMP
+        WHERE alert_id = #{alertId}
+          AND status = 'UNCONFIRMED'
+    </update>
+
+    <!-- CONFIRMED 경보만 RESOLVED로 전환 -->
+    <update id="resolveAlert">
+        UPDATE alert
+        SET status = 'RESOLVED',
+            resolved_at = CURRENT_TIMESTAMP
+        WHERE alert_id = #{alertId}
+          AND status = 'CONFIRMED'
+    </update>
 </mapper>

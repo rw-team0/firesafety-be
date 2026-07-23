@@ -34,4 +34,15 @@ public interface AlertMapper {
                      @Param("siteId") Long siteId,
                      @Param("fromAt") LocalDateTime fromAt,
                      @Param("toAt") LocalDateTime toAt);
+
+    // 권한 범위 안의 경보 단건 조회
+    Alert findAccessibleAlertById(@Param("userId") Long userId,
+                                  @Param("superAdmin") boolean superAdmin,
+                                  @Param("alertId") Long alertId);
+
+    // 미확인 경보를 확인 상태로 전환
+    int confirmAlert(@Param("alertId") Long alertId, @Param("userId") Long userId);
+
+    // 확인된 경보를 조치완료 상태로 전환
+    int resolveAlert(@Param("alertId") Long alertId);
 }
