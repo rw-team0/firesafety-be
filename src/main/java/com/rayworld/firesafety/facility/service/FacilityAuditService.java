@@ -1,7 +1,6 @@
 package com.rayworld.firesafety.facility.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rayworld.firesafety.auth.model.UserRole;
 import com.rayworld.firesafety.common.exception.BusinessException;
@@ -130,18 +129,20 @@ public class FacilityAuditService {
     private FacilityAuditLogRes toResponse(FacilityAuditLog auditLog) {
         return FacilityAuditLogRes.from(
                 auditLog,
-                toJsonNode(auditLog.getBeforeData()),
-                toJsonNode(auditLog.getAfterData())
+                toJsonObject(auditLog.getBeforeData()),
+                toJsonObject(auditLog.getAfterData())
         );
     }
 
-    // 감사 로그 JSON 문자열을 프론트에서 바로 쓰기 쉬운 JSON 객체로 변환
-    private JsonNode toJsonNode(String json) {
+    // 감사 로그 JSON 문자열을 프론트에서 바로 쓰기 쉬운 JSON 객체로 변환.
+    // JsonNode로 반환하면 Spring Boot 4 기본 Jackson(3.x)이 이 값을(Jackson 2 타입이라) 트리로 인식 못 하고
+    // is*() 게터를 그대로 직렬화해버려서(예: {"array":false,...}) 일반 Map/List/원시값 구조로 반환한다.
+    private Object toJsonObject(String json) {
         if (!StringUtils.hasText(json)) {
             return null;
         }
         try {
-            return objectMapper.readTree(json);
+            return objectMapper.readValue(json, Object.class);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("설비 감사 로그 역직렬화 실패", e);
         }

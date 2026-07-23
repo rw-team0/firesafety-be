@@ -1,7 +1,6 @@
 package com.rayworld.firesafety.auth.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rayworld.firesafety.auth.dto.req.FcmTokenReq;
 import com.rayworld.firesafety.auth.dto.req.UserBulkDeleteReq;
@@ -494,14 +493,16 @@ public class UserService {
         }
     }
 
-    // DB에 저장된 감사 로그 JSON 문자열을 응답용 JSON 객체로 변환
-    private JsonNode toAuditJsonNode(String auditData) {
+    // DB에 저장된 감사 로그 JSON 문자열을 응답용 JSON 객체로 변환.
+    // JsonNode로 반환하면 Spring Boot 4 기본 Jackson(3.x)이 Jackson 2 타입인 이 값을 트리로 인식 못 하고
+    // is*() 게터를 그대로 직렬화해버려서(예: {"array":false,...}) 일반 Map/List/원시값 구조로 반환한다.
+    private Object toAuditJsonNode(String auditData) {
         if (!StringUtils.hasText(auditData)) {
             return null;
         }
 
         try {
-            return objectMapper.readTree(auditData);
+            return objectMapper.readValue(auditData, Object.class);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("사용자 감사 로그 역직렬화 실패", e);
         }

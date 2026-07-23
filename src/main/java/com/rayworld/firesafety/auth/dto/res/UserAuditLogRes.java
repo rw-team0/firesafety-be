@@ -1,6 +1,5 @@
 package com.rayworld.firesafety.auth.dto.res;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.rayworld.firesafety.auth.model.UserAuditAction;
 import com.rayworld.firesafety.auth.model.UserAuditLog;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -25,13 +24,13 @@ public class UserAuditLogRes {
     @Schema(description = "변경 종류 한글 라벨", example = "삭제")
     private String actionLabel;
     @Schema(description = "변경 전 데이터(비밀번호/토큰 값 제외)")
-    private JsonNode beforeData;
+    private Object beforeData;
     @Schema(description = "변경 후 데이터(비밀번호/토큰 값 제외)")
-    private JsonNode afterData;
+    private Object afterData;
     @Schema(description = "기록 시각", example = "2026-07-23T14:30:00")
     private LocalDateTime createdAt;
 
-    public static UserAuditLogRes from(UserAuditLog auditLog, JsonNode beforeData, JsonNode afterData) {
+    public static UserAuditLogRes from(UserAuditLog auditLog, Object beforeData, Object afterData) {
         return new UserAuditLogRes(
                 auditLog.getAuditId(),
                 auditLog.getTargetUserId(),

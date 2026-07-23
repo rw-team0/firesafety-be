@@ -1,6 +1,5 @@
 package com.rayworld.firesafety.facility.dto.res;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.rayworld.firesafety.facility.model.FacilityAuditAction;
 import com.rayworld.firesafety.facility.model.FacilityAuditLog;
 import com.rayworld.firesafety.facility.model.FacilityAuditTargetType;
@@ -26,13 +25,13 @@ public class FacilityAuditLogRes {
     @Schema(description = "처리 종류(CREATE/UPDATE/DELETE)", example = "CREATE")
     private FacilityAuditAction action;
     @Schema(description = "변경 전 데이터")
-    private JsonNode beforeData;
+    private Object beforeData;
     @Schema(description = "변경 후 데이터")
-    private JsonNode afterData;
+    private Object afterData;
     @Schema(description = "기록 시각", example = "2026-07-23T14:30:00")
     private LocalDateTime createdAt;
 
-    public static FacilityAuditLogRes from(FacilityAuditLog auditLog, JsonNode beforeData, JsonNode afterData) {
+    public static FacilityAuditLogRes from(FacilityAuditLog auditLog, Object beforeData, Object afterData) {
         return new FacilityAuditLogRes(
                 auditLog.getAuditId(),
                 auditLog.getTargetType(),
