@@ -48,6 +48,7 @@ public class FcmPushService {
                             .build())
                     .putData("eventType", event.getEventType())
                     .putData("alertId", String.valueOf(event.getAlertId()))
+                    .putData("panelId", String.valueOf(event.getPanelId()))
                     .build();
 
             getFirebaseMessaging().sendEachForMulticast(message);

@@ -49,10 +49,10 @@ public interface AuthMapper {
     // 비밀번호 재설정 확정 시 새 비밀번호 해시 저장
     int updatePassword(@Param("userId") Long userId, @Param("password") String password);
 
-    // 현재 로그인 사용자의 FCM 토큰 저장
-    int updateFcmToken(@Param("userId") Long userId, @Param("fcmToken") String fcmToken);
+    // 현재 로그인 사용자의 FCM 토큰 등록(기기별로 여러 개 보관, 같은 토큰이면 소유자만 갱신)
+    void upsertFcmToken(@Param("userId") Long userId, @Param("fcmToken") String fcmToken);
 
-    // 경보 발생 현장의 담당자와 SUPER_ADMIN FCM 토큰 조회
+    // 경보 발생 현장의 담당자(ADMIN/GENERAL) FCM 토큰 조회(기기별 다건)
     List<String> findFcmTokensForAlertSite(@Param("siteId") Long siteId);
 
     // 비밀번호 재설정 요청 전 기존 미사용 토큰 만료 처리

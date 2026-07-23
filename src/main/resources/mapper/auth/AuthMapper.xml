@@ -16,7 +16,6 @@
         <result property="deletedBy" column="deleted_by"/>
         <result property="restoredAt" column="restored_at"/>
         <result property="restoredBy" column="restored_by"/>
-        <result property="fcmToken" column="fcm_token"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
         <result property="deletedAt" column="deleted_at"/>
@@ -67,7 +66,6 @@
             deleted_by,
             restored_at,
             restored_by,
-            fcm_token,
             created_at,
             updated_at,
             deleted_at
@@ -90,7 +88,6 @@
             deleted_by,
             restored_at,
             restored_by,
-            fcm_token,
             created_at,
             updated_at,
             deleted_at
@@ -167,7 +164,6 @@
             deleted_by,
             restored_at,
             restored_by,
-            fcm_token,
             created_at,
             updated_at,
             deleted_at
@@ -239,27 +235,25 @@
           AND account_status = 'ACTIVE'
     </update>
 
-    <!-- 현재 로그인 사용자의 FCM 토큰 저장 -->
-    <update id="updateFcmToken">
-        UPDATE `user`
-        SET fcm_token = #{fcmToken},
+    <!-- 현재 로그인 사용자의 FCM 토큰 등록. 같은 토큰이 다른 사용자 소유로 이미 있으면(기기 재로그인 등)
+         소유자를 갱신하고, 새 토큰이면 추가한다 — 사용자당 여러 기기 토큰을 동시에 보관한다. -->
+    <insert id="upsertFcmToken">
+        INSERT INTO user_fcm_token (user_id, fcm_token)
+        VALUES (#{userId}, #{fcmToken})
+        ON DUPLICATE KEY UPDATE
+            user_id = VALUES(user_id),
             updated_at = CURRENT_TIMESTAMP
-        WHERE user_id = #{userId}
-          AND deleted_at IS NULL
-          AND account_status = 'ACTIVE'
-    </update>
+    </insert>
 
-    <!-- 경보 발생 현장 담당자의 푸시 토큰 조회 -->
+    <!-- 경보 발생 현장 담당자의 푸시 토큰 조회(사용자당 여러 기기 토큰 전부) -->
     <select id="findFcmTokensForAlertSite" resultType="string">
-        SELECT DISTINCT u.fcm_token
-        FROM `user` u
-        INNER JOIN user_site us
-            ON us.user_id = u.user_id
+        SELECT DISTINCT t.fcm_token
+        FROM user_fcm_token t
+        INNER JOIN `user` u ON u.user_id = t.user_id
+        INNER JOIN user_site us ON us.user_id = u.user_id
         WHERE u.deleted_at IS NULL
           AND u.account_status = 'ACTIVE'
           AND u.role IN ('ADMIN', 'GENERAL')
-          AND u.fcm_token IS NOT NULL
-          AND u.fcm_token != ''
           AND us.site_id = #{siteId}
           AND us.deleted_at IS NULL
     </select>

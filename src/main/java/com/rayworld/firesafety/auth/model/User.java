@@ -25,7 +25,6 @@ public class User {
     private Long deletedBy;
     private LocalDateTime restoredAt;
     private Long restoredBy;
-    private String fcmToken;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;

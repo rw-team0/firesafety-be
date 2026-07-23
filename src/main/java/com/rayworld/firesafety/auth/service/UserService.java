@@ -83,17 +83,15 @@ public class UserService {
                 .toList();
     }
 
-    // FCM 토큰 등록
-    // 1. 현재 사용자 확인 → 2. 토큰값 확인 → 3. 현재 사용자에게 토큰 저장
+    // FCM 토큰 등록(기기별로 여러 개 보관)
+    // 1. 현재 사용자 확인 → 2. 토큰값 확인 → 3. 활성 사용자 확인 → 4. 토큰 등록/소유자 갱신
     @Transactional
     public void updateFcmToken(FcmTokenReq req) {
         UserPrincipal actor = getCurrentUser();
         validateFcmTokenRequest(req);
+        findActiveTargetUser(actor.getUserId());
 
-        int updatedRows = authMapper.updateFcmToken(actor.getUserId(), req.getFcmToken());
-        if (updatedRows == 0) {
-            throw new BusinessException(AuthErrorCode.USER_NOT_FOUND);
-        }
+        authMapper.upsertFcmToken(actor.getUserId(), req.getFcmToken());
     }
 
     // 계정 등록
