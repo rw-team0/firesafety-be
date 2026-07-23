@@ -68,6 +68,10 @@ constants:
     rate-limit-window-minutes: ${PASSWORD_RESET_RATE_LIMIT_WINDOW_MINUTES:10}
     rate-limit-max-count: ${PASSWORD_RESET_RATE_LIMIT_MAX_COUNT:5}
 
+monitoring:
+  communication-lost-check-delay-ms: ${COMMUNICATION_LOST_CHECK_DELAY_MS:30000}
+  communication-lost-check-initial-delay-ms: ${COMMUNICATION_LOST_CHECK_INITIAL_DELAY_MS:30000}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html

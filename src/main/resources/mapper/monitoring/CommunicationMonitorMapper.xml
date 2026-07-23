@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.rayworld.firesafety.monitoring.mapper.CommunicationMonitorMapper">
+    <resultMap id="offlinePanelTargetResultMap" type="com.rayworld.firesafety.monitoring.model.OfflinePanelTarget">
+        <id property="panelId" column="panel_id"/>
+        <result property="lastCommunicatedAt" column="last_communicated_at"/>
+    </resultMap>
+
+    <!-- 최근 통신시각이 기준시각보다 오래된 활성 분전반 조회 -->
+    <select id="findOfflineTargets" resultMap="offlinePanelTargetResultMap">
+        SELECT
+            p.panel_id,
+            p.last_communicated_at
+        FROM panel p
+        INNER JOIN site s ON s.site_id = p.site_id
+        WHERE p.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+          AND p.last_communicated_at IS NOT NULL
+          AND p.last_communicated_at &lt; #{thresholdAt}
+          AND p.status != 'OFFLINE'
+    </select>
+
+    <!-- 통신두절 상태로 전환 -->
+    <update id="markPanelOffline">
+        UPDATE panel
+        SET status = 'OFFLINE',
+            is_online = 0,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE panel_id = #{panelId}
+          AND deleted_at IS NULL
+          AND status != 'OFFLINE'
+    </update>
+</mapper>

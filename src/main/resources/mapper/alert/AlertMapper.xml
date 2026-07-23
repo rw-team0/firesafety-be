@@ -155,4 +155,16 @@
         WHERE alert_id = #{alertId}
           AND status = 'CONFIRMED'
     </update>
+
+    <!-- 같은 분전반의 미조치 경보가 있으면 중복 생성하지 않는다 -->
+    <select id="existsUnresolvedAlert" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM alert
+            WHERE panel_id = #{panelId}
+              AND source = #{source}
+              AND type = #{type}
+              AND status IN ('UNCONFIRMED', 'CONFIRMED')
+        )
+    </select>
 </mapper>

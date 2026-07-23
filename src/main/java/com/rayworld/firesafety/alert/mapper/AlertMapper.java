@@ -45,4 +45,9 @@ public interface AlertMapper {
 
     // 확인된 경보를 조치완료 상태로 전환
     int resolveAlert(@Param("alertId") Long alertId);
+
+    // 같은 대상의 미조치 경보 존재 여부 확인
+    boolean existsUnresolvedAlert(@Param("panelId") Long panelId,
+                                  @Param("source") String source,
+                                  @Param("type") String type);
 }
