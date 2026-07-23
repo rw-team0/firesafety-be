@@ -7,7 +7,10 @@ import com.rayworld.firesafety.common.exception.BusinessException;
 import com.rayworld.firesafety.common.exception.CommonErrorCode;
 import com.rayworld.firesafety.common.security.UserPrincipal;
 import com.rayworld.firesafety.facility.dto.req.PanelCreateReq;
+import com.rayworld.firesafety.facility.dto.req.PanelListReq;
+import com.rayworld.firesafety.facility.dto.res.PanelDetailRes;
 import com.rayworld.firesafety.facility.dto.res.PanelCreateRes;
+import com.rayworld.firesafety.facility.dto.res.PanelListRes;
 import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
 import com.rayworld.firesafety.facility.mapper.PanelMapper;
 import com.rayworld.firesafety.facility.mapper.SiteMapper;
@@ -26,6 +29,7 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -68,6 +72,41 @@ public class PanelService {
         return PanelCreateRes.from(savedPanel);
     }
 
+    // 분전반 목록 조회
+    // 1. 현재 사용자 확인 → 2. 현장/상태 필터 확인 → 3. 역할별 조회 범위 적용
+    @Transactional(readOnly = true)
+    public List<PanelListRes> getPanels(PanelListReq req) {
+        UserPrincipal actor = getCurrentUser();
+        Long siteId = req == null ? null : req.getSiteId();
+        String status = req == null || req.getStatus() == null ? null : req.getStatus().name();
+
+        UserRole actorRole = UserRole.valueOf(actor.getRole());
+        List<Panel> panels;
+        if (actorRole == UserRole.SUPER_ADMIN) {
+            panels = panelMapper.findActivePanels(siteId, status);
+        } else {
+            // ADMIN/GENERAL은 배정된 현장 안에서만 조회
+            panels = panelMapper.findActivePanelsByUserId(actor.getUserId(), siteId, status);
+        }
+
+        return panels.stream()
+                .map(PanelListRes::from)
+                .toList();
+    }
+
+    // 분전반 상세 조회
+    // 1. 현재 사용자 확인 → 2. 활성 분전반 조회 → 3. 현장 접근 권한 확인
+    @Transactional(readOnly = true)
+    public PanelDetailRes getPanel(Long panelId) {
+        UserPrincipal actor = getCurrentUser();
+        validatePanelId(panelId);
+
+        Panel panel = findActivePanel(panelId);
+        validateSiteAccess(actor, panel.getSiteId());
+
+        return PanelDetailRes.from(panel);
+    }
+
     // 등록 요청값 확인
     private void validateCreateRequest(Long siteId, PanelCreateReq req) {
         if (siteId == null
@@ -82,6 +121,13 @@ public class PanelService {
         Integer circuitCount = req.getCircuitCount() == null ? 10 : req.getCircuitCount();
         if (circuitCount < 1 || circuitCount > 10) {
             throw new BusinessException(FacilityErrorCode.INVALID_CIRCUIT_COUNT);
+        }
+    }
+
+    // 분전반 ID 확인
+    private void validatePanelId(Long panelId) {
+        if (panelId == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
         }
     }
 

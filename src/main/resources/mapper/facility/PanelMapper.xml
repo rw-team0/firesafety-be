@@ -66,28 +66,103 @@
     <!-- 등록/수정/삭제 대상 분전반 활성 여부 확인 -->
     <select id="findActivePanelById" resultMap="panelResultMap">
         SELECT
-            panel_id,
-            site_id,
-            name,
-            device_serial,
-            m_no,
-            installed_at,
-            status,
-            is_online,
-            last_communicated_at,
-            circuit_count,
-            leak_ma_threshold,
-            temp_threshold,
-            humidity_threshold,
-            overcurrent_threshold,
-            gas_threshold,
-            fire_threshold,
-            created_at,
-            updated_at,
-            deleted_at
-        FROM panel
-        WHERE panel_id = #{panelId}
-          AND deleted_at IS NULL
+            p.panel_id,
+            p.site_id,
+            p.name,
+            p.device_serial,
+            p.m_no,
+            p.installed_at,
+            p.status,
+            p.is_online,
+            p.last_communicated_at,
+            p.circuit_count,
+            p.leak_ma_threshold,
+            p.temp_threshold,
+            p.humidity_threshold,
+            p.overcurrent_threshold,
+            p.gas_threshold,
+            p.fire_threshold,
+            p.created_at,
+            p.updated_at,
+            p.deleted_at
+        FROM panel p
+        INNER JOIN site s ON s.site_id = p.site_id
+        WHERE p.panel_id = #{panelId}
+          AND p.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+    </select>
+
+    <!-- SUPER_ADMIN은 전체 활성 분전반 조회 -->
+    <select id="findActivePanels" resultMap="panelResultMap">
+        SELECT
+            p.panel_id,
+            p.site_id,
+            p.name,
+            p.device_serial,
+            p.m_no,
+            p.installed_at,
+            p.status,
+            p.is_online,
+            p.last_communicated_at,
+            p.circuit_count,
+            p.leak_ma_threshold,
+            p.temp_threshold,
+            p.humidity_threshold,
+            p.overcurrent_threshold,
+            p.gas_threshold,
+            p.fire_threshold,
+            p.created_at,
+            p.updated_at,
+            p.deleted_at
+        FROM panel p
+        INNER JOIN site s ON s.site_id = p.site_id
+        WHERE p.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+        <if test="siteId != null">
+          AND p.site_id = #{siteId}
+        </if>
+        <if test="status != null">
+          AND p.status = #{status}
+        </if>
+        ORDER BY p.panel_id DESC
+    </select>
+
+    <!-- ADMIN/GENERAL은 배정 현장의 활성 분전반만 조회 -->
+    <select id="findActivePanelsByUserId" resultMap="panelResultMap">
+        SELECT
+            p.panel_id,
+            p.site_id,
+            p.name,
+            p.device_serial,
+            p.m_no,
+            p.installed_at,
+            p.status,
+            p.is_online,
+            p.last_communicated_at,
+            p.circuit_count,
+            p.leak_ma_threshold,
+            p.temp_threshold,
+            p.humidity_threshold,
+            p.overcurrent_threshold,
+            p.gas_threshold,
+            p.fire_threshold,
+            p.created_at,
+            p.updated_at,
+            p.deleted_at
+        FROM panel p
+        INNER JOIN site s ON s.site_id = p.site_id
+        INNER JOIN user_site us ON us.site_id = s.site_id
+        WHERE us.user_id = #{userId}
+          AND us.deleted_at IS NULL
+          AND p.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+        <if test="siteId != null">
+          AND p.site_id = #{siteId}
+        </if>
+        <if test="status != null">
+          AND p.status = #{status}
+        </if>
+        ORDER BY p.panel_id DESC
     </select>
 
     <!-- 장비 시리얼 중복 등록 방지 -->
