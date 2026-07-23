@@ -11,12 +11,12 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserSite {
+public class UserSiteAssignment {
 
     private Long mappingId;
     private Long userId;
     private Long siteId;
+    private String siteName;
+    private String siteAddress;
     private LocalDateTime assignedAt;
-    private LocalDateTime updatedAt;
-    private LocalDateTime deletedAt;
 }
