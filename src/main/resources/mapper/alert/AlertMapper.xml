@@ -3,6 +3,47 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.rayworld.firesafety.alert.mapper.AlertMapper">
+    <resultMap id="alertListResultMap" type="com.rayworld.firesafety.alert.dto.res.AlertListRes">
+        <id property="alertId" column="alert_id"/>
+        <result property="panelName" column="panel_name"/>
+        <result property="circuitNo" column="circuit_no"/>
+        <result property="type" column="type"/>
+        <result property="status" column="status"/>
+        <result property="triggeredAt" column="triggered_at"/>
+    </resultMap>
+
+    <sql id="alertListFromAndFilter">
+        FROM alert a
+        LEFT JOIN panel p ON p.panel_id = a.panel_id
+        LEFT JOIN circuit c ON c.circuit_id = a.circuit_id
+        <where>
+            <if test="status != null">
+                AND a.status = #{status}
+            </if>
+            <if test="type != null">
+                AND a.type = #{type}
+            </if>
+            <if test="siteId != null">
+                AND p.site_id = #{siteId}
+            </if>
+            <if test="fromAt != null">
+                AND a.triggered_at &gt;= #{fromAt}
+            </if>
+            <if test="toAt != null">
+                AND a.triggered_at &lt; #{toAt}
+            </if>
+            <if test="!superAdmin">
+                AND EXISTS (
+                    SELECT 1
+                    FROM user_site us
+                    WHERE us.user_id = #{userId}
+                      AND us.site_id = p.site_id
+                      AND us.deleted_at IS NULL
+                )
+            </if>
+        </where>
+    </sql>
+
     <!-- 경보 발생 이력 저장 -->
     <insert id="insertAlert"
             parameterType="com.rayworld.firesafety.alert.model.Alert"
@@ -24,4 +65,33 @@
             #{status}
         )
     </insert>
+
+    <!-- 경보 목록 조회: 미확인 경보를 먼저 보여주고 최신순 정렬 -->
+    <select id="findAlerts" resultMap="alertListResultMap">
+        SELECT
+            a.alert_id,
+            p.name AS panel_name,
+            c.channel_no AS circuit_no,
+            a.type,
+            a.status,
+            a.triggered_at
+        <include refid="alertListFromAndFilter"/>
+        ORDER BY
+            CASE a.status
+                WHEN 'UNCONFIRMED' THEN 1
+                WHEN 'CONFIRMED' THEN 2
+                WHEN 'RESOLVED' THEN 3
+                ELSE 4
+            END,
+            a.triggered_at DESC,
+            a.alert_id DESC
+        LIMIT #{size}
+        OFFSET #{offset}
+    </select>
+
+    <!-- 경보 목록 전체 개수 조회 -->
+    <select id="countAlerts" resultType="long">
+        SELECT COUNT(*)
+        <include refid="alertListFromAndFilter"/>
+    </select>
 </mapper>
