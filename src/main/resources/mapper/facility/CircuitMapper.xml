@@ -68,6 +68,26 @@
         ORDER BY c.channel_no ASC
     </select>
 
+    <!-- 디바이스 수신값 저장 전 회로 존재 여부 확인 -->
+    <select id="findActiveCircuitByPanelIdAndChannelNo" resultMap="circuitResultMap">
+        SELECT
+            c.circuit_id,
+            c.panel_id,
+            c.channel_no,
+            c.load_type,
+            c.created_at,
+            c.updated_at,
+            c.deleted_at
+        FROM circuit c
+        INNER JOIN panel p ON p.panel_id = c.panel_id
+        INNER JOIN site s ON s.site_id = p.site_id
+        WHERE c.panel_id = #{panelId}
+          AND c.channel_no = #{channelNo}
+          AND c.deleted_at IS NULL
+          AND p.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+    </select>
+
     <!-- 회로 row는 보존하고 일반 조회 대상에서 제외 -->
     <update id="softDeleteCircuit">
         UPDATE circuit

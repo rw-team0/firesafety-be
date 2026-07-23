@@ -92,6 +92,35 @@
           AND s.deleted_at IS NULL
     </select>
 
+    <!-- 디바이스가 보낸 m_no로 활성 분전반 확인 -->
+    <select id="findActivePanelByMNo" resultMap="panelResultMap">
+        SELECT
+            p.panel_id,
+            p.site_id,
+            p.name,
+            p.device_serial,
+            p.m_no,
+            p.installed_at,
+            p.status,
+            p.is_online,
+            p.last_communicated_at,
+            p.circuit_count,
+            p.leak_ma_threshold,
+            p.temp_threshold,
+            p.humidity_threshold,
+            p.overcurrent_threshold,
+            p.gas_threshold,
+            p.fire_threshold,
+            p.created_at,
+            p.updated_at,
+            p.deleted_at
+        FROM panel p
+        INNER JOIN site s ON s.site_id = p.site_id
+        WHERE p.m_no = #{mNo}
+          AND p.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+    </select>
+
     <!-- SUPER_ADMIN은 전체 활성 분전반 조회 -->
     <select id="findActivePanels" resultMap="panelResultMap">
         SELECT
@@ -207,6 +236,16 @@
     <update id="softDeletePanel">
         UPDATE panel
         SET deleted_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE panel_id = #{panelId}
+          AND deleted_at IS NULL
+    </update>
+
+    <!-- 정상 수신된 분전반을 온라인 상태로 갱신 -->
+    <update id="updatePanelCommunication">
+        UPDATE panel
+        SET is_online = 1,
+            last_communicated_at = CURRENT_TIMESTAMP,
             updated_at = CURRENT_TIMESTAMP
         WHERE panel_id = #{panelId}
           AND deleted_at IS NULL

@@ -19,6 +19,10 @@ public interface CircuitMapper {
     // 분전반 회로 목록 조회
     List<Circuit> findActiveCircuitsByPanelId(@Param("panelId") Long panelId);
 
+    // 디바이스 수신값 저장용 회로 조회
+    Circuit findActiveCircuitByPanelIdAndChannelNo(@Param("panelId") Long panelId,
+                                                   @Param("channelNo") Integer channelNo);
+
     // 회로 소프트 삭제
     int softDeleteCircuit(@Param("circuitId") Long circuitId);
 

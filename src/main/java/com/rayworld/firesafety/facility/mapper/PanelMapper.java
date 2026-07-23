@@ -16,6 +16,9 @@ public interface PanelMapper {
     // 등록 직후 생성된 분전반 조회
     Panel findActivePanelById(@Param("panelId") Long panelId);
 
+    // 디바이스 장비번호로 활성 분전반 조회
+    Panel findActivePanelByMNo(@Param("mNo") String mNo);
+
     // SUPER_ADMIN 분전반 목록 조회
     List<Panel> findActivePanels(@Param("siteId") Long siteId, @Param("status") String status);
 
@@ -36,4 +39,7 @@ public interface PanelMapper {
 
     // 분전반 소프트 삭제
     int softDeletePanel(@Param("panelId") Long panelId);
+
+    // 디바이스 수신 성공 시 마지막 통신시각과 온라인 상태 갱신
+    int updatePanelCommunication(@Param("panelId") Long panelId);
 }
