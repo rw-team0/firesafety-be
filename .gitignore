@@ -8,6 +8,7 @@ build/
 CLAUDE.md
 AGENTS.md
 .agent-docs
+.serena
 
 ### STS ###
 .apt_generated
