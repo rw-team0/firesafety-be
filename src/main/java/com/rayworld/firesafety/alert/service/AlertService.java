@@ -1,6 +1,8 @@
 package com.rayworld.firesafety.alert.service;
 
 import com.rayworld.firesafety.alert.dto.req.AlertListReq;
+import com.rayworld.firesafety.alert.dto.req.AlertResolveReq;
+import com.rayworld.firesafety.alert.dto.res.AlertExportRes;
 import com.rayworld.firesafety.alert.dto.res.AlertListPageRes;
 import com.rayworld.firesafety.alert.dto.res.AlertListRes;
 import com.rayworld.firesafety.alert.exception.AlertErrorCode;
@@ -30,6 +32,7 @@ public class AlertService {
 
     private final AlertMapper alertMapper;
     private final AlertNotificationPublisher alertNotificationPublisher;
+    private final AlertExcelService alertExcelService;
 
     // 경보 목록 조회
     // 1. 현재 사용자 확인 → 2. 역할별 조회 범위 계산 → 3. 필터/페이징 계산 → 4. 목록/개수 조회
@@ -73,6 +76,38 @@ public class AlertService {
         return new AlertListPageRes(content, totalElements, page, size);
     }
 
+    // 경보 이력 엑셀 다운로드
+    // 1. 현재 사용자 확인 → 2. ADMIN 이상 확인 → 3. 필터/선택 ID 검증 → 4. 엑셀 row 조회 → 5. xlsx 생성
+    @Transactional(readOnly = true)
+    public byte[] exportAlerts(AlertListReq req) {
+        UserPrincipal actor = getCurrentUser();
+        validateAdminOrSuperAdmin(actor);
+
+        AlertListReq searchReq = normalizeReq(req);
+        validateDateRange(searchReq);
+        validateAlertIds(searchReq.getAlertIds());
+
+        LocalDateTime fromAt = toStartDateTime(searchReq);
+        LocalDateTime toAt = toEndDateTime(searchReq);
+        boolean superAdmin = UserRole.SUPER_ADMIN.name().equals(actor.getRole());
+
+        String status = searchReq.getStatus() == null ? null : searchReq.getStatus().name();
+        String type = searchReq.getType() == null ? null : searchReq.getType().name();
+
+        List<AlertExportRes> rows = alertMapper.findAlertExportRows(
+                actor.getUserId(),
+                superAdmin,
+                status,
+                type,
+                searchReq.getSiteId(),
+                fromAt,
+                toAt,
+                searchReq.getAlertIds()
+        );
+
+        return alertExcelService.createAlertHistoryExcel(rows, searchReq);
+    }
+
     // 경보 확인 처리
     // 1. 현재 사용자 확인 → 2. 권한 범위 안의 경보 조회 → 3. UNCONFIRMED 확인 → 4. CONFIRMED 전환
     @Transactional
@@ -89,18 +124,24 @@ public class AlertService {
     }
 
     // 경보 조치완료 처리
-    // 1. 현재 사용자 확인 → 2. 권한 범위 안의 경보 조회 → 3. CONFIRMED 확인 → 4. RESOLVED 전환
+    // 1. 현재 사용자 확인 → 2. 권한 범위 안의 경보 조회 → 3. CONFIRMED 확인 → 4. 비고 정리 → 5. RESOLVED 전환
     @Transactional
-    public void resolveAlert(Long alertId) {
+    public void resolveAlert(Long alertId, AlertResolveReq req) {
         UserPrincipal actor = getCurrentUser();
         Alert alert = findAccessibleAlert(actor, alertId);
         validateCanResolve(alert);
 
-        int updatedRows = alertMapper.resolveAlert(alertId);
+        String resolutionNote = normalizeResolutionNote(req);
+        int updatedRows = alertMapper.resolveAlert(alertId, resolutionNote);
         if (updatedRows == 0) {
             throw new BusinessException(AlertErrorCode.ALERT_NOT_CONFIRMED);
         }
         alertNotificationPublisher.publishStatusChanged(alert, AlertStatus.RESOLVED);
+    }
+
+    // 기존 내부 호출이 생겨도 비고 없이 조치완료할 수 있게 유지
+    public void resolveAlert(Long alertId) {
+        resolveAlert(alertId, null);
     }
 
     // 현재 사용자가 접근할 수 있는 경보만 조회
@@ -128,6 +169,15 @@ public class AlertService {
         if (alert.getStatus() != AlertStatus.CONFIRMED) {
             throw new BusinessException(AlertErrorCode.ALERT_NOT_CONFIRMED);
         }
+    }
+
+    // 비고는 선택값. 공백만 입력하면 저장하지 않음
+    private String normalizeResolutionNote(AlertResolveReq req) {
+        if (req == null || req.getResolutionNote() == null) {
+            return null;
+        }
+        String resolutionNote = req.getResolutionNote().trim();
+        return resolutionNote.isEmpty() ? null : resolutionNote;
     }
 
     // null 요청도 기본 목록 조회로 처리
@@ -162,6 +212,25 @@ public class AlertService {
         if (req.getFrom() != null && req.getTo() != null && req.getFrom().isAfter(req.getTo())) {
             throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
         }
+    }
+
+    // 선택 출력 ID는 양수만 허용
+    private void validateAlertIds(List<Long> alertIds) {
+        if (alertIds == null) {
+            return;
+        }
+        boolean invalid = alertIds.stream().anyMatch(alertId -> alertId == null || alertId < 1);
+        if (invalid) {
+            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+        }
+    }
+
+    // 엑셀 다운로드는 관리자 화면 기능이므로 GENERAL은 제외
+    private void validateAdminOrSuperAdmin(UserPrincipal actor) {
+        if (UserRole.SUPER_ADMIN.name().equals(actor.getRole()) || UserRole.ADMIN.name().equals(actor.getRole())) {
+            return;
+        }
+        throw new BusinessException(CommonErrorCode.FORBIDDEN);
     }
 
     // 조회 시작일은 해당 날짜 00:00:00 포함

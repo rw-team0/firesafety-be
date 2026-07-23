@@ -15,6 +15,7 @@
         <result property="confirmedBy" column="confirmed_by"/>
         <result property="confirmedAt" column="confirmed_at"/>
         <result property="resolvedAt" column="resolved_at"/>
+        <result property="resolutionNote" column="resolution_note"/>
     </resultMap>
 
     <resultMap id="alertListResultMap" type="com.rayworld.firesafety.alert.dto.res.AlertListRes">
@@ -24,6 +25,21 @@
         <result property="type" column="type"/>
         <result property="status" column="status"/>
         <result property="triggeredAt" column="triggered_at"/>
+    </resultMap>
+
+    <resultMap id="alertExportResultMap" type="com.rayworld.firesafety.alert.dto.res.AlertExportRes">
+        <id property="alertId" column="alert_id"/>
+        <result property="siteName" column="site_name"/>
+        <result property="panelName" column="panel_name"/>
+        <result property="circuitNo" column="circuit_no"/>
+        <result property="type" column="type"/>
+        <result property="source" column="source"/>
+        <result property="status" column="status"/>
+        <result property="triggeredAt" column="triggered_at"/>
+        <result property="confirmedByName" column="confirmed_by_name"/>
+        <result property="confirmedAt" column="confirmed_at"/>
+        <result property="resolvedAt" column="resolved_at"/>
+        <result property="resolutionNote" column="resolution_note"/>
     </resultMap>
 
     <sql id="alertListFromAndFilter">
@@ -45,6 +61,46 @@
             </if>
             <if test="toAt != null">
                 AND a.triggered_at &lt; #{toAt}
+            </if>
+            <if test="!superAdmin">
+                AND EXISTS (
+                    SELECT 1
+                    FROM user_site us
+                    WHERE us.user_id = #{userId}
+                      AND us.site_id = p.site_id
+                      AND us.deleted_at IS NULL
+                )
+            </if>
+        </where>
+    </sql>
+
+    <sql id="alertExportFromAndFilter">
+        FROM alert a
+        LEFT JOIN panel p ON p.panel_id = a.panel_id
+        LEFT JOIN site s ON s.site_id = p.site_id
+        LEFT JOIN circuit c ON c.circuit_id = a.circuit_id
+        LEFT JOIN `user` confirmer ON confirmer.user_id = a.confirmed_by
+        <where>
+            <if test="status != null">
+                AND a.status = #{status}
+            </if>
+            <if test="type != null">
+                AND a.type = #{type}
+            </if>
+            <if test="siteId != null">
+                AND p.site_id = #{siteId}
+            </if>
+            <if test="fromAt != null">
+                AND a.triggered_at &gt;= #{fromAt}
+            </if>
+            <if test="toAt != null">
+                AND a.triggered_at &lt; #{toAt}
+            </if>
+            <if test="alertIds != null and alertIds.size() &gt; 0">
+                AND a.alert_id IN
+                <foreach collection="alertIds" item="alertId" open="(" separator="," close=")">
+                    #{alertId}
+                </foreach>
             </if>
             <if test="!superAdmin">
                 AND EXISTS (
@@ -109,6 +165,27 @@
         <include refid="alertListFromAndFilter"/>
     </select>
 
+    <!-- 경보 이력 엑셀 다운로드: 화면 필터와 같은 권한 범위에서 전체/선택 rows 조회 -->
+    <select id="findAlertExportRows" resultMap="alertExportResultMap">
+        SELECT
+            a.alert_id,
+            s.name AS site_name,
+            p.name AS panel_name,
+            c.channel_no AS circuit_no,
+            a.type,
+            a.source,
+            a.status,
+            a.triggered_at,
+            confirmer.name AS confirmed_by_name,
+            a.confirmed_at,
+            a.resolved_at,
+            a.resolution_note
+        <include refid="alertExportFromAndFilter"/>
+        ORDER BY
+            a.triggered_at DESC,
+            a.alert_id DESC
+    </select>
+
     <!-- 상태 전이 전 권한 범위 안의 경보 조회 -->
     <select id="findAccessibleAlertById" resultMap="alertResultMap">
         SELECT
@@ -122,7 +199,8 @@
             a.triggered_at,
             a.confirmed_by,
             a.confirmed_at,
-            a.resolved_at
+            a.resolved_at,
+            a.resolution_note
         FROM alert a
         LEFT JOIN panel p ON p.panel_id = a.panel_id
         WHERE a.alert_id = #{alertId}
@@ -151,7 +229,8 @@
     <update id="resolveAlert">
         UPDATE alert
         SET status = 'RESOLVED',
-            resolved_at = CURRENT_TIMESTAMP
+            resolved_at = CURRENT_TIMESTAMP,
+            resolution_note = #{resolutionNote}
         WHERE alert_id = #{alertId}
           AND status = 'CONFIRMED'
     </update>

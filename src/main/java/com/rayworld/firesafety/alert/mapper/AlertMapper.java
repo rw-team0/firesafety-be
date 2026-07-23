@@ -1,5 +1,6 @@
 package com.rayworld.firesafety.alert.mapper;
 
+import com.rayworld.firesafety.alert.dto.res.AlertExportRes;
 import com.rayworld.firesafety.alert.dto.res.AlertListRes;
 import com.rayworld.firesafety.alert.model.Alert;
 import org.apache.ibatis.annotations.Mapper;
@@ -35,6 +36,16 @@ public interface AlertMapper {
                      @Param("fromAt") LocalDateTime fromAt,
                      @Param("toAt") LocalDateTime toAt);
 
+    // 경보 이력 엑셀 다운로드용 전체/선택 목록 조회
+    List<AlertExportRes> findAlertExportRows(@Param("userId") Long userId,
+                                             @Param("superAdmin") boolean superAdmin,
+                                             @Param("status") String status,
+                                             @Param("type") String type,
+                                             @Param("siteId") Long siteId,
+                                             @Param("fromAt") LocalDateTime fromAt,
+                                             @Param("toAt") LocalDateTime toAt,
+                                             @Param("alertIds") List<Long> alertIds);
+
     // 권한 범위 안의 경보 단건 조회
     Alert findAccessibleAlertById(@Param("userId") Long userId,
                                   @Param("superAdmin") boolean superAdmin,
@@ -44,7 +55,7 @@ public interface AlertMapper {
     int confirmAlert(@Param("alertId") Long alertId, @Param("userId") Long userId);
 
     // 확인된 경보를 조치완료 상태로 전환
-    int resolveAlert(@Param("alertId") Long alertId);
+    int resolveAlert(@Param("alertId") Long alertId, @Param("resolutionNote") String resolutionNote);
 
     // 같은 대상의 미조치 경보 존재 여부 확인
     boolean existsUnresolvedAlert(@Param("panelId") Long panelId,

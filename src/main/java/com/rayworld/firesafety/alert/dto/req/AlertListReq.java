@@ -7,6 +7,7 @@ import lombok.Setter;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Getter
 @Setter
@@ -24,4 +25,5 @@ public class AlertListReq {
 
     private Integer page;
     private Integer size;
+    private List<Long> alertIds;
 }

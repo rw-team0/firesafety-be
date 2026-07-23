@@ -1,6 +1,8 @@
 package com.rayworld.firesafety.alert.service;
 
 import com.rayworld.firesafety.alert.dto.req.AlertListReq;
+import com.rayworld.firesafety.alert.dto.req.AlertResolveReq;
+import com.rayworld.firesafety.alert.dto.res.AlertExportRes;
 import com.rayworld.firesafety.alert.dto.res.AlertListPageRes;
 import com.rayworld.firesafety.alert.dto.res.AlertListRes;
 import com.rayworld.firesafety.alert.exception.AlertErrorCode;
@@ -41,11 +43,14 @@ class AlertServiceTest {
     @Mock
     private AlertNotificationPublisher alertNotificationPublisher;
 
+    @Mock
+    private AlertExcelService alertExcelService;
+
     private AlertService alertService;
 
     @BeforeEach
     void setUp() {
-        alertService = new AlertService(alertMapper, alertNotificationPublisher);
+        alertService = new AlertService(alertMapper, alertNotificationPublisher, alertExcelService);
     }
 
     @AfterEach
@@ -117,6 +122,40 @@ class AlertServiceTest {
     }
 
     @Test
+    @DisplayName("API-023: ADMIN은 선택한 경보 이력을 엑셀로 다운로드할 수 있다")
+    void adminCanExportSelectedAlerts() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        AlertListReq req = new AlertListReq();
+        req.setAlertIds(List.of(10L, 11L));
+
+        List<AlertExportRes> rows = List.of(alertExportRes());
+        byte[] excel = new byte[]{1, 2, 3};
+        when(alertMapper.findAlertExportRows(2L, false, null, null, null, null, null, List.of(10L, 11L)))
+                .thenReturn(rows);
+        when(alertExcelService.createAlertHistoryExcel(rows, req)).thenReturn(excel);
+
+        // when
+        byte[] result = alertService.exportAlerts(req);
+
+        // then
+        assertThat(result).containsExactly(1, 2, 3);
+        verify(alertMapper).findAlertExportRows(2L, false, null, null, null, null, null, List.of(10L, 11L));
+    }
+
+    @Test
+    @DisplayName("API-023: GENERAL은 경보 이력 엑셀 다운로드를 할 수 없다")
+    void generalCannotExportAlerts() {
+        // given
+        loginAs(3L, UserRole.GENERAL);
+
+        // when & then
+        assertThatThrownBy(() -> alertService.exportAlerts(new AlertListReq()))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.FORBIDDEN));
+    }
+
+    @Test
     @DisplayName("API-021: UNCONFIRMED 경보를 CONFIRMED로 확인 처리한다")
     void confirmUnconfirmedAlert() {
         // given
@@ -151,14 +190,32 @@ class AlertServiceTest {
         // given
         loginAs(2L, UserRole.ADMIN);
         when(alertMapper.findAccessibleAlertById(2L, false, 10L)).thenReturn(alert(10L, AlertStatus.CONFIRMED));
-        when(alertMapper.resolveAlert(10L)).thenReturn(1);
+        when(alertMapper.resolveAlert(10L, null)).thenReturn(1);
 
         // when
         alertService.resolveAlert(10L);
 
         // then
-        verify(alertMapper).resolveAlert(10L);
+        verify(alertMapper).resolveAlert(10L, null);
         verify(alertNotificationPublisher).publishStatusChanged(org.mockito.Mockito.any(Alert.class), org.mockito.Mockito.eq(AlertStatus.RESOLVED));
+    }
+
+    @Test
+    @DisplayName("API-022: 조치완료 비고는 앞뒤 공백을 제거해서 저장한다")
+    void resolveAlertWithResolutionNote() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        AlertResolveReq req = new AlertResolveReq();
+        req.setResolutionNote("  케이블 재접속 완료  ");
+
+        when(alertMapper.findAccessibleAlertById(2L, false, 10L)).thenReturn(alert(10L, AlertStatus.CONFIRMED));
+        when(alertMapper.resolveAlert(10L, "케이블 재접속 완료")).thenReturn(1);
+
+        // when
+        alertService.resolveAlert(10L, req);
+
+        // then
+        verify(alertMapper).resolveAlert(10L, "케이블 재접속 완료");
     }
 
     @Test
@@ -184,6 +241,18 @@ class AlertServiceTest {
     private AlertListRes alertListRes() {
         AlertListRes res = new AlertListRes();
         res.setAlertId(1L);
+        res.setPanelName("분전반A");
+        res.setCircuitNo(4);
+        res.setType(AlertType.ARC);
+        res.setStatus(AlertStatus.UNCONFIRMED);
+        res.setTriggeredAt(LocalDateTime.of(2026, 7, 23, 10, 0));
+        return res;
+    }
+
+    private AlertExportRes alertExportRes() {
+        AlertExportRes res = new AlertExportRes();
+        res.setAlertId(10L);
+        res.setSiteName("레이월드01");
         res.setPanelName("분전반A");
         res.setCircuitNo(4);
         res.setType(AlertType.ARC);
