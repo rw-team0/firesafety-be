@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.rayworld.firesafety.monitoring.mapper.PanelStatusAggregationMapper">
+    <resultMap id="circuitStatusSnapshotResultMap" type="com.rayworld.firesafety.monitoring.model.CircuitStatusSnapshot">
+        <id property="circuitId" column="circuit_id"/>
+        <result property="channelNo" column="channel_no"/>
+        <result property="deviceArcFlag" column="device_arc_flag"/>
+        <result property="latestAiVerdict" column="latest_ai_verdict"/>
+    </resultMap>
+
+    <!-- 분전반의 가장 최근 수신 프레임 error_bits 조회 -->
+    <select id="findLatestErrorBitsByPanelId" resultType="string">
+        SELECT sf.error_bits
+        FROM sensor_frame sf
+        WHERE sf.panel_id = #{panelId}
+        ORDER BY sf.frame_id DESC
+        LIMIT 1
+    </select>
+
+    <!-- 회로별 최신 하드웨어 ARC flag와 최신 AI 판정 조회 -->
+    <select id="findCircuitStatusSnapshots" resultMap="circuitStatusSnapshotResultMap">
+        SELECT
+            c.circuit_id,
+            c.channel_no,
+            latest_sfc.device_arc_flag,
+            latest_ai.verdict AS latest_ai_verdict
+        FROM circuit c
+        LEFT JOIN sensor_frame_circuit latest_sfc
+            ON latest_sfc.reading_id = (
+                SELECT MAX(sfc.reading_id)
+                FROM sensor_frame_circuit sfc
+                WHERE sfc.circuit_id = c.circuit_id
+            )
+        LEFT JOIN ai_diagnosis_result latest_ai
+            ON latest_ai.result_id = (
+                SELECT MAX(ai.result_id)
+                FROM ai_diagnosis_result ai
+                WHERE ai.circuit_id = c.circuit_id
+            )
+        WHERE c.panel_id = #{panelId}
+          AND c.deleted_at IS NULL
+        ORDER BY c.channel_no ASC
+    </select>
+
+    <!-- 집계 결과를 분전반 현재 상태로 저장 -->
+    <update id="updatePanelStatus">
+        UPDATE panel
+        SET status = #{status},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE panel_id = #{panelId}
+          AND deleted_at IS NULL
+    </update>
+</mapper>

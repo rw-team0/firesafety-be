@@ -6,6 +6,7 @@ import com.rayworld.firesafety.facility.mapper.CircuitMapper;
 import com.rayworld.firesafety.facility.mapper.PanelMapper;
 import com.rayworld.firesafety.facility.model.Circuit;
 import com.rayworld.firesafety.facility.model.Panel;
+import com.rayworld.firesafety.monitoring.service.PanelStatusAggregationService;
 import com.rayworld.firesafety.sensor.dto.res.SensorFrameIngestRes;
 import com.rayworld.firesafety.sensor.exception.SensorErrorCode;
 import com.rayworld.firesafety.sensor.mapper.SensorFrameCircuitMapper;
@@ -36,6 +37,7 @@ public class SensorIngestService {
     private final SensorFrameMapper sensorFrameMapper;
     private final SensorFrameCircuitMapper sensorFrameCircuitMapper;
     private final DeviceAlertService deviceAlertService;
+    private final PanelStatusAggregationService panelStatusAggregationService;
 
     // 디바이스 프레임 수신
     // 1. 자리수 검증 → 2. 분전반 조회 → 3. 프레임 저장 → 4. 회로별 값 저장 → 5. 통신시각 갱신
@@ -51,6 +53,7 @@ public class SensorIngestService {
             sensorFrameMapper.insertSensorFrame(sensorFrame);
             Map<Integer, Long> circuitIdsByChannelNo = saveCircuitFrames(sensorFrame.getFrameId(), panel.getPanelId(), circuitCount, params);
             deviceAlertService.createDeviceAlerts(panel.getPanelId(), params.get("aerror"), circuitIdsByChannelNo);
+            panelStatusAggregationService.aggregatePanelStatus(panel.getPanelId());
             panelMapper.updatePanelCommunication(panel.getPanelId());
 
             // Mapper insert 후 received_at은 DB 기본값이므로 응답용 현재 시각을 채워준다.

@@ -6,6 +6,7 @@ import com.rayworld.firesafety.facility.mapper.CircuitMapper;
 import com.rayworld.firesafety.facility.mapper.PanelMapper;
 import com.rayworld.firesafety.facility.model.Circuit;
 import com.rayworld.firesafety.facility.model.Panel;
+import com.rayworld.firesafety.monitoring.service.PanelStatusAggregationService;
 import com.rayworld.firesafety.sensor.dto.res.SensorFrameIngestRes;
 import com.rayworld.firesafety.sensor.exception.SensorErrorCode;
 import com.rayworld.firesafety.sensor.mapper.SensorFrameCircuitMapper;
@@ -50,6 +51,9 @@ class SensorIngestServiceTest {
     @Mock
     private DeviceAlertService deviceAlertService;
 
+    @Mock
+    private PanelStatusAggregationService panelStatusAggregationService;
+
     private SensorIngestService sensorIngestService;
 
     @BeforeEach
@@ -59,7 +63,8 @@ class SensorIngestServiceTest {
                 circuitMapper,
                 sensorFrameMapper,
                 sensorFrameCircuitMapper,
-                deviceAlertService
+                deviceAlertService,
+                panelStatusAggregationService
         );
     }
 
@@ -103,6 +108,7 @@ class SensorIngestServiceTest {
                 org.mockito.Mockito.eq("18000000"),
                 org.mockito.Mockito.anyMap()
         );
+        verify(panelStatusAggregationService).aggregatePanelStatus(10L);
         verify(panelMapper).updatePanelCommunication(10L);
     }
 
