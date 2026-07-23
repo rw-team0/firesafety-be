@@ -23,7 +23,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -142,10 +144,18 @@ public class SensorIngestService {
     }
 
     // 회로별 am/count와 하드웨어 ARC bit 저장
+    // 회로가 삭제/미등록인 채널은 건너뛴다 — 채널 하나가 없다고 나머지 채널·프레임 전체가 실패하면 안 됨
+    // (회로 삭제 후 panel.circuit_count가 안 줄어든 경우에도 분전반 통신 자체는 계속 정상 처리되게 함)
     private Map<Integer, Long> saveCircuitFrames(Long frameId, Long panelId, int circuitCount, Map<String, String> params) {
+        Map<Integer, Circuit> circuitsByChannelNo = circuitMapper.findActiveCircuitsByPanelId(panelId).stream()
+                .collect(Collectors.toMap(Circuit::getChannelNo, Function.identity()));
+
         Map<Integer, Long> circuitIdsByChannelNo = new LinkedHashMap<>();
         for (int channelNo = 1; channelNo <= circuitCount; channelNo++) {
-            Circuit circuit = findCircuit(panelId, channelNo);
+            Circuit circuit = circuitsByChannelNo.get(channelNo);
+            if (circuit == null) {
+                continue;
+            }
             circuitIdsByChannelNo.put(channelNo, circuit.getCircuitId());
 
             SensorFrameCircuit frameCircuit = new SensorFrameCircuit();
@@ -158,15 +168,6 @@ public class SensorIngestService {
             sensorFrameCircuitMapper.insertSensorFrameCircuit(frameCircuit);
         }
         return circuitIdsByChannelNo;
-    }
-
-    // 회로가 미등록이면 sensor_frame만 저장되는 부분 실패를 막는다.
-    private Circuit findCircuit(Long panelId, int channelNo) {
-        Circuit circuit = circuitMapper.findActiveCircuitByPanelIdAndChannelNo(panelId, channelNo);
-        if (circuit == null) {
-            throw new BusinessException(SensorErrorCode.CIRCUIT_NOT_FOUND);
-        }
-        return circuit;
     }
 
     // door 0은 닫힘(false), 1은 열림(true)
