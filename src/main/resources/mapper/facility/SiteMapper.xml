@@ -3,5 +3,104 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.rayworld.firesafety.facility.mapper.SiteMapper">
-    <!-- 현장(site) 등록/조회 SQL을 배치할 Mapper  -->
+    <resultMap id="siteResultMap" type="com.rayworld.firesafety.facility.model.Site">
+        <id property="siteId" column="site_id"/>
+        <result property="name" column="name"/>
+        <result property="address" column="address"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="deletedAt" column="deleted_at"/>
+    </resultMap>
+
+    <resultMap id="facilityAuditLogResultMap" type="com.rayworld.firesafety.facility.model.FacilityAuditLog">
+        <id property="auditId" column="audit_id"/>
+        <result property="targetType" column="target_type"/>
+        <result property="targetId" column="target_id"/>
+        <result property="actorUserId" column="actor_user_id"/>
+        <result property="action" column="action"/>
+        <result property="beforeData" column="before_data"/>
+        <result property="afterData" column="after_data"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <!-- 최고관리자가 신규 현장을 등록 -->
+    <insert id="insertSite"
+            parameterType="com.rayworld.firesafety.facility.model.Site"
+            useGeneratedKeys="true"
+            keyProperty="siteId">
+        INSERT INTO site (
+            name,
+            address
+        ) VALUES (
+            #{name},
+            #{address}
+        )
+    </insert>
+
+    <!-- 등록/수정/삭제 대상 현장 활성 여부 확인 -->
+    <select id="findActiveSiteById" resultMap="siteResultMap">
+        SELECT
+            site_id,
+            name,
+            address,
+            created_at,
+            updated_at,
+            deleted_at
+        FROM site
+        WHERE site_id = #{siteId}
+          AND deleted_at IS NULL
+    </select>
+
+    <!-- SUPER_ADMIN은 전체 활성 현장 조회 -->
+    <select id="findActiveSites" resultMap="siteResultMap">
+        SELECT
+            site_id,
+            name,
+            address,
+            created_at,
+            updated_at,
+            deleted_at
+        FROM site
+        WHERE deleted_at IS NULL
+        ORDER BY site_id DESC
+    </select>
+
+    <!-- ADMIN/GENERAL은 배정된 활성 현장만 조회 -->
+    <select id="findActiveSitesByUserId" resultMap="siteResultMap">
+        SELECT
+            s.site_id,
+            s.name,
+            s.address,
+            s.created_at,
+            s.updated_at,
+            s.deleted_at
+        FROM site s
+        INNER JOIN user_site us ON us.site_id = s.site_id
+        WHERE us.user_id = #{userId}
+          AND us.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+        ORDER BY s.site_id DESC
+    </select>
+
+    <!-- 현장/분전반/회로 등록·수정·삭제 이력 저장 -->
+    <insert id="insertFacilityAuditLog"
+            parameterType="com.rayworld.firesafety.facility.model.FacilityAuditLog"
+            useGeneratedKeys="true"
+            keyProperty="auditId">
+        INSERT INTO facility_audit_log (
+            target_type,
+            target_id,
+            actor_user_id,
+            action,
+            before_data,
+            after_data
+        ) VALUES (
+            #{targetType},
+            #{targetId},
+            #{actorUserId},
+            #{action},
+            #{beforeData},
+            #{afterData}
+        )
+    </insert>
 </mapper>

@@ -11,12 +11,14 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Site {
+public class FacilityAuditLog {
 
-    private Long siteId;
-    private String name;
-    private String address;
+    private Long auditId;
+    private FacilityAuditTargetType targetType;
+    private Long targetId;
+    private Long actorUserId;
+    private FacilityAuditAction action;
+    private String beforeData;
+    private String afterData;
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-    private LocalDateTime deletedAt;
 }
