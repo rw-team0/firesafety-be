@@ -43,7 +43,7 @@ public class FcmPushService {
             MulticastMessage message = MulticastMessage.builder()
                     .addAllTokens(tokens)
                     .setNotification(Notification.builder()
-                            .setTitle("전기화재 경보 발생")
+                            .setTitle("ArcGuard 경보 발생")
                             .setBody(buildBody(event))
                             .build())
                     .putData("eventType", event.getEventType())
