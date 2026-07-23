@@ -4,6 +4,7 @@ import com.rayworld.firesafety.auth.dto.req.FcmTokenReq;
 import com.rayworld.firesafety.auth.dto.req.UserBulkDeleteReq;
 import com.rayworld.firesafety.auth.dto.req.UserCreateReq;
 import com.rayworld.firesafety.auth.dto.req.UserUpdateReq;
+import com.rayworld.firesafety.auth.dto.res.EmailCheckRes;
 import com.rayworld.firesafety.auth.dto.res.UserAuditLogRes;
 import com.rayworld.firesafety.auth.dto.res.UserBulkDeleteRes;
 import com.rayworld.firesafety.auth.dto.res.UserCreateRes;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -63,6 +65,15 @@ public class UserController {
     public ResultResponse<Void> updateFcmToken(@RequestBody FcmTokenReq req) {
         userService.updateFcmToken(req);
         return ResultResponse.success("FCM 토큰 등록 성공", null);
+    }
+
+    // 이메일 중복확인 (GET /api/users/check-email)
+    // 계정 등록 폼에서 실시간으로 사용, ADMIN 이상만 호출 가능
+    @Operation(summary = "이메일 중복확인", description = "계정 등록 폼에서 실시간으로 이메일 중복 여부를 확인한다. ADMIN 이상만 호출 가능하다.")
+    @GetMapping("/check-email")
+    public ResultResponse<EmailCheckRes> checkEmail(@RequestParam String email) {
+        EmailCheckRes result = userService.checkEmailDuplicate(email);
+        return ResultResponse.success("이메일 중복확인 성공", result);
     }
 
     // 계정 등록 (POST /api/users)

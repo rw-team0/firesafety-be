@@ -7,6 +7,7 @@ import com.rayworld.firesafety.auth.dto.req.FcmTokenReq;
 import com.rayworld.firesafety.auth.dto.req.UserBulkDeleteReq;
 import com.rayworld.firesafety.auth.dto.req.UserCreateReq;
 import com.rayworld.firesafety.auth.dto.req.UserUpdateReq;
+import com.rayworld.firesafety.auth.dto.res.EmailCheckRes;
 import com.rayworld.firesafety.auth.dto.res.UserAuditLogRes;
 import com.rayworld.firesafety.auth.dto.res.UserBulkDeleteRes;
 import com.rayworld.firesafety.auth.dto.res.UserCreateRes;
@@ -117,6 +118,15 @@ public class UserService {
         insertUserAuditLog(user, actor.getUserId(), UserAuditAction.CREATE, null, toAuditJson(user));
 
         return UserCreateRes.from(user);
+    }
+
+    // 이메일 중복확인 (계정 등록 폼에서 실시간 확인용). 계정 생성 권한이 있는 ADMIN 이상만 사용
+    @Transactional(readOnly = true)
+    public EmailCheckRes checkEmailDuplicate(String rawEmail) {
+        UserPrincipal actor = getCurrentUser();
+        requireAdminOrSuperAdmin(actor);
+        String email = credentialPolicy.normalizeEmail(rawEmail);
+        return new EmailCheckRes(authMapper.existsUserByEmail(email));
     }
 
     // 계정 수정
@@ -423,6 +433,14 @@ public class UserService {
     // SUPER_ADMIN 권한 확인
     private void requireSuperAdmin(UserPrincipal actor) {
         if (!UserRole.SUPER_ADMIN.name().equals(actor.getRole())) {
+            throw new BusinessException(AuthErrorCode.FORBIDDEN_ROLE);
+        }
+    }
+
+    // ADMIN 이상 권한 확인
+    private void requireAdminOrSuperAdmin(UserPrincipal actor) {
+        UserRole actorRole = UserRole.valueOf(actor.getRole());
+        if (actorRole != UserRole.ADMIN && actorRole != UserRole.SUPER_ADMIN) {
             throw new BusinessException(AuthErrorCode.FORBIDDEN_ROLE);
         }
     }
