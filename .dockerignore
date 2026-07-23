@@ -1,0 +1,12 @@
+build/
+.gradle/
+.idea/
+.serena/
+.agent-docs/
+.env
+.env.example
+.env.production
+.env.production.example
+*.log
+.git/
+.DS_Store
