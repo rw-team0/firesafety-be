@@ -82,6 +82,19 @@
         ORDER BY s.site_id DESC
     </select>
 
+    <!-- ADMIN/GENERAL이 해당 현장에 배정되어 있는지 확인 -->
+    <select id="existsActiveSiteAssignment" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM user_site us
+            INNER JOIN site s ON s.site_id = us.site_id
+            WHERE us.user_id = #{userId}
+              AND us.site_id = #{siteId}
+              AND us.deleted_at IS NULL
+              AND s.deleted_at IS NULL
+        )
+    </select>
+
     <!-- 최고관리자가 현장 기본 정보를 수정 -->
     <update id="updateSite" parameterType="com.rayworld.firesafety.facility.model.Site">
         UPDATE site

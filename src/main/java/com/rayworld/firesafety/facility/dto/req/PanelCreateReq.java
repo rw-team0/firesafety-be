@@ -1,29 +1,21 @@
-package com.rayworld.firesafety.facility.model;
+package com.rayworld.firesafety.facility.dto.req;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Panel {
+public class PanelCreateReq {
 
-    private Long panelId;
-    private Long siteId;
     private String name;
     private String deviceSerial;
     private String mNo;
     private LocalDate installedAt;
-    private PanelStatus status;
-    private Boolean isOnline;
-    private LocalDateTime lastCommunicatedAt;
     private Integer circuitCount;
     private BigDecimal leakMaThreshold;
     private BigDecimal tempThreshold;
@@ -31,7 +23,4 @@ public class Panel {
     private BigDecimal overcurrentThreshold;
     private Integer gasThreshold;
     private Integer fireThreshold;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-    private LocalDateTime deletedAt;
 }

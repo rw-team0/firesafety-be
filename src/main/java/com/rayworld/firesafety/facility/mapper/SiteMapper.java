@@ -23,6 +23,9 @@ public interface SiteMapper {
     // ADMIN/GENERAL 담당 현장 목록 조회
     List<Site> findActiveSitesByUserId(@Param("userId") Long userId);
 
+    // ADMIN/GENERAL 담당 현장 배정 여부 확인
+    boolean existsActiveSiteAssignment(@Param("userId") Long userId, @Param("siteId") Long siteId);
+
     // 현장 기본 정보 수정
     int updateSite(Site site);
 
