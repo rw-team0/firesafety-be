@@ -48,6 +48,9 @@ dependencies {
     // Firebase Admin SDK (FCM 서버 발송)
     implementation 'com.google.firebase:firebase-admin:9.4.3'
 
+    // OpenFeign 외부 API 호출 (AI 예측 서버 연동)
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign:5.0.2'
+
     // SMTP 메일 발송 (Gmail, Amazon SES 등 제공자 교체 가능)
     implementation 'org.springframework.boot:spring-boot-starter-mail'
 

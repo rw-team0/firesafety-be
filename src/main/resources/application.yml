@@ -60,6 +60,15 @@ constants:
   firebase:
     credentials-path: ${FIREBASE_CREDENTIALS_PATH:}
 
+  ai-prediction:
+    enabled: ${AI_PREDICTION_ENABLED:false}
+    base-url: ${AI_PREDICTION_BASE_URL:http://localhost:8000}
+    path: ${AI_PREDICTION_PATH:/predict}
+    min-sample-size: ${AI_PREDICTION_MIN_SAMPLE_SIZE:30}
+    sample-size: ${AI_PREDICTION_SAMPLE_SIZE:60}
+    scheduler-delay-ms: ${AI_PREDICTION_SCHEDULER_DELAY_MS:60000}
+    scheduler-initial-delay-ms: ${AI_PREDICTION_SCHEDULER_INITIAL_DELAY_MS:60000}
+
   password-reset:
     base-url: ${PASSWORD_RESET_BASE_URL:}
     token-expiration-minutes: ${PASSWORD_RESET_TOKEN_EXPIRATION_MINUTES:30}

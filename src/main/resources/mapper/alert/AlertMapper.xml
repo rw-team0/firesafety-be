@@ -167,4 +167,16 @@
               AND status IN ('UNCONFIRMED', 'CONFIRMED')
         )
     </select>
+
+    <!-- 같은 회로의 미조치 경보가 있으면 중복 생성하지 않는다 -->
+    <select id="existsUnresolvedCircuitAlert" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM alert
+            WHERE circuit_id = #{circuitId}
+              AND source = #{source}
+              AND type = #{type}
+              AND status IN ('UNCONFIRMED', 'CONFIRMED')
+        )
+    </select>
 </mapper>

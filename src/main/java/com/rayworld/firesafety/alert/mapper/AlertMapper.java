@@ -50,4 +50,9 @@ public interface AlertMapper {
     boolean existsUnresolvedAlert(@Param("panelId") Long panelId,
                                   @Param("source") String source,
                                   @Param("type") String type);
+
+    // 같은 회로의 미조치 경보 존재 여부 확인
+    boolean existsUnresolvedCircuitAlert(@Param("circuitId") Long circuitId,
+                                         @Param("source") String source,
+                                         @Param("type") String type);
 }

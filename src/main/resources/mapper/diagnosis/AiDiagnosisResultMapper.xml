@@ -3,5 +3,103 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.rayworld.firesafety.diagnosis.mapper.AiDiagnosisResultMapper">
-    <!-- AI 판정 결과 저장/조회 SQL을 배치할 Mapper -->
+    <resultMap id="aiPredictionPanelTargetResultMap" type="com.rayworld.firesafety.diagnosis.model.AiPredictionPanelTarget">
+        <id property="panelId" column="panel_id"/>
+        <result property="mNo" column="m_no"/>
+    </resultMap>
+
+    <resultMap id="aiPredictionCircuitTargetResultMap" type="com.rayworld.firesafety.diagnosis.model.AiPredictionCircuitTarget">
+        <id property="circuitId" column="circuit_id"/>
+        <result property="channelNo" column="channel_no"/>
+        <result property="latestFrameId" column="latest_frame_id"/>
+    </resultMap>
+
+    <resultMap id="aiPredictionSampleResultMap" type="com.rayworld.firesafety.diagnosis.dto.req.AiPredictionSampleReq">
+        <result property="am" column="am"/>
+        <result property="count" column="count"/>
+    </resultMap>
+
+    <!-- AI 판정 결과 저장 -->
+    <insert id="insertAiDiagnosisResult"
+            parameterType="com.rayworld.firesafety.diagnosis.model.AiDiagnosisResult"
+            useGeneratedKeys="true"
+            keyProperty="resultId">
+        INSERT INTO ai_diagnosis_result (
+            circuit_id,
+            frame_id,
+            verdict,
+            confidence
+        ) VALUES (
+            #{circuitId},
+            #{frameId},
+            #{verdict},
+            #{confidence}
+        )
+    </insert>
+
+    <!-- 마지막 AI 판정 이후 새 샘플이 충분히 쌓인 분전반 조회 -->
+    <select id="findPredictionPanels" resultMap="aiPredictionPanelTargetResultMap">
+        SELECT DISTINCT
+            p.panel_id,
+            p.m_no
+        FROM panel p
+        INNER JOIN site s ON s.site_id = p.site_id
+        INNER JOIN circuit c ON c.panel_id = p.panel_id
+        WHERE p.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+          AND c.deleted_at IS NULL
+          AND p.m_no IS NOT NULL
+          AND (
+              SELECT COUNT(*)
+              FROM sensor_frame_circuit sfc
+              INNER JOIN sensor_frame sf ON sf.frame_id = sfc.frame_id
+              WHERE sfc.circuit_id = c.circuit_id
+                AND sf.frame_id &gt; COALESCE((
+                    SELECT MAX(ai.frame_id)
+                    FROM ai_diagnosis_result ai
+                    WHERE ai.circuit_id = c.circuit_id
+                ), 0)
+          ) &gt;= #{minSampleSize}
+        ORDER BY p.panel_id ASC
+    </select>
+
+    <!-- AI 호출 대상 회로 조회: 마지막 판정 이후 새 샘플 수 기준 -->
+    <select id="findPredictionCircuitTargets" resultMap="aiPredictionCircuitTargetResultMap">
+        SELECT
+            c.circuit_id,
+            c.channel_no,
+            MAX(sf.frame_id) AS latest_frame_id
+        FROM circuit c
+        INNER JOIN sensor_frame_circuit sfc ON sfc.circuit_id = c.circuit_id
+        INNER JOIN sensor_frame sf ON sf.frame_id = sfc.frame_id
+        WHERE c.panel_id = #{panelId}
+          AND c.deleted_at IS NULL
+          AND sf.frame_id &gt; COALESCE((
+              SELECT MAX(ai.frame_id)
+              FROM ai_diagnosis_result ai
+              WHERE ai.circuit_id = c.circuit_id
+          ), 0)
+        GROUP BY c.circuit_id, c.channel_no
+        HAVING COUNT(*) &gt;= #{minSampleSize}
+        ORDER BY c.channel_no ASC
+        LIMIT 10
+    </select>
+
+    <!-- AI 서버에 보낼 회로별 최근 샘플을 시간순으로 조회 -->
+    <select id="findRecentSamples" resultMap="aiPredictionSampleResultMap">
+        SELECT
+            latest.current_a AS am,
+            latest.arc_counter AS `count`
+        FROM (
+            SELECT
+                sfc.current_a,
+                sfc.arc_counter,
+                sfc.reading_id
+            FROM sensor_frame_circuit sfc
+            WHERE sfc.circuit_id = #{circuitId}
+            ORDER BY sfc.reading_id DESC
+            LIMIT #{sampleSize}
+        ) latest
+        ORDER BY latest.reading_id ASC
+    </select>
 </mapper>
