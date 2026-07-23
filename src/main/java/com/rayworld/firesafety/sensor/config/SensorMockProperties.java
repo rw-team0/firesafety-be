@@ -13,4 +13,5 @@ public class SensorMockProperties {
 
     private boolean enabled;
     private long delayMs;
+    private long aiDelayMs;
 }

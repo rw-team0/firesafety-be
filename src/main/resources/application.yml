@@ -81,6 +81,7 @@ constants:
   sensor-mock:
     enabled: ${SENSOR_MOCK_ENABLED:false}
     delay-ms: ${SENSOR_MOCK_DELAY_MS:5000}
+    ai-delay-ms: ${SENSOR_MOCK_AI_DELAY_MS:20000}
 
 monitoring:
   communication-lost-check-delay-ms: ${COMMUNICATION_LOST_CHECK_DELAY_MS:30000}
