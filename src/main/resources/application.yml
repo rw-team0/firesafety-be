@@ -58,6 +58,7 @@ constants:
       phone: ${BOOTSTRAP_SUPER_ADMIN_PHONE:}
 
   firebase:
+    enabled: ${FIREBASE_ENABLED:false}
     credentials-path: ${FIREBASE_CREDENTIALS_PATH:}
 
   ai-prediction:

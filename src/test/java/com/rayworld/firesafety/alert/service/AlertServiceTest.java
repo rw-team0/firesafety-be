@@ -38,11 +38,14 @@ class AlertServiceTest {
     @Mock
     private AlertMapper alertMapper;
 
+    @Mock
+    private AlertNotificationPublisher alertNotificationPublisher;
+
     private AlertService alertService;
 
     @BeforeEach
     void setUp() {
-        alertService = new AlertService(alertMapper);
+        alertService = new AlertService(alertMapper, alertNotificationPublisher);
     }
 
     @AfterEach
@@ -126,6 +129,7 @@ class AlertServiceTest {
 
         // then
         verify(alertMapper).confirmAlert(10L, 2L);
+        verify(alertNotificationPublisher).publishStatusChanged(org.mockito.Mockito.any(Alert.class), org.mockito.Mockito.eq(AlertStatus.CONFIRMED));
     }
 
     @Test
@@ -154,6 +158,7 @@ class AlertServiceTest {
 
         // then
         verify(alertMapper).resolveAlert(10L);
+        verify(alertNotificationPublisher).publishStatusChanged(org.mockito.Mockito.any(Alert.class), org.mockito.Mockito.eq(AlertStatus.RESOLVED));
     }
 
     @Test

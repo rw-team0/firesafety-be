@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SystemAlertService {
 
     private final AlertMapper alertMapper;
+    private final AlertNotificationPublisher alertNotificationPublisher;
 
     // 통신두절 SYSTEM 경보 생성
     // 이미 미조치 통신두절 경보가 있으면 같은 경보를 반복해서 쌓지 않는다.
@@ -34,5 +35,6 @@ public class SystemAlertService {
         alert.setType(AlertType.COMM_LOST);
         alert.setStatus(AlertStatus.UNCONFIRMED);
         alertMapper.insertAlert(alert);
+        alertNotificationPublisher.publishCreated(alert);
     }
 }

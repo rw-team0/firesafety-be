@@ -179,4 +179,11 @@
               AND status IN ('UNCONFIRMED', 'CONFIRMED')
         )
     </select>
+
+    <!-- 경보 후속 알림 대상 현장 조회 -->
+    <select id="findSiteIdByPanelId" resultType="long">
+        SELECT site_id
+        FROM panel
+        WHERE panel_id = #{panelId}
+    </select>
 </mapper>

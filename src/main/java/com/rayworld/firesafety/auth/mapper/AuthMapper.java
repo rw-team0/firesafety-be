@@ -52,6 +52,9 @@ public interface AuthMapper {
     // 현재 로그인 사용자의 FCM 토큰 저장
     int updateFcmToken(@Param("userId") Long userId, @Param("fcmToken") String fcmToken);
 
+    // 경보 발생 현장의 담당자와 SUPER_ADMIN FCM 토큰 조회
+    List<String> findFcmTokensForAlertSite(@Param("siteId") Long siteId);
+
     // 비밀번호 재설정 요청 전 기존 미사용 토큰 만료 처리
     void expireUnusedPasswordResetTokensByUserId(@Param("userId") Long userId);
 

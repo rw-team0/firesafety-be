@@ -3,7 +3,10 @@ package com.rayworld.firesafety.monitoring.service;
 import com.rayworld.firesafety.auth.model.UserRole;
 import com.rayworld.firesafety.common.security.JwtUser;
 import com.rayworld.firesafety.common.security.UserPrincipal;
+import com.rayworld.firesafety.facility.mapper.SiteMapper;
 import com.rayworld.firesafety.facility.model.PanelStatus;
+import com.rayworld.firesafety.facility.model.Site;
+import com.rayworld.firesafety.monitoring.dto.req.DashboardSummaryReq;
 import com.rayworld.firesafety.monitoring.dto.res.DashboardPanelRes;
 import com.rayworld.firesafety.monitoring.dto.res.DashboardSummaryRes;
 import com.rayworld.firesafety.monitoring.mapper.DashboardMapper;
@@ -30,11 +33,14 @@ class DashboardServiceTest {
     @Mock
     private DashboardMapper dashboardMapper;
 
+    @Mock
+    private SiteMapper siteMapper;
+
     private DashboardService dashboardService;
 
     @BeforeEach
     void setUp() {
-        dashboardService = new DashboardService(dashboardMapper);
+        dashboardService = new DashboardService(dashboardMapper, siteMapper);
     }
 
     @AfterEach
@@ -47,17 +53,17 @@ class DashboardServiceTest {
     void superAdminCanGetDashboardSummary() {
         // given
         loginAs(1L, UserRole.SUPER_ADMIN);
-        when(dashboardMapper.countAccessiblePanels(1L, true)).thenReturn(4L);
-        when(dashboardMapper.countAccessiblePanelsByStatus(1L, true, "NORMAL")).thenReturn(1L);
-        when(dashboardMapper.countAccessiblePanelsByStatus(1L, true, "CAUTION")).thenReturn(1L);
-        when(dashboardMapper.countAccessiblePanelsByStatus(1L, true, "RISK")).thenReturn(1L);
-        when(dashboardMapper.countAccessiblePanelsByStatus(1L, true, "OFFLINE")).thenReturn(1L);
-        when(dashboardMapper.countUnconfirmedAlerts(1L, true)).thenReturn(3L);
-        when(dashboardMapper.countUnresolvedAlerts(1L, true)).thenReturn(5L);
-        when(dashboardMapper.findDashboardPanels(1L, true)).thenReturn(List.of(panel(10L, PanelStatus.OFFLINE)));
+        when(dashboardMapper.countAccessiblePanels(1L, true, null)).thenReturn(4L);
+        when(dashboardMapper.countAccessiblePanelsByStatus(1L, true, null, "NORMAL")).thenReturn(1L);
+        when(dashboardMapper.countAccessiblePanelsByStatus(1L, true, null, "CAUTION")).thenReturn(1L);
+        when(dashboardMapper.countAccessiblePanelsByStatus(1L, true, null, "RISK")).thenReturn(1L);
+        when(dashboardMapper.countAccessiblePanelsByStatus(1L, true, null, "OFFLINE")).thenReturn(1L);
+        when(dashboardMapper.countUnconfirmedAlerts(1L, true, null)).thenReturn(3L);
+        when(dashboardMapper.countUnresolvedAlerts(1L, true, null)).thenReturn(5L);
+        when(dashboardMapper.findDashboardPanels(1L, true, null)).thenReturn(List.of(panel(10L, PanelStatus.OFFLINE)));
 
         // when
-        DashboardSummaryRes result = dashboardService.getSummary();
+        DashboardSummaryRes result = dashboardService.getSummary(new DashboardSummaryReq());
 
         // then
         assertThat(result.getTotalPanelCount()).isEqualTo(4L);
@@ -72,21 +78,47 @@ class DashboardServiceTest {
     void adminCanGetAssignedSiteDashboardSummary() {
         // given
         loginAs(2L, UserRole.ADMIN);
-        when(dashboardMapper.countAccessiblePanels(2L, false)).thenReturn(1L);
-        when(dashboardMapper.countAccessiblePanelsByStatus(2L, false, "NORMAL")).thenReturn(1L);
-        when(dashboardMapper.countAccessiblePanelsByStatus(2L, false, "CAUTION")).thenReturn(0L);
-        when(dashboardMapper.countAccessiblePanelsByStatus(2L, false, "RISK")).thenReturn(0L);
-        when(dashboardMapper.countAccessiblePanelsByStatus(2L, false, "OFFLINE")).thenReturn(0L);
-        when(dashboardMapper.countUnconfirmedAlerts(2L, false)).thenReturn(0L);
-        when(dashboardMapper.countUnresolvedAlerts(2L, false)).thenReturn(0L);
-        when(dashboardMapper.findDashboardPanels(2L, false)).thenReturn(List.of(panel(20L, PanelStatus.NORMAL)));
+        when(dashboardMapper.countAccessiblePanels(2L, false, null)).thenReturn(1L);
+        when(dashboardMapper.countAccessiblePanelsByStatus(2L, false, null, "NORMAL")).thenReturn(1L);
+        when(dashboardMapper.countAccessiblePanelsByStatus(2L, false, null, "CAUTION")).thenReturn(0L);
+        when(dashboardMapper.countAccessiblePanelsByStatus(2L, false, null, "RISK")).thenReturn(0L);
+        when(dashboardMapper.countAccessiblePanelsByStatus(2L, false, null, "OFFLINE")).thenReturn(0L);
+        when(dashboardMapper.countUnconfirmedAlerts(2L, false, null)).thenReturn(0L);
+        when(dashboardMapper.countUnresolvedAlerts(2L, false, null)).thenReturn(0L);
+        when(dashboardMapper.findDashboardPanels(2L, false, null)).thenReturn(List.of(panel(20L, PanelStatus.NORMAL)));
 
         // when
-        DashboardSummaryRes result = dashboardService.getSummary();
+        DashboardSummaryRes result = dashboardService.getSummary(new DashboardSummaryReq());
 
         // then
         assertThat(result.getTotalPanelCount()).isEqualTo(1L);
-        verify(dashboardMapper).findDashboardPanels(2L, false);
+        verify(dashboardMapper).findDashboardPanels(2L, false, null);
+    }
+
+    @Test
+    @DisplayName("API-018: SUPER_ADMIN은 선택 현장 기준으로 대시보드 요약을 조회한다")
+    void superAdminCanFilterDashboardBySite() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        DashboardSummaryReq req = new DashboardSummaryReq();
+        req.setSiteId(3L);
+
+        when(siteMapper.findActiveSiteById(3L)).thenReturn(site());
+        when(dashboardMapper.countAccessiblePanels(1L, true, 3L)).thenReturn(1L);
+        when(dashboardMapper.countAccessiblePanelsByStatus(1L, true, 3L, "NORMAL")).thenReturn(1L);
+        when(dashboardMapper.countAccessiblePanelsByStatus(1L, true, 3L, "CAUTION")).thenReturn(0L);
+        when(dashboardMapper.countAccessiblePanelsByStatus(1L, true, 3L, "RISK")).thenReturn(0L);
+        when(dashboardMapper.countAccessiblePanelsByStatus(1L, true, 3L, "OFFLINE")).thenReturn(0L);
+        when(dashboardMapper.countUnconfirmedAlerts(1L, true, 3L)).thenReturn(0L);
+        when(dashboardMapper.countUnresolvedAlerts(1L, true, 3L)).thenReturn(0L);
+        when(dashboardMapper.findDashboardPanels(1L, true, 3L)).thenReturn(List.of(panel(20L, PanelStatus.NORMAL)));
+
+        // when
+        DashboardSummaryRes result = dashboardService.getSummary(req);
+
+        // then
+        assertThat(result.getTotalPanelCount()).isEqualTo(1L);
+        verify(dashboardMapper).findDashboardPanels(1L, true, 3L);
     }
 
     private void loginAs(Long userId, UserRole role) {
@@ -106,5 +138,11 @@ class DashboardServiceTest {
         panel.setLastCommunicatedAt(LocalDateTime.of(2026, 7, 23, 11, 0));
         panel.setUnconfirmedAlertCount(1L);
         return panel;
+    }
+
+    private Site site() {
+        Site site = new Site();
+        site.setSiteId(3L);
+        return site;
     }
 }

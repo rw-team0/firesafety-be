@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AiAlertService {
 
     private final AlertMapper alertMapper;
+    private final AlertNotificationPublisher alertNotificationPublisher;
 
     // AI ARC 경보 생성
     // 같은 회로에 미조치 AI ARC 경보가 있으면 반복 생성하지 않는다.
@@ -36,5 +37,6 @@ public class AiAlertService {
         alert.setType(AlertType.ARC);
         alert.setStatus(AlertStatus.UNCONFIRMED);
         alertMapper.insertAlert(alert);
+        alertNotificationPublisher.publishCreated(alert);
     }
 }

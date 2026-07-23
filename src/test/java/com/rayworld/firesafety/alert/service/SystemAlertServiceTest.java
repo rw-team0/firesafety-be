@@ -24,11 +24,14 @@ class SystemAlertServiceTest {
     @Mock
     private AlertMapper alertMapper;
 
+    @Mock
+    private AlertNotificationPublisher alertNotificationPublisher;
+
     private SystemAlertService systemAlertService;
 
     @BeforeEach
     void setUp() {
-        systemAlertService = new SystemAlertService(alertMapper);
+        systemAlertService = new SystemAlertService(alertMapper, alertNotificationPublisher);
     }
 
     @Test
@@ -49,6 +52,7 @@ class SystemAlertServiceTest {
         assertThat(alert.getSource()).isEqualTo(AlertSource.SYSTEM);
         assertThat(alert.getType()).isEqualTo(AlertType.COMM_LOST);
         assertThat(alert.getStatus()).isEqualTo(AlertStatus.UNCONFIRMED);
+        verify(alertNotificationPublisher).publishCreated(alert);
     }
 
     @Test
@@ -62,5 +66,6 @@ class SystemAlertServiceTest {
 
         // then
         verify(alertMapper, never()).insertAlert(org.mockito.Mockito.any());
+        verify(alertNotificationPublisher, never()).publishCreated(org.mockito.Mockito.any(Alert.class));
     }
 }

@@ -16,6 +16,9 @@
     <sql id="accessibleActivePanelFilter">
         p.deleted_at IS NULL
         AND s.deleted_at IS NULL
+        <if test="siteId != null">
+            AND p.site_id = #{siteId}
+        </if>
         <if test="!superAdmin">
             AND EXISTS (
                 SELECT 1

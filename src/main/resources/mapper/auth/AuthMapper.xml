@@ -249,6 +249,21 @@
           AND account_status = 'ACTIVE'
     </update>
 
+    <!-- 경보 발생 현장 담당자의 푸시 토큰 조회 -->
+    <select id="findFcmTokensForAlertSite" resultType="string">
+        SELECT DISTINCT u.fcm_token
+        FROM `user` u
+        INNER JOIN user_site us
+            ON us.user_id = u.user_id
+        WHERE u.deleted_at IS NULL
+          AND u.account_status = 'ACTIVE'
+          AND u.role IN ('ADMIN', 'GENERAL')
+          AND u.fcm_token IS NOT NULL
+          AND u.fcm_token != ''
+          AND us.site_id = #{siteId}
+          AND us.deleted_at IS NULL
+    </select>
+
     <!-- 비밀번호 재설정 요청 전 기존 미사용 토큰 만료 처리 -->
     <update id="expireUnusedPasswordResetTokensByUserId">
         UPDATE password_reset_token

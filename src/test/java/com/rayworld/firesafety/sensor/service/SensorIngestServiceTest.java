@@ -7,6 +7,7 @@ import com.rayworld.firesafety.facility.mapper.PanelMapper;
 import com.rayworld.firesafety.facility.model.Circuit;
 import com.rayworld.firesafety.facility.model.Panel;
 import com.rayworld.firesafety.monitoring.service.PanelStatusAggregationService;
+import com.rayworld.firesafety.monitoring.service.MonitoringRefreshPublisher;
 import com.rayworld.firesafety.sensor.dto.res.SensorFrameIngestRes;
 import com.rayworld.firesafety.sensor.exception.SensorErrorCode;
 import com.rayworld.firesafety.sensor.mapper.SensorFrameCircuitMapper;
@@ -54,6 +55,9 @@ class SensorIngestServiceTest {
     @Mock
     private PanelStatusAggregationService panelStatusAggregationService;
 
+    @Mock
+    private MonitoringRefreshPublisher monitoringRefreshPublisher;
+
     private SensorIngestService sensorIngestService;
 
     @BeforeEach
@@ -64,7 +68,8 @@ class SensorIngestServiceTest {
                 sensorFrameMapper,
                 sensorFrameCircuitMapper,
                 deviceAlertService,
-                panelStatusAggregationService
+                panelStatusAggregationService,
+                monitoringRefreshPublisher
         );
     }
 
@@ -110,6 +115,7 @@ class SensorIngestServiceTest {
         );
         verify(panelStatusAggregationService).aggregatePanelStatus(10L);
         verify(panelMapper).updatePanelCommunication(10L);
+        verify(monitoringRefreshPublisher).publish(3L, "SENSOR_FRAME_RECEIVED");
     }
 
     @Test
@@ -167,6 +173,7 @@ class SensorIngestServiceTest {
     private Panel panel(Long panelId, int circuitCount) {
         Panel panel = new Panel();
         panel.setPanelId(panelId);
+        panel.setSiteId(3L);
         panel.setCircuitCount(circuitCount);
         return panel;
     }

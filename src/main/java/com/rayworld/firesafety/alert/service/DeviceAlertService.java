@@ -22,6 +22,7 @@ public class DeviceAlertService {
     private static final int BYTE_3_ALARM = 3;
 
     private final AlertMapper alertMapper;
+    private final AlertNotificationPublisher alertNotificationPublisher;
 
     // 하드웨어 aerror 위험 bit를 DEVICE 경보로 저장
     public void createDeviceAlerts(Long panelId, String aerror, Map<Integer, Long> circuitIdsByChannelNo) {
@@ -32,6 +33,7 @@ public class DeviceAlertService {
 
         for (Alert alert : alerts) {
             alertMapper.insertAlert(alert);
+            alertNotificationPublisher.publishCreated(alert);
         }
     }
 

@@ -55,4 +55,7 @@ public interface AlertMapper {
     boolean existsUnresolvedCircuitAlert(@Param("circuitId") Long circuitId,
                                          @Param("source") String source,
                                          @Param("type") String type);
+
+    // 경보가 속한 분전반의 현장 ID 조회
+    Long findSiteIdByPanelId(@Param("panelId") Long panelId);
 }

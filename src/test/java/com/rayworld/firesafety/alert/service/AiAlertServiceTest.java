@@ -24,11 +24,14 @@ class AiAlertServiceTest {
     @Mock
     private AlertMapper alertMapper;
 
+    @Mock
+    private AlertNotificationPublisher alertNotificationPublisher;
+
     private AiAlertService aiAlertService;
 
     @BeforeEach
     void setUp() {
-        aiAlertService = new AiAlertService(alertMapper);
+        aiAlertService = new AiAlertService(alertMapper, alertNotificationPublisher);
     }
 
     @Test
@@ -51,6 +54,7 @@ class AiAlertServiceTest {
         assertThat(alert.getSource()).isEqualTo(AlertSource.AI);
         assertThat(alert.getType()).isEqualTo(AlertType.ARC);
         assertThat(alert.getStatus()).isEqualTo(AlertStatus.UNCONFIRMED);
+        verify(alertNotificationPublisher).publishCreated(alert);
     }
 
     @Test
@@ -64,5 +68,6 @@ class AiAlertServiceTest {
 
         // then
         verify(alertMapper, never()).insertAlert(org.mockito.Mockito.any());
+        verify(alertNotificationPublisher, never()).publishCreated(org.mockito.Mockito.any(Alert.class));
     }
 }

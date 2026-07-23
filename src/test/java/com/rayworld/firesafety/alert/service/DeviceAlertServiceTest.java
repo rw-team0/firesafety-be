@@ -25,11 +25,14 @@ class DeviceAlertServiceTest {
     @Mock
     private AlertMapper alertMapper;
 
+    @Mock
+    private AlertNotificationPublisher alertNotificationPublisher;
+
     private DeviceAlertService deviceAlertService;
 
     @BeforeEach
     void setUp() {
-        deviceAlertService = new DeviceAlertService(alertMapper);
+        deviceAlertService = new DeviceAlertService(alertMapper, alertNotificationPublisher);
     }
 
     @Test
@@ -47,6 +50,7 @@ class DeviceAlertServiceTest {
         // then
         ArgumentCaptor<Alert> alertCaptor = ArgumentCaptor.forClass(Alert.class);
         verify(alertMapper, org.mockito.Mockito.times(7)).insertAlert(alertCaptor.capture());
+        verify(alertNotificationPublisher, org.mockito.Mockito.times(7)).publishCreated(org.mockito.Mockito.any(Alert.class));
 
         assertThat(alertCaptor.getAllValues())
                 .extracting(Alert::getSource)
@@ -77,5 +81,6 @@ class DeviceAlertServiceTest {
 
         // then
         verify(alertMapper, never()).insertAlert(org.mockito.Mockito.any());
+        verify(alertNotificationPublisher, never()).publishCreated(org.mockito.Mockito.any(Alert.class));
     }
 }

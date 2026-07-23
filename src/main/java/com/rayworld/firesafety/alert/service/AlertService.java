@@ -29,6 +29,7 @@ public class AlertService {
     private static final int MAX_SIZE = 100;
 
     private final AlertMapper alertMapper;
+    private final AlertNotificationPublisher alertNotificationPublisher;
 
     // 경보 목록 조회
     // 1. 현재 사용자 확인 → 2. 역할별 조회 범위 계산 → 3. 필터/페이징 계산 → 4. 목록/개수 조회
@@ -84,6 +85,7 @@ public class AlertService {
         if (updatedRows == 0) {
             throw new BusinessException(AlertErrorCode.ALERT_CANNOT_CONFIRM);
         }
+        alertNotificationPublisher.publishStatusChanged(alert, AlertStatus.CONFIRMED);
     }
 
     // 경보 조치완료 처리
@@ -98,6 +100,7 @@ public class AlertService {
         if (updatedRows == 0) {
             throw new BusinessException(AlertErrorCode.ALERT_NOT_CONFIRMED);
         }
+        alertNotificationPublisher.publishStatusChanged(alert, AlertStatus.RESOLVED);
     }
 
     // 현재 사용자가 접근할 수 있는 경보만 조회
