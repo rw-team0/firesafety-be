@@ -18,7 +18,7 @@ public class OpenApiConfig {
     public OpenAPI firesafetyOpenApi() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("전기화재 예방 시스템 API")
+                        .title("ArcGuard API")
                         .description("JWT는 응답 body가 아니라 at/rt HttpOnly Cookie로 전달한다.")
                         .version("v1"))
                 .components(new Components()

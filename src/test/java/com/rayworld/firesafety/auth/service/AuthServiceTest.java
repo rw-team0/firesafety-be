@@ -92,7 +92,7 @@ class AuthServiceTest {
         passwordResetProperties.setBaseUrl("http://localhost:5173/reset-password");
         passwordResetProperties.setTokenExpirationMinutes(30);
         passwordResetProperties.setMailFromAddress("noreply@example.com");
-        passwordResetProperties.setMailFromName("전기화재 안전관리 시스템");
+        passwordResetProperties.setMailFromName("아크가드 ArcGuard");
         passwordResetProperties.setRateLimitWindowMinutes(10);
         passwordResetProperties.setRateLimitMaxCount(5);
 

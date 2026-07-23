@@ -36,7 +36,7 @@ class PasswordResetMailServiceTest {
         properties.setBaseUrl("http://localhost:5173/reset-password");
         properties.setTokenExpirationMinutes(30);
         properties.setMailFromAddress("noreply@example.com");
-        properties.setMailFromName("전기화재 안전관리 시스템");
+        properties.setMailFromName("아크가드 ArcGuard");
 
         passwordResetMailService = new PasswordResetMailService(javaMailSender, properties);
     }
@@ -53,7 +53,7 @@ class PasswordResetMailServiceTest {
 
         // then
         assertThat(mimeMessage.getFrom()[0].toString()).contains("noreply@example.com");
-        assertThat(mimeMessage.getSubject()).isEqualTo("[전기화재 예방 시스템] 비밀번호 재설정 안내");
+        assertThat(mimeMessage.getSubject()).isEqualTo("[ArcGuard] 비밀번호 재설정 안내");
         verify(javaMailSender).send(mimeMessage);
     }
 

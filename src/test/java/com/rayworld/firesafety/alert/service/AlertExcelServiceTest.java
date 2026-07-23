@@ -46,7 +46,7 @@ class AlertExcelServiceTest {
             Sheet sheet = workbook.getSheet("알림이력");
 
             assertThat(sheet.getRow(1).getCell(1).getStringCellValue())
-                    .isEqualTo("전기화재 예방 시스템 - 알림(경보) 이력");
+                    .isEqualTo("ArcGuard - 알림(경보) 이력");
             assertThat(sheet.getRow(2).getCell(2).getStringCellValue())
                     .isEqualTo("기간 2026-07-01 ~ 2026-07-21, 현장 전체");
             assertThat(sheet.getRow(3).getCell(2).getStringCellValue())

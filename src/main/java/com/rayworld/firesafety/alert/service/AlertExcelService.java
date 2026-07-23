@@ -33,7 +33,7 @@ import java.util.List;
 public class AlertExcelService {
 
     private static final String SHEET_NAME = "알림이력";
-    private static final String TITLE = "전기화재 예방 시스템 - 알림(경보) 이력";
+    private static final String TITLE = "ArcGuard - 알림(경보) 이력";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final String[] HEADERS = {
