@@ -23,6 +23,29 @@
         <result property="createdAt" column="created_at"/>
     </resultMap>
 
+    <sql id="facilityAuditLogFilter">
+        <where>
+            <if test="targetType != null">
+                AND target_type = #{targetType}
+            </if>
+            <if test="targetId != null">
+                AND target_id = #{targetId}
+            </if>
+            <if test="actorUserId != null">
+                AND actor_user_id = #{actorUserId}
+            </if>
+            <if test="action != null">
+                AND action = #{action}
+            </if>
+            <if test="fromAt != null">
+                AND created_at &gt;= #{fromAt}
+            </if>
+            <if test="toAt != null">
+                AND created_at &lt; #{toAt}
+            </if>
+        </where>
+    </sql>
+
     <!-- 최고관리자가 신규 현장을 등록 -->
     <insert id="insertSite"
             parameterType="com.rayworld.firesafety.facility.model.Site"
@@ -135,4 +158,29 @@
             #{afterData}
         )
     </insert>
+
+    <!-- SUPER_ADMIN 설비 감사 이력 필터 조회 -->
+    <select id="findFacilityAuditLogs" resultMap="facilityAuditLogResultMap">
+        SELECT
+            audit_id,
+            target_type,
+            target_id,
+            actor_user_id,
+            action,
+            before_data,
+            after_data,
+            created_at
+        FROM facility_audit_log
+        <include refid="facilityAuditLogFilter"/>
+        ORDER BY audit_id DESC
+        LIMIT #{size}
+        OFFSET #{offset}
+    </select>
+
+    <!-- SUPER_ADMIN 설비 감사 이력 전체 개수 조회 -->
+    <select id="countFacilityAuditLogs" resultType="long">
+        SELECT COUNT(*)
+        FROM facility_audit_log
+        <include refid="facilityAuditLogFilter"/>
+    </select>
 </mapper>

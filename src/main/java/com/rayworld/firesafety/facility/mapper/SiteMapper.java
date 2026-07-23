@@ -5,6 +5,7 @@ import com.rayworld.firesafety.facility.model.Site;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 // 현장(site) 등록/조회용 MyBatis Mapper
@@ -34,4 +35,22 @@ public interface SiteMapper {
 
     // 현장/분전반/회로 변경 감사 로그 저장
     void insertFacilityAuditLog(FacilityAuditLog auditLog);
+
+    // 현장/분전반/회로 변경 감사 로그 조회
+    List<FacilityAuditLog> findFacilityAuditLogs(@Param("targetType") String targetType,
+                                                 @Param("targetId") Long targetId,
+                                                 @Param("actorUserId") Long actorUserId,
+                                                 @Param("action") String action,
+                                                 @Param("fromAt") LocalDateTime fromAt,
+                                                 @Param("toAt") LocalDateTime toAt,
+                                                 @Param("size") int size,
+                                                 @Param("offset") int offset);
+
+    // 현장/분전반/회로 변경 감사 로그 전체 개수 조회
+    long countFacilityAuditLogs(@Param("targetType") String targetType,
+                                @Param("targetId") Long targetId,
+                                @Param("actorUserId") Long actorUserId,
+                                @Param("action") String action,
+                                @Param("fromAt") LocalDateTime fromAt,
+                                @Param("toAt") LocalDateTime toAt);
 }
