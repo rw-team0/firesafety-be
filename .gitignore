@@ -1,4 +1,7 @@
 **/.env
+**/.env.production
+!**/.env.production.example
+deploy/nginx/certs/
 HELP.md
 .gradle
 build/
