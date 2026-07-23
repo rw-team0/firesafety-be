@@ -43,7 +43,7 @@ dependencies {
     // Swagger (springdoc-openapi)
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'
 
-    // Excel 파싱/생성 (경보 이력 다운로드, 리포트 생성)
+    // Excel 파싱/생성 (경보 이력 다운로드)
     implementation 'org.apache.poi:poi-ooxml:5.3.0'
 
     // Firebase Admin SDK (FCM 서버 발송)
