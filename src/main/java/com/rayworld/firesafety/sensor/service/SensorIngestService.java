@@ -1,5 +1,6 @@
 package com.rayworld.firesafety.sensor.service;
 
+import com.rayworld.firesafety.alert.service.DeviceAlertService;
 import com.rayworld.firesafety.common.exception.BusinessException;
 import com.rayworld.firesafety.facility.mapper.CircuitMapper;
 import com.rayworld.firesafety.facility.mapper.PanelMapper;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -33,6 +35,7 @@ public class SensorIngestService {
     private final CircuitMapper circuitMapper;
     private final SensorFrameMapper sensorFrameMapper;
     private final SensorFrameCircuitMapper sensorFrameCircuitMapper;
+    private final DeviceAlertService deviceAlertService;
 
     // 디바이스 프레임 수신
     // 1. 자리수 검증 → 2. 분전반 조회 → 3. 프레임 저장 → 4. 회로별 값 저장 → 5. 통신시각 갱신
@@ -46,7 +49,8 @@ public class SensorIngestService {
             SensorFrame sensorFrame = buildSensorFrame(panel.getPanelId(), params);
 
             sensorFrameMapper.insertSensorFrame(sensorFrame);
-            saveCircuitFrames(sensorFrame.getFrameId(), panel.getPanelId(), circuitCount, params);
+            Map<Integer, Long> circuitIdsByChannelNo = saveCircuitFrames(sensorFrame.getFrameId(), panel.getPanelId(), circuitCount, params);
+            deviceAlertService.createDeviceAlerts(panel.getPanelId(), params.get("aerror"), circuitIdsByChannelNo);
             panelMapper.updatePanelCommunication(panel.getPanelId());
 
             // Mapper insert 후 received_at은 DB 기본값이므로 응답용 현재 시각을 채워준다.
@@ -132,9 +136,11 @@ public class SensorIngestService {
     }
 
     // 회로별 am/count와 하드웨어 ARC bit 저장
-    private void saveCircuitFrames(Long frameId, Long panelId, int circuitCount, Map<String, String> params) {
+    private Map<Integer, Long> saveCircuitFrames(Long frameId, Long panelId, int circuitCount, Map<String, String> params) {
+        Map<Integer, Long> circuitIdsByChannelNo = new LinkedHashMap<>();
         for (int channelNo = 1; channelNo <= circuitCount; channelNo++) {
             Circuit circuit = findCircuit(panelId, channelNo);
+            circuitIdsByChannelNo.put(channelNo, circuit.getCircuitId());
 
             SensorFrameCircuit frameCircuit = new SensorFrameCircuit();
             frameCircuit.setFrameId(frameId);
@@ -145,6 +151,7 @@ public class SensorIngestService {
 
             sensorFrameCircuitMapper.insertSensorFrameCircuit(frameCircuit);
         }
+        return circuitIdsByChannelNo;
     }
 
     // 회로가 미등록이면 sensor_frame만 저장되는 부분 실패를 막는다.

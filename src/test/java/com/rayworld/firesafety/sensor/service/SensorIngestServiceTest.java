@@ -1,5 +1,6 @@
 package com.rayworld.firesafety.sensor.service;
 
+import com.rayworld.firesafety.alert.service.DeviceAlertService;
 import com.rayworld.firesafety.common.exception.BusinessException;
 import com.rayworld.firesafety.facility.mapper.CircuitMapper;
 import com.rayworld.firesafety.facility.mapper.PanelMapper;
@@ -46,6 +47,9 @@ class SensorIngestServiceTest {
     @Mock
     private SensorFrameCircuitMapper sensorFrameCircuitMapper;
 
+    @Mock
+    private DeviceAlertService deviceAlertService;
+
     private SensorIngestService sensorIngestService;
 
     @BeforeEach
@@ -54,7 +58,8 @@ class SensorIngestServiceTest {
                 panelMapper,
                 circuitMapper,
                 sensorFrameMapper,
-                sensorFrameCircuitMapper
+                sensorFrameCircuitMapper,
+                deviceAlertService
         );
     }
 
@@ -93,6 +98,11 @@ class SensorIngestServiceTest {
         assertThat(circuitCaptor.getAllValues().get(0).getCurrentA()).isEqualByComparingTo(new BigDecimal("0.0"));
         assertThat(circuitCaptor.getAllValues().get(3).getDeviceArcFlag()).isTrue();
         assertThat(circuitCaptor.getAllValues().get(4).getDeviceArcFlag()).isTrue();
+        verify(deviceAlertService).createDeviceAlerts(
+                org.mockito.Mockito.eq(10L),
+                org.mockito.Mockito.eq("18000000"),
+                org.mockito.Mockito.anyMap()
+        );
         verify(panelMapper).updatePanelCommunication(10L);
     }
 
