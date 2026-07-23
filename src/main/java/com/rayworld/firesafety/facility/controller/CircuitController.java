@@ -7,6 +7,7 @@ import com.rayworld.firesafety.facility.dto.res.CircuitDetailRes;
 import com.rayworld.firesafety.facility.dto.res.CircuitListRes;
 import com.rayworld.firesafety.facility.service.CircuitService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -45,5 +46,13 @@ public class CircuitController {
     public ResultResponse<CircuitDetailRes> getCircuit(@PathVariable Long circuitId) {
         CircuitDetailRes circuit = circuitService.getCircuit(circuitId);
         return ResultResponse.success("회로 상세 조회 성공", circuit);
+    }
+
+    // 회로 삭제 (DELETE /api/circuits/{circuitId})
+    // 물리 삭제하지 않고 deleted_at만 기록
+    @DeleteMapping("/circuits/{circuitId}")
+    public ResultResponse<Void> deleteCircuit(@PathVariable Long circuitId) {
+        circuitService.deleteCircuit(circuitId);
+        return ResultResponse.success("회로 삭제 성공", null);
     }
 }

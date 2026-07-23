@@ -19,6 +19,9 @@ public interface CircuitMapper {
     // 분전반 회로 목록 조회
     List<Circuit> findActiveCircuitsByPanelId(@Param("panelId") Long panelId);
 
+    // 회로 소프트 삭제
+    int softDeleteCircuit(@Param("circuitId") Long circuitId);
+
     // 분전반 안의 회로 번호 중복 확인
     boolean existsCircuitByPanelIdAndChannelNo(@Param("panelId") Long panelId, @Param("channelNo") Integer channelNo);
 }

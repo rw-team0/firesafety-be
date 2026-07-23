@@ -27,8 +27,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.List;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -100,6 +101,30 @@ public class CircuitService {
         validateSiteAccess(actor, panel.getSiteId());
 
         return CircuitDetailRes.from(circuit);
+    }
+
+    // 회로 소프트 삭제
+    // 1. 현재 사용자 확인 → 2. ADMIN 이상 확인 → 3. 회로/분전반/현장 권한 확인 → 4. deleted_at 기록 → 5. 감사 로그 저장
+    @Transactional
+    public void deleteCircuit(Long circuitId) {
+        UserPrincipal actor = getCurrentUser();
+        requireAdminOrSuperAdmin(actor);
+        validateCircuitId(circuitId);
+
+        Circuit circuit = findActiveCircuit(circuitId);
+        Panel panel = findActivePanel(circuit.getPanelId());
+        validateSiteAccess(actor, panel.getSiteId());
+        String beforeData = toAuditJson(circuit);
+
+        int updatedRows = circuitMapper.softDeleteCircuit(circuitId);
+        if (updatedRows == 0) {
+            throw new BusinessException(FacilityErrorCode.CIRCUIT_NOT_FOUND);
+        }
+
+        // 삭제 후 일반 조회에서 빠지므로 감사 로그용 상태는 메모리에서 반영
+        circuit.setDeletedAt(LocalDateTime.now());
+        circuit.setUpdatedAt(LocalDateTime.now());
+        insertFacilityAuditLog(circuit, actor.getUserId(), FacilityAuditAction.DELETE, beforeData, toAuditJson(circuit));
     }
 
     // 등록 요청값 확인

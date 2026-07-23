@@ -68,6 +68,15 @@
         ORDER BY c.channel_no ASC
     </select>
 
+    <!-- 회로 row는 보존하고 일반 조회 대상에서 제외 -->
+    <update id="softDeleteCircuit">
+        UPDATE circuit
+        SET deleted_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE circuit_id = #{circuitId}
+          AND deleted_at IS NULL
+    </update>
+
     <!-- DB UNIQUE(panel_id, channel_no) 제약과 같은 범위로 중복 확인 -->
     <select id="existsCircuitByPanelIdAndChannelNo" resultType="boolean">
         SELECT EXISTS(
