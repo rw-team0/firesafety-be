@@ -26,6 +26,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -79,7 +80,7 @@ class FacilityAuditServiceTest {
         // then
         assertThat(result.getTotalElements()).isEqualTo(1L);
         assertThat(result.getContent()).hasSize(1);
-        assertThat(result.getContent().get(0).getAfterData().get("name").asText()).isEqualTo("레이월드 본사");
+        assertThat(((Map<?, ?>) result.getContent().get(0).getAfterData()).get("name")).isEqualTo("레이월드 본사");
         verify(siteMapper).findFacilityAuditLogs("SITE", null, 1L, "CREATE", fromAt, toAt, 10, 0);
     }
 

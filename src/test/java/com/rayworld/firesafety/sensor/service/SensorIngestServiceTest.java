@@ -80,10 +80,8 @@ class SensorIngestServiceTest {
         Map<String, String> params = validParams();
         Panel panel = panel(10L, 5);
         when(panelMapper.findActivePanelByMNo("00001")).thenReturn(panel);
-        for (int channelNo = 1; channelNo <= 5; channelNo++) {
-            when(circuitMapper.findActiveCircuitByPanelIdAndChannelNo(10L, channelNo))
-                    .thenReturn(circuit(channelNo));
-        }
+        when(circuitMapper.findActiveCircuitsByPanelId(10L))
+                .thenReturn(java.util.List.of(circuit(1), circuit(2), circuit(3), circuit(4), circuit(5)));
         doAnswer(invocation -> {
             SensorFrame sensorFrame = invocation.getArgument(0);
             sensorFrame.setFrameId(100L);
