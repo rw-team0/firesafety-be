@@ -147,8 +147,12 @@ public class UserService {
         applyUpdate(targetUser, req, email, actor.getUserId());
         authMapper.updateUser(targetUser);
 
-        // 변경 전/후를 함께 저장
-        insertUserAuditLog(targetUser, actor.getUserId(), UserAuditAction.UPDATE, beforeData, toAuditJson(targetUser));
+        // 실제로 값이 바뀐 경우에만 이력을 남긴다 — 수정 버튼만 누르고 아무것도 안 바꾼 경우까지
+        // 이력에 남으면 진짜 변경 이력을 찾기 어려워진다.
+        String afterData = toAuditJson(targetUser);
+        if (!beforeData.equals(afterData)) {
+            insertUserAuditLog(targetUser, actor.getUserId(), UserAuditAction.UPDATE, beforeData, afterData);
+        }
 
         return UserUpdateRes.from(targetUser);
     }
