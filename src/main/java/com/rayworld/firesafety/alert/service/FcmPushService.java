@@ -6,7 +6,6 @@ import com.google.firebase.FirebaseOptions;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.MulticastMessage;
-import com.google.firebase.messaging.Notification;
 import com.rayworld.firesafety.alert.event.AlertNotificationEvent;
 import com.rayworld.firesafety.auth.mapper.AuthMapper;
 import com.rayworld.firesafety.config.firebase.FirebaseProperties;
@@ -40,12 +39,13 @@ public class FcmPushService {
         }
 
         try {
+            // notification 필드를 같이 보내면 브라우저가 알림을 자동으로 한 번 띄우고,
+            // 서비스워커(onBackgroundMessage)가 또 한 번 띄워서 웹푸시가 중복으로 뜬다.
+            // data-only 메시지로만 보내서 서비스워커가 정확히 한 번만 표시하게 한다.
             MulticastMessage message = MulticastMessage.builder()
                     .addAllTokens(tokens)
-                    .setNotification(Notification.builder()
-                            .setTitle("ArcGuard 경보 발생")
-                            .setBody(buildBody(event))
-                            .build())
+                    .putData("title", "ArcGuard 경보 발생")
+                    .putData("body", buildBody(event))
                     .putData("eventType", event.getEventType())
                     .putData("alertId", String.valueOf(event.getAlertId()))
                     .putData("panelId", String.valueOf(event.getPanelId()))

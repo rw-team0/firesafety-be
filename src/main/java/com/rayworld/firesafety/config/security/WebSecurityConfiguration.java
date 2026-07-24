@@ -65,7 +65,7 @@ public class WebSecurityConfiguration {
                 "http://localhost:5176",
                 "http://localhost:4173/",
                 "http://192.168.0.239:5173",
-                "http://192.168.0.7:5173"
+                "http://192.168.0.39:5173"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
