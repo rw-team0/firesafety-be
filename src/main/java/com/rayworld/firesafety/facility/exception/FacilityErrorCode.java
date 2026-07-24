@@ -16,7 +16,8 @@ public enum FacilityErrorCode implements ErrorCode {
     INVALID_CIRCUIT_COUNT("FACILITY-005", "회로 개수는 1~10 사이여야 합니다", HttpStatus.BAD_REQUEST),
     CIRCUIT_NOT_FOUND("FACILITY-006", "회로를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
     INVALID_CHANNEL_NO("FACILITY-007", "회로 번호가 분전반 회로 범위를 벗어났습니다", HttpStatus.BAD_REQUEST),
-    DUPLICATED_CHANNEL_NO("FACILITY-008", "이미 등록된 회로 번호입니다", HttpStatus.CONFLICT);
+    DUPLICATED_CHANNEL_NO("FACILITY-008", "이미 등록된 회로 번호입니다", HttpStatus.CONFLICT),
+    INVALID_M_NO("FACILITY-009", "장비번호는 정확히 5자리여야 합니다", HttpStatus.BAD_REQUEST);
 
     private final String code;
     private final String message;

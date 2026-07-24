@@ -18,7 +18,7 @@ public class PanelCreateReq {
     private String name;
     @Schema(description = "장비 시리얼번호. 다른 분전반과 중복 불가", example = "DEMO-SERIAL-001")
     private String deviceSerial;
-    @Schema(description = "장비번호(5자리 이내). 실제/Mock 센서가 보내는 m_no와 정확히 일치해야 매핑됨", example = "00099")
+    @Schema(description = "장비번호(정확히 5자리 고정폭). 실제/Mock 센서가 보내는 m_no와 정확히 일치해야 매핑됨", example = "00099")
     private String mNo;
     @Schema(description = "설치일(선택)", example = "2026-07-23")
     private LocalDate installedAt;

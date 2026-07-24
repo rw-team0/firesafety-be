@@ -224,8 +224,8 @@ public class PanelService {
                 || !StringUtils.hasText(req.getName())
                 || !StringUtils.hasText(req.getDeviceSerial())
                 || !StringUtils.hasText(req.getMNo())
-                || req.getMNo().length() > 5) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+                || req.getMNo().length() != 5) {
+            throw new BusinessException(FacilityErrorCode.INVALID_M_NO);
         }
 
         Integer circuitCount = req.getCircuitCount() == null ? 10 : req.getCircuitCount();
@@ -241,8 +241,8 @@ public class PanelService {
                 || !StringUtils.hasText(req.getName())
                 || !StringUtils.hasText(req.getDeviceSerial())
                 || !StringUtils.hasText(req.getMNo())
-                || req.getMNo().length() > 5) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+                || req.getMNo().length() != 5) {
+            throw new BusinessException(FacilityErrorCode.INVALID_M_NO);
         }
 
         Integer circuitCount = req.getCircuitCount() == null ? 10 : req.getCircuitCount();
