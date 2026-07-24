@@ -55,6 +55,9 @@ public interface AuthMapper {
     // 경보 발생 현장의 담당자(ADMIN/GENERAL) FCM 토큰 조회(기기별 다건)
     List<String> findFcmTokensForAlertSite(@Param("siteId") Long siteId);
 
+    // FCM 발송 결과 UNREGISTERED 등으로 무효 판정된 토큰 정리
+    void deleteFcmTokens(@Param("fcmTokens") List<String> fcmTokens);
+
     // 비밀번호 재설정 요청 전 기존 미사용 토큰 만료 처리
     void expireUnusedPasswordResetTokensByUserId(@Param("userId") Long userId);
 

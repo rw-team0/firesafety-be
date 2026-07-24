@@ -258,6 +258,15 @@
           AND us.deleted_at IS NULL
     </select>
 
+    <!-- FCM 발송 결과 UNREGISTERED 등으로 무효 판정된 토큰 정리 -->
+    <delete id="deleteFcmTokens">
+        DELETE FROM user_fcm_token
+        WHERE fcm_token IN
+        <foreach collection="fcmTokens" item="token" open="(" separator="," close=")">
+            #{token}
+        </foreach>
+    </delete>
+
     <!-- 비밀번호 재설정 요청 전 기존 미사용 토큰 만료 처리 -->
     <update id="expireUnusedPasswordResetTokensByUserId">
         UPDATE password_reset_token
