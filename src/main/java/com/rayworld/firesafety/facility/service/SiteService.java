@@ -94,7 +94,10 @@ public class SiteService {
         }
 
         Site updatedSite = findActiveSite(siteId);
-        insertFacilityAuditLog(updatedSite, actor.getUserId(), FacilityAuditAction.UPDATE, beforeData, toAuditJson(updatedSite));
+        String afterData = toAuditJson(updatedSite);
+        if (!beforeData.equals(afterData)) {
+            insertFacilityAuditLog(updatedSite, actor.getUserId(), FacilityAuditAction.UPDATE, beforeData, afterData);
+        }
 
         return SiteUpdateRes.from(updatedSite);
     }
@@ -206,7 +209,8 @@ public class SiteService {
             auditData.put("name", site.getName());
             auditData.put("address", site.getAddress());
             auditData.put("createdAt", site.getCreatedAt());
-            auditData.put("updatedAt", site.getUpdatedAt());
+            // updatedAt은 매 UPDATE 쿼리마다 CURRENT_TIMESTAMP로 무조건 갱신되는 컬럼이라
+            // 감사 로그 diff 비교에 넣으면 실제 값 변경이 없어도 항상 다르게 나온다 — 비교 대상에서 제외
             auditData.put("deletedAt", site.getDeletedAt());
             return objectMapper.writeValueAsString(auditData);
         } catch (JsonProcessingException e) {

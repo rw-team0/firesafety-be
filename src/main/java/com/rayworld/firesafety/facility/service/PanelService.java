@@ -189,7 +189,10 @@ public class PanelService {
         }
 
         Panel updatedPanel = findActivePanel(panelId);
-        insertFacilityAuditLog(updatedPanel, actor.getUserId(), FacilityAuditAction.UPDATE, beforeData, toAuditJson(updatedPanel));
+        String afterData = toAuditJson(updatedPanel);
+        if (!beforeData.equals(afterData)) {
+            insertFacilityAuditLog(updatedPanel, actor.getUserId(), FacilityAuditAction.UPDATE, beforeData, afterData);
+        }
 
         return PanelUpdateRes.from(updatedPanel);
     }
@@ -383,7 +386,8 @@ public class PanelService {
             auditData.put("gasThreshold", panel.getGasThreshold());
             auditData.put("fireThreshold", panel.getFireThreshold());
             auditData.put("createdAt", panel.getCreatedAt());
-            auditData.put("updatedAt", panel.getUpdatedAt());
+            // updatedAt은 매 UPDATE 쿼리마다 CURRENT_TIMESTAMP로 무조건 갱신되는 컬럼이라
+            // 감사 로그 diff 비교에 넣으면 실제 값 변경이 없어도 항상 다르게 나온다 — 비교 대상에서 제외
             auditData.put("deletedAt", panel.getDeletedAt());
             return objectMapper.writeValueAsString(auditData);
         } catch (JsonProcessingException e) {
