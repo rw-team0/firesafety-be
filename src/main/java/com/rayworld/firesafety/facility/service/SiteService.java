@@ -127,7 +127,7 @@ public class SiteService {
     // 등록 요청값 확인
     private void validateCreateRequest(SiteCreateReq req) {
         if (req == null || !StringUtils.hasText(req.getName())) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(FacilityErrorCode.SITE_NAME_REQUIRED);
         }
     }
 
@@ -135,14 +135,14 @@ public class SiteService {
     private void validateUpdateRequest(Long siteId, SiteUpdateReq req) {
         validateSiteId(siteId);
         if (req == null || !StringUtils.hasText(req.getName())) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(FacilityErrorCode.SITE_NAME_REQUIRED);
         }
     }
 
     // 현장 ID 확인
     private void validateSiteId(Long siteId) {
         if (siteId == null) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(CommonErrorCode.MISSING_ID);
         }
     }
 

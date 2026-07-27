@@ -94,16 +94,16 @@ public class SiteAssignmentService {
     // 담당 현장 저장 요청값 확인
     private List<Long> validateSaveRequest(SiteAssignmentSaveReq req) {
         if (req == null || req.getSiteIds() == null) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(FacilityErrorCode.SITE_IDS_REQUIRED);
         }
 
         if (req.getSiteIds().stream().anyMatch(siteId -> siteId == null)) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(FacilityErrorCode.INVALID_SITE_ID);
         }
 
         Set<Long> uniqueSiteIds = new LinkedHashSet<>(req.getSiteIds());
         if (uniqueSiteIds.size() != req.getSiteIds().size()) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(FacilityErrorCode.DUPLICATED_SITE_ID);
         }
 
         return req.getSiteIds();
@@ -161,7 +161,7 @@ public class SiteAssignmentService {
     // 대상 사용자 ID 확인
     private void validateUserId(Long userId) {
         if (userId == null) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(CommonErrorCode.MISSING_ID);
         }
     }
 

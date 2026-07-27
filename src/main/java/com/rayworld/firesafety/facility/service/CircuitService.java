@@ -129,26 +129,29 @@ public class CircuitService {
 
     // 등록 요청값 확인
     private void validateCreateRequest(Long panelId, CircuitCreateReq req) {
-        if (panelId == null || req == null || req.getChannelNo() == null) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+        if (panelId == null) {
+            throw new BusinessException(CommonErrorCode.MISSING_ID);
+        }
+        if (req == null || req.getChannelNo() == null) {
+            throw new BusinessException(FacilityErrorCode.CHANNEL_NO_REQUIRED);
         }
 
         if (StringUtils.hasText(req.getLoadType()) && req.getLoadType().length() > 50) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(FacilityErrorCode.LOAD_TYPE_TOO_LONG);
         }
     }
 
     // 목록 조회용 분전반 ID 확인
     private void validatePanelId(Long panelId) {
         if (panelId == null) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(CommonErrorCode.MISSING_ID);
         }
     }
 
     // 상세 조회용 회로 ID 확인
     private void validateCircuitId(Long circuitId) {
         if (circuitId == null) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(CommonErrorCode.MISSING_ID);
         }
     }
 

@@ -92,7 +92,7 @@ public class FacilityAuditService {
             return DEFAULT_PAGE;
         }
         if (req.getPage() < 0) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(CommonErrorCode.INVALID_PAGE);
         }
         return req.getPage();
     }
@@ -103,7 +103,7 @@ public class FacilityAuditService {
             return DEFAULT_SIZE;
         }
         if (req.getSize() < 1 || req.getSize() > MAX_SIZE) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(CommonErrorCode.INVALID_SIZE);
         }
         return req.getSize();
     }
@@ -121,7 +121,7 @@ public class FacilityAuditService {
     // 시작일이 종료일보다 늦으면 잘못된 기간 조건
     private void validateDateRange(FacilityAuditLogSearchReq req) {
         if (req.getFrom() != null && req.getTo() != null && req.getFrom().isAfter(req.getTo())) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(CommonErrorCode.INVALID_DATE_RANGE);
         }
     }
 

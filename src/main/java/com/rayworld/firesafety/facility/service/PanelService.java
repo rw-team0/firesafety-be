@@ -222,33 +222,37 @@ public class PanelService {
 
     // 등록 요청값 확인
     private void validateCreateRequest(Long siteId, PanelCreateReq req) {
-        if (siteId == null
-                || req == null
-                || !StringUtils.hasText(req.getName())
-                || !StringUtils.hasText(req.getDeviceSerial())
-                || !StringUtils.hasText(req.getMNo())
-                || req.getMNo().length() != 5) {
-            throw new BusinessException(FacilityErrorCode.INVALID_M_NO);
+        if (siteId == null) {
+            throw new BusinessException(CommonErrorCode.MISSING_ID);
         }
-
-        Integer circuitCount = req.getCircuitCount() == null ? 10 : req.getCircuitCount();
-        if (circuitCount < 1 || circuitCount > 10) {
-            throw new BusinessException(FacilityErrorCode.INVALID_CIRCUIT_COUNT);
+        if (req == null) {
+            throw new BusinessException(FacilityErrorCode.PANEL_NAME_REQUIRED);
         }
+        validatePanelFields(req.getName(), req.getDeviceSerial(), req.getMNo(), req.getCircuitCount());
     }
 
     // 수정 요청값 확인
     private void validateUpdateRequest(Long panelId, PanelUpdateReq req) {
         validatePanelId(panelId);
-        if (req == null
-                || !StringUtils.hasText(req.getName())
-                || !StringUtils.hasText(req.getDeviceSerial())
-                || !StringUtils.hasText(req.getMNo())
-                || req.getMNo().length() != 5) {
+        if (req == null) {
+            throw new BusinessException(FacilityErrorCode.PANEL_NAME_REQUIRED);
+        }
+        validatePanelFields(req.getName(), req.getDeviceSerial(), req.getMNo(), req.getCircuitCount());
+    }
+
+    // 분전반 등록/수정 공통 필드 확인
+    private void validatePanelFields(String name, String deviceSerial, String mNo, Integer circuitCountReq) {
+        if (!StringUtils.hasText(name)) {
+            throw new BusinessException(FacilityErrorCode.PANEL_NAME_REQUIRED);
+        }
+        if (!StringUtils.hasText(deviceSerial)) {
+            throw new BusinessException(FacilityErrorCode.DEVICE_SERIAL_REQUIRED);
+        }
+        if (!StringUtils.hasText(mNo) || mNo.length() != 5) {
             throw new BusinessException(FacilityErrorCode.INVALID_M_NO);
         }
 
-        Integer circuitCount = req.getCircuitCount() == null ? 10 : req.getCircuitCount();
+        int circuitCount = circuitCountReq == null ? 10 : circuitCountReq;
         if (circuitCount < 1 || circuitCount > 10) {
             throw new BusinessException(FacilityErrorCode.INVALID_CIRCUIT_COUNT);
         }
@@ -257,7 +261,7 @@ public class PanelService {
     // 분전반 ID 확인
     private void validatePanelId(Long panelId) {
         if (panelId == null) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(CommonErrorCode.MISSING_ID);
         }
     }
 
