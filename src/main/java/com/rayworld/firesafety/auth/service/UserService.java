@@ -322,37 +322,47 @@ public class UserService {
 
     // 등록 요청값 확인
     private void validateCreateRequest(UserCreateReq req) {
-        if (req == null
-                || !StringUtils.hasText(req.getEmail())
-                || !StringUtils.hasText(req.getPassword())
-                || !StringUtils.hasText(req.getName())
-                || req.getRole() == null) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+        if (req == null || !StringUtils.hasText(req.getEmail())) {
+            throw new BusinessException(AuthErrorCode.EMAIL_REQUIRED);
+        }
+        if (!StringUtils.hasText(req.getPassword())) {
+            throw new BusinessException(AuthErrorCode.PASSWORD_REQUIRED);
+        }
+        if (!StringUtils.hasText(req.getName())) {
+            throw new BusinessException(AuthErrorCode.NAME_REQUIRED);
+        }
+        if (req.getRole() == null) {
+            throw new BusinessException(AuthErrorCode.ROLE_REQUIRED);
         }
     }
 
     // 수정 요청값 확인
     private void validateUpdateRequest(Long userId, UserUpdateReq req) {
-        if (userId == null
-                || req == null
-                || !StringUtils.hasText(req.getEmail())
-                || !StringUtils.hasText(req.getName())
-                || req.getRole() == null) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+        if (userId == null) {
+            throw new BusinessException(CommonErrorCode.MISSING_ID);
+        }
+        if (req == null || !StringUtils.hasText(req.getEmail())) {
+            throw new BusinessException(AuthErrorCode.EMAIL_REQUIRED);
+        }
+        if (!StringUtils.hasText(req.getName())) {
+            throw new BusinessException(AuthErrorCode.NAME_REQUIRED);
+        }
+        if (req.getRole() == null) {
+            throw new BusinessException(AuthErrorCode.ROLE_REQUIRED);
         }
     }
 
     // 삭제/복구 대상 ID 확인
     private void validateDeleteRequest(Long userId) {
         if (userId == null) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(CommonErrorCode.MISSING_ID);
         }
     }
 
     // FCM 토큰 요청값 확인
     private void validateFcmTokenRequest(FcmTokenReq req) {
         if (req == null || !StringUtils.hasText(req.getFcmToken())) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(AuthErrorCode.FCM_TOKEN_REQUIRED);
         }
     }
 
@@ -363,7 +373,7 @@ public class UserService {
         }
 
         if (req.getUserIds().stream().anyMatch(userId -> userId == null)) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(AuthErrorCode.BULK_DELETE_INVALID_ID);
         }
 
         Set<Long> uniqueUserIds = new LinkedHashSet<>(req.getUserIds());
