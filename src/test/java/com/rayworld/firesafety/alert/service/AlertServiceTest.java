@@ -190,13 +190,13 @@ class AlertServiceTest {
         // given
         loginAs(2L, UserRole.ADMIN);
         when(alertMapper.findAccessibleAlertById(2L, false, 10L)).thenReturn(alert(10L, AlertStatus.CONFIRMED));
-        when(alertMapper.resolveAlert(10L, null)).thenReturn(1);
+        when(alertMapper.resolveAlert(10L, 2L, null)).thenReturn(1);
 
         // when
         alertService.resolveAlert(10L);
 
         // then
-        verify(alertMapper).resolveAlert(10L, null);
+        verify(alertMapper).resolveAlert(10L, 2L, null);
         verify(alertNotificationPublisher).publishStatusChanged(org.mockito.Mockito.any(Alert.class), org.mockito.Mockito.eq(AlertStatus.RESOLVED));
     }
 
@@ -209,13 +209,13 @@ class AlertServiceTest {
         req.setResolutionNote("  케이블 재접속 완료  ");
 
         when(alertMapper.findAccessibleAlertById(2L, false, 10L)).thenReturn(alert(10L, AlertStatus.CONFIRMED));
-        when(alertMapper.resolveAlert(10L, "케이블 재접속 완료")).thenReturn(1);
+        when(alertMapper.resolveAlert(10L, 2L, "케이블 재접속 완료")).thenReturn(1);
 
         // when
         alertService.resolveAlert(10L, req);
 
         // then
-        verify(alertMapper).resolveAlert(10L, "케이블 재접속 완료");
+        verify(alertMapper).resolveAlert(10L, 2L, "케이블 재접속 완료");
     }
 
     @Test

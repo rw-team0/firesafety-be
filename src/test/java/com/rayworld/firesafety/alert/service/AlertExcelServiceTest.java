@@ -53,12 +53,14 @@ class AlertExcelServiceTest {
                     .isEqualTo("2026-07-23 13:30:00");
 
             assertThat(sheet.getRow(5).getCell(1).getStringCellValue()).isEqualTo("번호");
-            assertThat(sheet.getRow(5).getCell(12).getStringCellValue()).isEqualTo("비고");
+            assertThat(sheet.getRow(5).getCell(12).getStringCellValue()).isEqualTo("조치자");
+            assertThat(sheet.getRow(5).getCell(13).getStringCellValue()).isEqualTo("비고");
             assertThat(sheet.getRow(6).getCell(3).getStringCellValue()).isEqualTo("레이월드01");
             assertThat(sheet.getRow(6).getCell(6).getStringCellValue()).isEqualTo("아크");
             assertThat(sheet.getRow(6).getCell(7).getStringCellValue()).isEqualTo("하드웨어");
             assertThat(sheet.getRow(6).getCell(8).getStringCellValue()).isEqualTo("미확인");
-            assertThat(sheet.getRow(6).getCell(12).getStringCellValue()).isEqualTo("케이블 재접속");
+            assertThat(sheet.getRow(6).getCell(12).getStringCellValue()).isEqualTo("홍길동");
+            assertThat(sheet.getRow(6).getCell(13).getStringCellValue()).isEqualTo("케이블 재접속");
         }
     }
 
@@ -72,6 +74,7 @@ class AlertExcelServiceTest {
         res.setSource(AlertSource.DEVICE);
         res.setStatus(AlertStatus.UNCONFIRMED);
         res.setTriggeredAt(LocalDateTime.of(2026, 7, 21, 9, 12, 33));
+        res.setResolvedByName("홍길동");
         res.setResolutionNote("케이블 재접속");
         return res;
     }
