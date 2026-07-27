@@ -65,6 +65,9 @@
             <if test="siteId != null">
                 AND p.site_id = #{siteId}
             </if>
+            <if test="panelId != null">
+                AND a.panel_id = #{panelId}
+            </if>
             <if test="fromAt != null">
                 AND a.triggered_at &gt;= #{fromAt}
             </if>

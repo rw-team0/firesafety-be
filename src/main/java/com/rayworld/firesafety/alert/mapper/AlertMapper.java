@@ -22,6 +22,7 @@ public interface AlertMapper {
                                   @Param("status") String status,
                                   @Param("type") String type,
                                   @Param("siteId") Long siteId,
+                                  @Param("panelId") Long panelId,
                                   @Param("fromAt") LocalDateTime fromAt,
                                   @Param("toAt") LocalDateTime toAt,
                                   @Param("size") int size,
@@ -33,6 +34,7 @@ public interface AlertMapper {
                      @Param("status") String status,
                      @Param("type") String type,
                      @Param("siteId") Long siteId,
+                     @Param("panelId") Long panelId,
                      @Param("fromAt") LocalDateTime fromAt,
                      @Param("toAt") LocalDateTime toAt);
 

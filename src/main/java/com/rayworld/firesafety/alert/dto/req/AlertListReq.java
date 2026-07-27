@@ -21,6 +21,8 @@ public class AlertListReq {
     private AlertType type;
     @Schema(description = "현장 ID 필터(선택)", example = "1")
     private Long siteId;
+    @Schema(description = "분전반 ID 필터(선택). 위험 팝업 '상세보기' 진입 시 해당 분전반의 최신 미확인 경보를 찾는 용도", example = "1")
+    private Long panelId;
 
     @Schema(description = "조회 시작일(선택)", example = "2026-07-01")
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)

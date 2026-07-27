@@ -58,6 +58,7 @@ public class AlertService {
                 status,
                 type,
                 searchReq.getSiteId(),
+                searchReq.getPanelId(),
                 fromAt,
                 toAt,
                 size,
@@ -69,6 +70,7 @@ public class AlertService {
                 status,
                 type,
                 searchReq.getSiteId(),
+                searchReq.getPanelId(),
                 fromAt,
                 toAt
         );
