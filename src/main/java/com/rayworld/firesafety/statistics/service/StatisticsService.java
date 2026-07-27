@@ -166,7 +166,7 @@ public class StatisticsService {
     // 시작일이 종료일보다 늦으면 잘못된 기간 조건
     private void validateDateRange(StatisticsReq req) {
         if (req.getFrom() != null && req.getTo() != null && req.getFrom().isAfter(req.getTo())) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(CommonErrorCode.INVALID_DATE_RANGE);
         }
     }
 
