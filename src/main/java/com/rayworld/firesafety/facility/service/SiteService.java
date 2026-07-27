@@ -157,6 +157,7 @@ public class SiteService {
         Site site = new Site();
         site.setName(req.getName());
         site.setAddress(req.getAddress());
+        site.setZipCode(req.getZipCode());
         return site;
     }
 
@@ -164,6 +165,7 @@ public class SiteService {
     private void applyUpdate(Site site, SiteUpdateReq req) {
         site.setName(req.getName());
         site.setAddress(req.getAddress());
+        site.setZipCode(req.getZipCode());
     }
 
     // 등록 직후 활성 현장 재조회

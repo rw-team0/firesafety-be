@@ -15,4 +15,6 @@ public class SiteCreateReq {
     private String name;
     @Schema(description = "주소(필수, 도로명주소 검색 API 결과 선택 또는 직접 입력)", example = "서울시 강남구 테헤란로 123")
     private String address;
+    @Schema(description = "우편번호(선택, 도로명주소 검색 API 결과의 zipCode)", example = "06134")
+    private String zipCode;
 }

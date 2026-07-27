@@ -16,6 +16,7 @@ public class Site {
     private Long siteId;
     private String name;
     private String address;
+    private String zipCode;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;

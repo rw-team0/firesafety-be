@@ -16,12 +16,15 @@ public class SiteUpdateRes {
     private String name;
     @Schema(description = "주소", example = "서울시 강남구")
     private String address;
+    @Schema(description = "우편번호", example = "06134")
+    private String zipCode;
 
     public static SiteUpdateRes from(Site site) {
         return new SiteUpdateRes(
                 site.getSiteId(),
                 site.getName(),
-                site.getAddress()
+                site.getAddress(),
+                site.getZipCode()
         );
     }
 }
