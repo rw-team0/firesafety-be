@@ -129,6 +129,9 @@ public class SiteService {
         if (req == null || !StringUtils.hasText(req.getName())) {
             throw new BusinessException(FacilityErrorCode.SITE_NAME_REQUIRED);
         }
+        if (!StringUtils.hasText(req.getAddress())) {
+            throw new BusinessException(FacilityErrorCode.SITE_ADDRESS_REQUIRED);
+        }
     }
 
     // 수정 요청값 확인
@@ -136,6 +139,9 @@ public class SiteService {
         validateSiteId(siteId);
         if (req == null || !StringUtils.hasText(req.getName())) {
             throw new BusinessException(FacilityErrorCode.SITE_NAME_REQUIRED);
+        }
+        if (!StringUtils.hasText(req.getAddress())) {
+            throw new BusinessException(FacilityErrorCode.SITE_ADDRESS_REQUIRED);
         }
     }
 

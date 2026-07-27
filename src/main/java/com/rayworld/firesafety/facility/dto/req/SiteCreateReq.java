@@ -13,6 +13,6 @@ public class SiteCreateReq {
 
     @Schema(description = "현장(사업장) 이름", example = "레이월드1")
     private String name;
-    @Schema(description = "주소(선택)", example = "서울시 강남구")
+    @Schema(description = "주소(필수, 도로명주소 검색 API 결과 선택 또는 직접 입력)", example = "서울시 강남구 테헤란로 123")
     private String address;
 }
