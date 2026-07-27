@@ -50,7 +50,7 @@ class SiteServiceTest {
     void superAdminCanCreateSite() {
         // given
         loginAs(1L, UserRole.SUPER_ADMIN);
-        SiteCreateReq req = new SiteCreateReq("레이월드1", "서울시 강남구");
+        SiteCreateReq req = new SiteCreateReq("레이월드1", "서울시 강남구", "06134");
         when(siteMapper.findActiveSiteById(any())).thenReturn(savedSite());
 
         // when
@@ -67,7 +67,7 @@ class SiteServiceTest {
     void adminCannotCreateSite() {
         // given
         loginAs(2L, UserRole.ADMIN);
-        SiteCreateReq req = new SiteCreateReq("레이월드1", "서울시 강남구");
+        SiteCreateReq req = new SiteCreateReq("레이월드1", "서울시 강남구", "06134");
 
         // when & then
         assertThatThrownBy(() -> siteService.createSite(req))
@@ -80,7 +80,7 @@ class SiteServiceTest {
     void generalCannotCreateSite() {
         // given
         loginAs(3L, UserRole.GENERAL);
-        SiteCreateReq req = new SiteCreateReq("레이월드1", "서울시 강남구");
+        SiteCreateReq req = new SiteCreateReq("레이월드1", "서울시 강남구", "06134");
 
         // when & then
         assertThatThrownBy(() -> siteService.createSite(req))
@@ -93,7 +93,7 @@ class SiteServiceTest {
     void blankNameFails() {
         // given
         loginAs(1L, UserRole.SUPER_ADMIN);
-        SiteCreateReq req = new SiteCreateReq("", "서울시 강남구");
+        SiteCreateReq req = new SiteCreateReq("", "서울시 강남구", "06134");
 
         // when & then
         assertThatThrownBy(() -> siteService.createSite(req))
@@ -106,7 +106,7 @@ class SiteServiceTest {
     void blankAddressFails() {
         // given
         loginAs(1L, UserRole.SUPER_ADMIN);
-        SiteCreateReq req = new SiteCreateReq("레이월드1", "");
+        SiteCreateReq req = new SiteCreateReq("레이월드1", "", "06134");
 
         // when & then
         assertThatThrownBy(() -> siteService.createSite(req))
