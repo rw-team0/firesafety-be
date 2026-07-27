@@ -124,7 +124,7 @@ class StatisticsServiceTest {
         // when & then
         assertThatThrownBy(() -> statisticsService.getStatistics(req))
                 .isInstanceOfSatisfying(BusinessException.class, e ->
-                        assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_PARAMETER));
+                        assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_DATE_RANGE));
     }
 
     private void loginAs(Long userId, UserRole role) {

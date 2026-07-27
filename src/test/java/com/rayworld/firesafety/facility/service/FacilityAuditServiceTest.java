@@ -107,7 +107,7 @@ class FacilityAuditServiceTest {
         // when & then
         assertThatThrownBy(() -> facilityAuditService.getAuditLogs(req))
                 .isInstanceOfSatisfying(BusinessException.class, e ->
-                        assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_PARAMETER));
+                        assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_PAGE));
     }
 
     private void loginAs(Long userId, UserRole role) {

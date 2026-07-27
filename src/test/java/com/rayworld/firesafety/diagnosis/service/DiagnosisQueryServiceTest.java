@@ -136,7 +136,7 @@ class DiagnosisQueryServiceTest {
         // when & then
         assertThatThrownBy(() -> diagnosisQueryService.getDiagnosisResults(20L, req))
                 .isInstanceOfSatisfying(BusinessException.class, e ->
-                        assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_PARAMETER));
+                        assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_SIZE));
     }
 
     private void loginAs(Long userId, UserRole role) {

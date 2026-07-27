@@ -98,7 +98,7 @@ class SiteServiceTest {
         // when & then
         assertThatThrownBy(() -> siteService.createSite(req))
                 .isInstanceOfSatisfying(BusinessException.class, e ->
-                        assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_PARAMETER));
+                        assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.SITE_NAME_REQUIRED));
     }
 
     private void loginAs(Long userId, UserRole role) {

@@ -118,7 +118,7 @@ class AlertServiceTest {
         // when & then
         assertThatThrownBy(() -> alertService.getAlerts(req))
                 .isInstanceOfSatisfying(BusinessException.class, e ->
-                        assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_PARAMETER));
+                        assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_SIZE));
     }
 
     @Test
