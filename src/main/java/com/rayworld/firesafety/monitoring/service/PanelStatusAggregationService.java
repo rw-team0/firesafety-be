@@ -31,7 +31,7 @@ public class PanelStatusAggregationService {
     @Transactional
     public PanelStatus aggregatePanelStatus(Long panelId) {
         if (panelId == null) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(CommonErrorCode.MISSING_ID);
         }
 
         String latestErrorBits = panelStatusAggregationMapper.findLatestErrorBitsByPanelId(panelId);
