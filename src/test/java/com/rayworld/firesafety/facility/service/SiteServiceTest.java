@@ -101,6 +101,19 @@ class SiteServiceTest {
                         assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.SITE_NAME_REQUIRED));
     }
 
+    @Test
+    @DisplayName("현장 주소가 없으면 400을 반환한다")
+    void blankAddressFails() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        SiteCreateReq req = new SiteCreateReq("레이월드1", "");
+
+        // when & then
+        assertThatThrownBy(() -> siteService.createSite(req))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.SITE_ADDRESS_REQUIRED));
+    }
+
     private void loginAs(Long userId, UserRole role) {
         UserPrincipal principal = new UserPrincipal(new JwtUser(userId, role.name()));
         UsernamePasswordAuthenticationToken authentication =
