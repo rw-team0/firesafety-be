@@ -74,9 +74,9 @@ class AlertServiceTest {
 
         LocalDateTime fromAt = LocalDateTime.of(2026, 7, 23, 0, 0);
         LocalDateTime toAt = LocalDateTime.of(2026, 7, 24, 0, 0);
-        when(alertMapper.findAlerts(1L, true, "UNCONFIRMED", "ARC", 3L, fromAt, toAt, 10, 0))
+        when(alertMapper.findAlerts(1L, true, "UNCONFIRMED", "ARC", 3L, null, fromAt, toAt, 10, 0))
                 .thenReturn(List.of(alertListRes()));
-        when(alertMapper.countAlerts(1L, true, "UNCONFIRMED", "ARC", 3L, fromAt, toAt))
+        when(alertMapper.countAlerts(1L, true, "UNCONFIRMED", "ARC", 3L, null, fromAt, toAt))
                 .thenReturn(1L);
 
         // when
@@ -86,7 +86,7 @@ class AlertServiceTest {
         assertThat(result.getTotalElements()).isEqualTo(1L);
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().get(0).getPanelName()).isEqualTo("분전반A");
-        verify(alertMapper).findAlerts(1L, true, "UNCONFIRMED", "ARC", 3L, fromAt, toAt, 10, 0);
+        verify(alertMapper).findAlerts(1L, true, "UNCONFIRMED", "ARC", 3L, null, fromAt, toAt, 10, 0);
     }
 
     @Test
@@ -94,9 +94,9 @@ class AlertServiceTest {
     void adminSearchesAssignedSiteAlerts() {
         // given
         loginAs(2L, UserRole.ADMIN);
-        when(alertMapper.findAlerts(2L, false, null, null, null, null, null, 20, 0))
+        when(alertMapper.findAlerts(2L, false, null, null, null, null, null, null, 20, 0))
                 .thenReturn(List.of());
-        when(alertMapper.countAlerts(2L, false, null, null, null, null, null))
+        when(alertMapper.countAlerts(2L, false, null, null, null, null, null, null))
                 .thenReturn(0L);
 
         // when
@@ -104,7 +104,7 @@ class AlertServiceTest {
 
         // then
         assertThat(result.getTotalElements()).isZero();
-        verify(alertMapper).findAlerts(2L, false, null, null, null, null, null, 20, 0);
+        verify(alertMapper).findAlerts(2L, false, null, null, null, null, null, null, 20, 0);
     }
 
     @Test
