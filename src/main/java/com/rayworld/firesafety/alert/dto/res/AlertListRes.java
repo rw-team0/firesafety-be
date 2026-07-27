@@ -25,6 +25,14 @@ public class AlertListRes {
     private AlertStatus status;
     @Schema(description = "발생 시각", example = "2026-07-23T14:30:00")
     private LocalDateTime triggeredAt;
+    @Schema(description = "확인 처리자 이름(CONFIRMED 이상 상태에서만 값 존재)", example = "홍길동")
+    private String confirmedByName;
+    @Schema(description = "확인 처리 시각", example = "2026-07-23T14:35:00")
+    private LocalDateTime confirmedAt;
+    @Schema(description = "조치완료 시각(RESOLVED 상태에서만 값 존재)", example = "2026-07-23T15:00:00")
+    private LocalDateTime resolvedAt;
+    @Schema(description = "조치완료 처리자 이름(RESOLVED 상태에서만 값 존재)", example = "홍길동")
+    private String resolvedByName;
     @Schema(description = "조치완료 시 입력한 비고(RESOLVED 상태에서만 값 존재)", example = "케이블 재접속")
     private String resolutionNote;
 }

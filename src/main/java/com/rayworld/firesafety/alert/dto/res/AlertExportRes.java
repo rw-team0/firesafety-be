@@ -36,6 +36,8 @@ public class AlertExportRes {
     private LocalDateTime confirmedAt;
     @Schema(description = "조치완료 시각", example = "2026-07-23T15:00:00")
     private LocalDateTime resolvedAt;
+    @Schema(description = "조치완료 처리자 이름", example = "홍길동")
+    private String resolvedByName;
     @Schema(description = "조치 메모(비고)", example = "케이블 재접속")
     private String resolutionNote;
 }

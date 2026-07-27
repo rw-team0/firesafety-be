@@ -55,7 +55,7 @@ public interface AlertMapper {
     int confirmAlert(@Param("alertId") Long alertId, @Param("userId") Long userId);
 
     // 확인된 경보를 조치완료 상태로 전환
-    int resolveAlert(@Param("alertId") Long alertId, @Param("resolutionNote") String resolutionNote);
+    int resolveAlert(@Param("alertId") Long alertId, @Param("userId") Long userId, @Param("resolutionNote") String resolutionNote);
 
     // 같은 대상의 미조치 경보 존재 여부 확인
     boolean existsUnresolvedAlert(@Param("panelId") Long panelId,

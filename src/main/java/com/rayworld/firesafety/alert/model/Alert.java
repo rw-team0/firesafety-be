@@ -24,5 +24,6 @@ public class Alert {
     private Long confirmedBy;
     private LocalDateTime confirmedAt;
     private LocalDateTime resolvedAt;
+    private Long resolvedBy;
     private String resolutionNote;
 }

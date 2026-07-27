@@ -15,6 +15,7 @@
         <result property="confirmedBy" column="confirmed_by"/>
         <result property="confirmedAt" column="confirmed_at"/>
         <result property="resolvedAt" column="resolved_at"/>
+        <result property="resolvedBy" column="resolved_by"/>
         <result property="resolutionNote" column="resolution_note"/>
     </resultMap>
 
@@ -25,6 +26,10 @@
         <result property="type" column="type"/>
         <result property="status" column="status"/>
         <result property="triggeredAt" column="triggered_at"/>
+        <result property="confirmedByName" column="confirmed_by_name"/>
+        <result property="confirmedAt" column="confirmed_at"/>
+        <result property="resolvedAt" column="resolved_at"/>
+        <result property="resolvedByName" column="resolved_by_name"/>
         <result property="resolutionNote" column="resolution_note"/>
     </resultMap>
 
@@ -40,6 +45,7 @@
         <result property="confirmedByName" column="confirmed_by_name"/>
         <result property="confirmedAt" column="confirmed_at"/>
         <result property="resolvedAt" column="resolved_at"/>
+        <result property="resolvedByName" column="resolved_by_name"/>
         <result property="resolutionNote" column="resolution_note"/>
     </resultMap>
 
@@ -47,6 +53,8 @@
         FROM alert a
         LEFT JOIN panel p ON p.panel_id = a.panel_id
         LEFT JOIN circuit c ON c.circuit_id = a.circuit_id
+        LEFT JOIN `user` confirmer ON confirmer.user_id = a.confirmed_by
+        LEFT JOIN `user` resolver ON resolver.user_id = a.resolved_by
         <where>
             <if test="status != null">
                 AND a.status = #{status}
@@ -81,6 +89,7 @@
         LEFT JOIN site s ON s.site_id = p.site_id
         LEFT JOIN circuit c ON c.circuit_id = a.circuit_id
         LEFT JOIN `user` confirmer ON confirmer.user_id = a.confirmed_by
+        LEFT JOIN `user` resolver ON resolver.user_id = a.resolved_by
         <where>
             <if test="status != null">
                 AND a.status = #{status}
@@ -146,6 +155,10 @@
             a.type,
             a.status,
             a.triggered_at,
+            confirmer.name AS confirmed_by_name,
+            a.confirmed_at,
+            a.resolved_at,
+            resolver.name AS resolved_by_name,
             a.resolution_note
         <include refid="alertListFromAndFilter"/>
         ORDER BY
@@ -175,6 +188,7 @@
             confirmer.name AS confirmed_by_name,
             a.confirmed_at,
             a.resolved_at,
+            resolver.name AS resolved_by_name,
             a.resolution_note
         <include refid="alertExportFromAndFilter"/>
         ORDER BY
@@ -196,6 +210,7 @@
             a.confirmed_by,
             a.confirmed_at,
             a.resolved_at,
+            a.resolved_by,
             a.resolution_note
         FROM alert a
         LEFT JOIN panel p ON p.panel_id = a.panel_id
@@ -226,6 +241,7 @@
         UPDATE alert
         SET status = 'RESOLVED',
             resolved_at = CURRENT_TIMESTAMP,
+            resolved_by = #{userId},
             resolution_note = #{resolutionNote}
         WHERE alert_id = #{alertId}
           AND status = 'CONFIRMED'

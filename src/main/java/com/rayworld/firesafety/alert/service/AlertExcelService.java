@@ -38,7 +38,7 @@ public class AlertExcelService {
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final String[] HEADERS = {
             "번호", "발생일시", "현장명", "분전반명(장비명)", "회로(채널)", "경보유형",
-            "판정소스", "상태", "확인자", "확인일시", "조치일시", "비고"
+            "판정소스", "상태", "확인자", "확인일시", "조치일시", "조치자", "비고"
     };
 
     private final Clock clock;
@@ -70,7 +70,7 @@ public class AlertExcelService {
         Cell titleCell = titleRow.createCell(1);
         titleCell.setCellValue(TITLE);
         titleCell.setCellStyle(styles.titleStyle());
-        sheet.addMergedRegion(new CellRangeAddress(1, 1, 1, 12));
+        sheet.addMergedRegion(new CellRangeAddress(1, 1, 1, 13));
     }
 
     // 조회 조건과 다운로드 시각 표시
@@ -113,7 +113,8 @@ public class AlertExcelService {
             writeCell(row, 9, alert.getConfirmedByName(), styles.bodyStyle());
             writeCell(row, 10, formatDateTime(alert.getConfirmedAt()), styles.bodyStyle());
             writeCell(row, 11, formatDateTime(alert.getResolvedAt()), styles.bodyStyle());
-            writeCell(row, 12, alert.getResolutionNote(), styles.bodyStyle());
+            writeCell(row, 12, alert.getResolvedByName(), styles.bodyStyle());
+            writeCell(row, 13, alert.getResolutionNote(), styles.bodyStyle());
         }
     }
 
@@ -168,7 +169,7 @@ public class AlertExcelService {
 
     // 샘플 양식에 맞춰 컬럼 폭 지정
     private void adjustColumns(Sheet sheet) {
-        int[] widths = {8, 20, 20, 24, 12, 14, 14, 12, 14, 20, 20, 24};
+        int[] widths = {8, 20, 20, 24, 12, 14, 14, 12, 14, 20, 20, 14, 24};
         for (int i = 0; i < widths.length; i++) {
             sheet.setColumnWidth(i + 1, widths[i] * 256);
         }

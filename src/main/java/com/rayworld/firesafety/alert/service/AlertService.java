@@ -132,7 +132,7 @@ public class AlertService {
         validateCanResolve(alert);
 
         String resolutionNote = normalizeResolutionNote(req);
-        int updatedRows = alertMapper.resolveAlert(alertId, resolutionNote);
+        int updatedRows = alertMapper.resolveAlert(alertId, actor.getUserId(), resolutionNote);
         if (updatedRows == 0) {
             throw new BusinessException(AlertErrorCode.ALERT_NOT_CONFIRMED);
         }
