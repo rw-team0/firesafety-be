@@ -147,7 +147,7 @@ public class AlertService {
     // 현재 사용자가 접근할 수 있는 경보만 조회
     private Alert findAccessibleAlert(UserPrincipal actor, Long alertId) {
         if (alertId == null) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(CommonErrorCode.MISSING_ID);
         }
         boolean superAdmin = UserRole.SUPER_ADMIN.name().equals(actor.getRole());
         Alert alert = alertMapper.findAccessibleAlertById(actor.getUserId(), superAdmin, alertId);
@@ -191,7 +191,7 @@ public class AlertService {
             return DEFAULT_PAGE;
         }
         if (req.getPage() < 0) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(CommonErrorCode.INVALID_PAGE);
         }
         return req.getPage();
     }
@@ -202,7 +202,7 @@ public class AlertService {
             return DEFAULT_SIZE;
         }
         if (req.getSize() < 1 || req.getSize() > MAX_SIZE) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(CommonErrorCode.INVALID_SIZE);
         }
         return req.getSize();
     }
@@ -210,7 +210,7 @@ public class AlertService {
     // 시작일이 종료일보다 늦으면 잘못된 기간 조건
     private void validateDateRange(AlertListReq req) {
         if (req.getFrom() != null && req.getTo() != null && req.getFrom().isAfter(req.getTo())) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(CommonErrorCode.INVALID_DATE_RANGE);
         }
     }
 
@@ -221,7 +221,7 @@ public class AlertService {
         }
         boolean invalid = alertIds.stream().anyMatch(alertId -> alertId == null || alertId < 1);
         if (invalid) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(AlertErrorCode.INVALID_ALERT_ID);
         }
     }
 
