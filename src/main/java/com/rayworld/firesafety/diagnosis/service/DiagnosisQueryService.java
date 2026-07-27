@@ -67,7 +67,7 @@ public class DiagnosisQueryService {
             return DEFAULT_PAGE;
         }
         if (req.getPage() < 0) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(CommonErrorCode.INVALID_PAGE);
         }
         return req.getPage();
     }
@@ -78,7 +78,7 @@ public class DiagnosisQueryService {
             return DEFAULT_SIZE;
         }
         if (req.getSize() < 1 || req.getSize() > MAX_SIZE) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(CommonErrorCode.INVALID_SIZE);
         }
         return req.getSize();
     }
@@ -86,7 +86,7 @@ public class DiagnosisQueryService {
     // 활성 회로 조회
     private Circuit findActiveCircuit(Long circuitId) {
         if (circuitId == null) {
-            throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+            throw new BusinessException(CommonErrorCode.MISSING_ID);
         }
 
         Circuit circuit = circuitMapper.findActiveCircuitById(circuitId);
