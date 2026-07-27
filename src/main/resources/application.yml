@@ -61,6 +61,10 @@ constants:
     enabled: ${FIREBASE_ENABLED:false}
     credentials-path: ${FIREBASE_CREDENTIALS_PATH:}
 
+  address-search:
+    api-key: ${JUSO_API_KEY:}
+    search-url: ${JUSO_SEARCH_URL:https://business.juso.go.kr/addrlink/addrLinkApi.do}
+
   ai-prediction:
     enabled: ${AI_PREDICTION_ENABLED:false}
     base-url: ${AI_PREDICTION_BASE_URL:http://localhost:8000}
