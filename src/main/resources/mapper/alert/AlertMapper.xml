@@ -25,6 +25,7 @@
         <result property="type" column="type"/>
         <result property="status" column="status"/>
         <result property="triggeredAt" column="triggered_at"/>
+        <result property="resolutionNote" column="resolution_note"/>
     </resultMap>
 
     <resultMap id="alertExportResultMap" type="com.rayworld.firesafety.alert.dto.res.AlertExportRes">
@@ -136,7 +137,7 @@
         )
     </insert>
 
-    <!-- 경보 목록 조회: 미확인 경보를 먼저 보여주고 최신순 정렬 -->
+    <!-- 경보 목록 조회: 최신순 정렬(상태별로 보고 싶으면 상태 필터 사용) -->
     <select id="findAlerts" resultMap="alertListResultMap">
         SELECT
             a.alert_id,
@@ -144,15 +145,10 @@
             c.channel_no AS circuit_no,
             a.type,
             a.status,
-            a.triggered_at
+            a.triggered_at,
+            a.resolution_note
         <include refid="alertListFromAndFilter"/>
         ORDER BY
-            CASE a.status
-                WHEN 'UNCONFIRMED' THEN 1
-                WHEN 'CONFIRMED' THEN 2
-                WHEN 'RESOLVED' THEN 3
-                ELSE 4
-            END,
             a.triggered_at DESC,
             a.alert_id DESC
         LIMIT #{size}

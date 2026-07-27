@@ -25,4 +25,6 @@ public class AlertListRes {
     private AlertStatus status;
     @Schema(description = "발생 시각", example = "2026-07-23T14:30:00")
     private LocalDateTime triggeredAt;
+    @Schema(description = "조치완료 시 입력한 비고(RESOLVED 상태에서만 값 존재)", example = "케이블 재접속")
+    private String resolutionNote;
 }
