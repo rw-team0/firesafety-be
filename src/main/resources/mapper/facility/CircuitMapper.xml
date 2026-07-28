@@ -97,13 +97,27 @@
           AND deleted_at IS NULL
     </update>
 
-    <!-- DB UNIQUE(panel_id, channel_no) 제약과 같은 범위로 중복 확인 -->
-    <select id="existsCircuitByPanelIdAndChannelNo" resultType="boolean">
-        SELECT EXISTS(
-            SELECT 1
-            FROM circuit
-            WHERE panel_id = #{panelId}
-              AND channel_no = #{channelNo}
-        )
+    <!-- 삭제 여부와 무관하게 조회 (재등록 시 삭제된 회로 재활성화 대상 확인용) -->
+    <select id="findCircuitByPanelIdAndChannelNo" resultMap="circuitResultMap">
+        SELECT
+            circuit_id,
+            panel_id,
+            channel_no,
+            load_type,
+            created_at,
+            updated_at,
+            deleted_at
+        FROM circuit
+        WHERE panel_id = #{panelId}
+          AND channel_no = #{channelNo}
     </select>
+
+    <!-- 삭제됐던 회로를 같은 채널번호로 재등록할 때 재활성화 -->
+    <update id="reactivateCircuit">
+        UPDATE circuit
+        SET deleted_at = NULL,
+            updated_at = CURRENT_TIMESTAMP,
+            load_type = #{loadType}
+        WHERE circuit_id = #{circuitId}
+    </update>
 </mapper>

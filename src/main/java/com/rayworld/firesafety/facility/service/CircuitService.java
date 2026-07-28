@@ -60,14 +60,22 @@ public class CircuitService {
         validateSiteAccess(actor, panel.getSiteId());
         validateChannelNo(panel, req.getChannelNo());
 
-        if (circuitMapper.existsCircuitByPanelIdAndChannelNo(panelId, req.getChannelNo())) {
+        // 삭제 이력까지 포함해서 조회 — 같은 채널번호로 삭제된 회로가 있으면 새로 만들지 않고 재활성화한다.
+        // DB에 panel_id+channel_no UNIQUE 제약이 있어서, 삭제된 row가 남아있는 채로 새 row를 INSERT하면
+        // 항상 제약 위반이 난다(소프트 삭제와 DB UNIQUE는 같이 못 씀).
+        Circuit existing = circuitMapper.findCircuitByPanelIdAndChannelNo(panelId, req.getChannelNo());
+        Circuit savedCircuit;
+        if (existing != null && existing.getDeletedAt() == null) {
             throw new BusinessException(FacilityErrorCode.DUPLICATED_CHANNEL_NO);
+        } else if (existing != null) {
+            circuitMapper.reactivateCircuit(existing.getCircuitId(), req.getLoadType());
+            savedCircuit = findActiveCircuit(existing.getCircuitId());
+        } else {
+            Circuit circuit = buildCircuitForCreate(panelId, req);
+            circuitMapper.insertCircuit(circuit);
+            savedCircuit = findActiveCircuit(circuit.getCircuitId());
         }
 
-        Circuit circuit = buildCircuitForCreate(panelId, req);
-        circuitMapper.insertCircuit(circuit);
-
-        Circuit savedCircuit = findActiveCircuit(circuit.getCircuitId());
         insertFacilityAuditLog(savedCircuit, actor.getUserId(), FacilityAuditAction.CREATE, null, toAuditJson(savedCircuit));
 
         return CircuitCreateRes.from(savedCircuit);

@@ -26,6 +26,9 @@ public interface CircuitMapper {
     // 회로 소프트 삭제
     int softDeleteCircuit(@Param("circuitId") Long circuitId);
 
-    // 분전반 안의 회로 번호 중복 확인
-    boolean existsCircuitByPanelIdAndChannelNo(@Param("panelId") Long panelId, @Param("channelNo") Integer channelNo);
+    // 삭제 여부와 무관하게 분전반+채널번호로 회로 조회 (재등록 시 삭제된 회로 재활성화 대상 확인용)
+    Circuit findCircuitByPanelIdAndChannelNo(@Param("panelId") Long panelId, @Param("channelNo") Integer channelNo);
+
+    // 삭제됐던 회로를 같은 채널번호로 재등록할 때 deleted_at을 되돌려 재활성화
+    int reactivateCircuit(@Param("circuitId") Long circuitId, @Param("loadType") String loadType);
 }
