@@ -51,6 +51,8 @@ public class PanelDetailRes {
 
     @Schema(description = "최신 전체전류(A). 최근 수신 프레임이 없으면 null", example = "77.0")
     private BigDecimal totalCurrent;
+    @Schema(description = "최신 누설전류(mA)", example = "15.0")
+    private BigDecimal leakMa;
     @Schema(description = "최신 전압(V)", example = "220.0")
     private BigDecimal voltV;
     @Schema(description = "최신 전체전력(W)", example = "555")
@@ -65,6 +67,18 @@ public class PanelDetailRes {
     private Integer fireRaw;
     @Schema(description = "최신 가스센서 원시값", example = "8888")
     private Integer gasRaw;
+    @Schema(description = "하드웨어 누설전류 알람 비트 활성 여부(aerror ALARM byte). true면 서버 기준값과 무관하게 하드웨어가 위험으로 판단한 상태", example = "false")
+    private Boolean leakageAlarm;
+    @Schema(description = "하드웨어 과열(온도) 알람 비트 활성 여부", example = "false")
+    private Boolean overheatAlarm;
+    @Schema(description = "하드웨어 습도 알람 비트 활성 여부", example = "false")
+    private Boolean humidityAlarm;
+    @Schema(description = "하드웨어 가스 알람 비트 활성 여부", example = "false")
+    private Boolean gasAlarm;
+    @Schema(description = "하드웨어 불꽃 알람 비트 활성 여부", example = "false")
+    private Boolean fireAlarm;
+    @Schema(description = "하드웨어 과전류 알람 비트 활성 여부", example = "false")
+    private Boolean overcurrentAlarm;
     @Schema(description = "회로별 상태 목록")
     private List<PanelCircuitStatusRes> circuits;
     @Schema(description = "최근 경보 목록(최신순)")
@@ -72,6 +86,7 @@ public class PanelDetailRes {
 
     public static PanelDetailRes from(Panel panel,
                                        BigDecimal totalCurrent,
+                                       BigDecimal leakMa,
                                        BigDecimal voltV,
                                        Integer totalPower,
                                        Boolean doorStatus,
@@ -79,6 +94,12 @@ public class PanelDetailRes {
                                        BigDecimal humidity,
                                        Integer fireRaw,
                                        Integer gasRaw,
+                                       Boolean leakageAlarm,
+                                       Boolean overheatAlarm,
+                                       Boolean humidityAlarm,
+                                       Boolean gasAlarm,
+                                       Boolean fireAlarm,
+                                       Boolean overcurrentAlarm,
                                        List<PanelCircuitStatusRes> circuits,
                                        List<PanelRecentAlertRes> recentAlerts) {
         return new PanelDetailRes(
@@ -99,6 +120,7 @@ public class PanelDetailRes {
                 panel.getGasThreshold(),
                 panel.getFireThreshold(),
                 totalCurrent,
+                leakMa,
                 voltV,
                 totalPower,
                 doorStatus,
@@ -106,6 +128,12 @@ public class PanelDetailRes {
                 humidity,
                 fireRaw,
                 gasRaw,
+                leakageAlarm,
+                overheatAlarm,
+                humidityAlarm,
+                gasAlarm,
+                fireAlarm,
+                overcurrentAlarm,
                 circuits,
                 recentAlerts
         );

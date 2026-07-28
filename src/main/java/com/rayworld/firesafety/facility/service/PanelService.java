@@ -119,10 +119,12 @@ public class PanelService {
         SensorFrame latestFrame = panelMapper.findLatestSensorFrameByPanelId(panelId);
         List<PanelCircuitStatusRes> circuits = resolveCircuitStatuses(panel);
         List<PanelRecentAlertRes> recentAlerts = panelMapper.findRecentAlertsByPanelId(panelId, RECENT_ALERT_LIMIT);
+        boolean[] alarmBits = resolveAlarmBits(latestFrame == null ? null : latestFrame.getErrorBits());
 
         return PanelDetailRes.from(
                 panel,
                 latestFrame == null ? null : latestFrame.getTotalCurrent(),
+                latestFrame == null ? null : latestFrame.getLeakMa(),
                 latestFrame == null ? null : latestFrame.getVoltV(),
                 latestFrame == null ? null : latestFrame.getTotalPower(),
                 latestFrame == null ? null : latestFrame.getDoorStatus(),
@@ -130,9 +132,30 @@ public class PanelService {
                 latestFrame == null ? null : latestFrame.getHumidity(),
                 latestFrame == null ? null : latestFrame.getFireRaw(),
                 latestFrame == null ? null : latestFrame.getGasRaw(),
+                alarmBits[0],
+                alarmBits[1],
+                alarmBits[2],
+                alarmBits[3],
+                alarmBits[4],
+                alarmBits[6],
                 circuits,
                 recentAlerts
         );
+    }
+
+    // aerror ALARM byte(byte3)를 항목별 비트로 분해. 순서는 DeviceAlertService와 동일
+    // (0=누전, 1=과열, 2=습도, 3=가스, 4=불꽃, 5=문열림, 6=과전류)
+    // 화면 카드가 "서버 임계값 초과(노랑)"와 "하드웨어 알람(빨강)"을 구분해서 보여주기 위한 값
+    private boolean[] resolveAlarmBits(String errorBits) {
+        boolean[] bits = new boolean[7];
+        if (errorBits == null || !errorBits.matches("^[0-9A-Fa-f]{8}$")) {
+            return bits;
+        }
+        int byteValue = Integer.parseInt(errorBits.substring(6, 8), 16);
+        for (int i = 0; i < 7; i++) {
+            bits[i] = (byteValue & (1 << i)) != 0;
+        }
+        return bits;
     }
 
     // 회로별 상태 계산 (FR-03-03). 분전반이 OFFLINE이면 소속 회로 전부 OFFLINE으로 본다.
