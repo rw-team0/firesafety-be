@@ -48,6 +48,7 @@ constants:
     refresh-token-cookie-validity-seconds: ${JWT_REFRESH_TOKEN_COOKIE_VALIDITY_SECONDS}
     refresh-token-validity-milliseconds: ${JWT_REFRESH_TOKEN_VALIDITY_MILLISECONDS}
     cookie-secure: ${JWT_COOKIE_SECURE:false}
+    cookie-same-site: ${JWT_COOKIE_SAME_SITE:Lax}
 
   bootstrap:
     admin:

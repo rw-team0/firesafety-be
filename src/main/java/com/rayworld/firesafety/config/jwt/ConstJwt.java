@@ -23,4 +23,5 @@ public class ConstJwt {
     private final int refreshTokenCookieValiditySeconds;
     private final long refreshTokenValidityMilliseconds;
     private final boolean cookieSecure;
+    private final String cookieSameSite;
 }

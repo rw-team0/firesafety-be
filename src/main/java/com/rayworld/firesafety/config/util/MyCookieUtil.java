@@ -3,24 +3,27 @@ package com.rayworld.firesafety.config.util;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
+
+import java.time.Duration;
 
 // at/rt HttpOnly Cookie 생성/조회
 @Component
 public class MyCookieUtil {
 
-    // HttpOnly Cookie 저장
-    public void setCookie(HttpServletResponse response, String key, String value, int maxAge, String path, boolean secure) {
-        Cookie cookie = new Cookie(key, value);
-        cookie.setMaxAge(maxAge);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(secure);
+    // jakarta.servlet.http.Cookie는 SameSite 속성을 지원하지 않아 ResponseCookie로 Set-Cookie 헤더를 직접 구성
+    public void setCookie(HttpServletResponse response, String key, String value, int maxAge, String path, boolean secure, String sameSite) {
+        ResponseCookie cookie = ResponseCookie.from(key, value)
+                .httpOnly(true)
+                .secure(secure)
+                .sameSite(sameSite)
+                .maxAge(Duration.ofSeconds(maxAge))
+                .path(path != null ? path : "/")
+                .build();
 
-        if (path != null) {
-            cookie.setPath(path);
-        }
-
-        response.addCookie(cookie);
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
     // Cookie 값 조회
