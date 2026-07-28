@@ -98,7 +98,7 @@ class CircuitServiceTest {
         when(panelMapper.findActivePanelById(1L)).thenReturn(panel);
         when(siteMapper.findActiveSiteById(1L)).thenReturn(site(1L));
         when(siteMapper.existsActiveSiteAssignment(1L, 1L)).thenReturn(true);
-        when(circuitMapper.existsCircuitByPanelIdAndChannelNo(1L, 1)).thenReturn(true);
+        when(circuitMapper.findCircuitByPanelIdAndChannelNo(1L, 1)).thenReturn(savedCircuit());
 
         CircuitCreateReq req = new CircuitCreateReq(1, "조명");
 
@@ -106,6 +106,32 @@ class CircuitServiceTest {
         assertThatThrownBy(() -> circuitService.createCircuit(1L, req))
                 .isInstanceOfSatisfying(BusinessException.class, e ->
                         assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.DUPLICATED_CHANNEL_NO));
+    }
+
+    @Test
+    @DisplayName("FAC-002: 삭제됐던 채널번호로 재등록하면 새로 만들지 않고 재활성화한다")
+    void reactivateDeletedChannelNo() {
+        // given
+        loginAs(1L, UserRole.ADMIN);
+        Panel panel = panel(1L, 1L, 10);
+        when(panelMapper.findActivePanelById(1L)).thenReturn(panel);
+        when(siteMapper.findActiveSiteById(1L)).thenReturn(site(1L));
+        when(siteMapper.existsActiveSiteAssignment(1L, 1L)).thenReturn(true);
+
+        com.rayworld.firesafety.facility.model.Circuit deletedCircuit = savedCircuit();
+        deletedCircuit.setDeletedAt(java.time.LocalDateTime.now());
+        when(circuitMapper.findCircuitByPanelIdAndChannelNo(1L, 1)).thenReturn(deletedCircuit);
+        when(circuitMapper.findActiveCircuitById(1L)).thenReturn(savedCircuit());
+
+        CircuitCreateReq req = new CircuitCreateReq(1, "조명");
+
+        // when
+        CircuitCreateRes result = circuitService.createCircuit(1L, req);
+
+        // then
+        assertThat(result.getCircuitId()).isEqualTo(1L);
+        verify(circuitMapper).reactivateCircuit(1L, "조명");
+        verify(circuitMapper, org.mockito.Mockito.never()).insertCircuit(any());
     }
 
     @Test
@@ -148,7 +174,7 @@ class CircuitServiceTest {
         when(panelMapper.findActivePanelById(1L)).thenReturn(panel);
         when(siteMapper.findActiveSiteById(1L)).thenReturn(site(1L));
         when(siteMapper.existsActiveSiteAssignment(1L, 1L)).thenReturn(true);
-        when(circuitMapper.existsCircuitByPanelIdAndChannelNo(1L, 1)).thenReturn(false);
+        when(circuitMapper.findCircuitByPanelIdAndChannelNo(1L, 1)).thenReturn(null);
         when(circuitMapper.findActiveCircuitById(any())).thenReturn(savedCircuit());
 
         CircuitCreateReq req = new CircuitCreateReq(1, "조명");
