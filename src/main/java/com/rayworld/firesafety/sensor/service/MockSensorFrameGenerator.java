@@ -18,17 +18,24 @@ public class MockSensorFrameGenerator {
     private static final int MAX_CHANNEL_COUNT = 10;
     // ALARM bit 종류 수, 순서는 DeviceAlertService와 동일 (누전/과열/습도/가스/불꽃/문열림/과전류)
     private static final int ALARM_BIT_COUNT = 7;
+    private static final int ALARM_BIT_LEAKAGE = 0;
+    private static final int ALARM_BIT_OVERHEAT = 1;
+    private static final int ALARM_BIT_HUMIDITY = 2;
     private static final int ALARM_BIT_GAS = 3;
     private static final int ALARM_BIT_FIRE = 4;
     private static final int ALARM_BIT_DOOR_OPEN = 5;
+    private static final int ALARM_BIT_OVERCURRENT = 6;
 
     // panel의 threshold가 비어있을 때만 쓰는 기본값 (PanelService 기본값과 동일)
     private static final int DEFAULT_TEMP_THRESHOLD_TENTHS = 800;
     private static final int DEFAULT_HUMIDITY_THRESHOLD_TENTHS = 800;
     private static final int DEFAULT_GAS_THRESHOLD = 5000;
     private static final int DEFAULT_FIRE_THRESHOLD = 5000;
+    private static final int DEFAULT_LEAK_MA_THRESHOLD = 20;
+    private static final int DEFAULT_OVERCURRENT_THRESHOLD = 30;
 
-    // tem/humi는 3자리, gas/fire는 4자리 고정폭이라 값이 자릿수를 넘지 않게 상한을 둔다
+    // tem/humi는 3자리, gas/fire는 4자리, s_circuit/total_circuit은 2자리 고정폭이라 값이 자릿수를 넘지 않게 상한을 둔다
+    private static final int MAX_2_DIGIT = 99;
     private static final int MAX_3_DIGIT = 999;
     private static final int MAX_4_DIGIT = 9999;
 
@@ -72,9 +79,11 @@ public class MockSensorFrameGenerator {
         params.put("mode", "0");
         params.put("volt", pad(220 + random.nextInt(10), 3));
         params.put("hct_count", pad(random.nextInt(1000), 4));
-        params.put("s_circuit", pad(random.nextInt(5), 2));
-        params.put("tem", pad(resolveTem(panel, cautionMetric), 3));
-        params.put("humi", pad(resolveHumi(panel, cautionMetric), 3));
+        params.put("s_circuit", pad(alarmBitIndex == ALARM_BIT_LEAKAGE
+                ? boundedThreshold(panel.getLeakMaThreshold(), DEFAULT_LEAK_MA_THRESHOLD, MAX_2_DIGIT) + 1 + random.nextInt(10)
+                : random.nextInt(5), 2));
+        params.put("tem", pad(resolveTem(panel, cautionMetric, alarmBitIndex), 3));
+        params.put("humi", pad(resolveHumi(panel, cautionMetric, alarmBitIndex), 3));
         params.put("fire", pad(alarmBitIndex == ALARM_BIT_FIRE
                 ? 6000 + random.nextInt(3000)
                 : resolveFireOrGas(panel.getFireThreshold(), DEFAULT_FIRE_THRESHOLD, cautionMetric == CautionMetric.FIRE), 4));
@@ -82,7 +91,9 @@ public class MockSensorFrameGenerator {
                 ? 6000 + random.nextInt(3000)
                 : resolveFireOrGas(panel.getGasThreshold(), DEFAULT_GAS_THRESHOLD, cautionMetric == CautionMetric.GAS), 4));
         params.put("door", alarmBitIndex == ALARM_BIT_DOOR_OPEN ? "1" : "0");
-        params.put("total_circuit", pad(random.nextInt(20), 2));
+        params.put("total_circuit", pad(alarmBitIndex == ALARM_BIT_OVERCURRENT
+                ? boundedThreshold(panel.getOvercurrentThreshold(), DEFAULT_OVERCURRENT_THRESHOLD, MAX_2_DIGIT) + 1 + random.nextInt(10)
+                : random.nextInt(20), 2));
         params.put("e_energy", pad(random.nextInt(20000), 5));
         params.put("aerror", buildAerror(arcChannel, alarmBitIndex));
 
@@ -131,8 +142,10 @@ public class MockSensorFrameGenerator {
         };
     }
 
-    private int resolveTem(Panel panel, CautionMetric cautionMetric) {
-        if (cautionMetric == CautionMetric.TEMPERATURE) {
+    // CAUTION 단계(수치만 기준 초과)뿐 아니라 RISK 단계에서 이 항목이 알람비트로 선택된 경우에도
+    // 실제 수치를 같이 올려야 화면 카드가 흰색으로 안 남고 원인이 눈에 보인다.
+    private int resolveTem(Panel panel, CautionMetric cautionMetric, int alarmBitIndex) {
+        if (cautionMetric == CautionMetric.TEMPERATURE || alarmBitIndex == ALARM_BIT_OVERHEAT) {
             int thresholdTenths = panel.getTempThreshold() != null
                     ? panel.getTempThreshold().multiply(BigDecimal.TEN).intValue()
                     : DEFAULT_TEMP_THRESHOLD_TENTHS;
@@ -141,8 +154,8 @@ public class MockSensorFrameGenerator {
         return 200 + random.nextInt(100);
     }
 
-    private int resolveHumi(Panel panel, CautionMetric cautionMetric) {
-        if (cautionMetric == CautionMetric.HUMIDITY) {
+    private int resolveHumi(Panel panel, CautionMetric cautionMetric, int alarmBitIndex) {
+        if (cautionMetric == CautionMetric.HUMIDITY || alarmBitIndex == ALARM_BIT_HUMIDITY) {
             int thresholdTenths = panel.getHumidityThreshold() != null
                     ? panel.getHumidityThreshold().multiply(BigDecimal.TEN).intValue()
                     : DEFAULT_HUMIDITY_THRESHOLD_TENTHS;
@@ -157,6 +170,12 @@ public class MockSensorFrameGenerator {
             return Math.min(MAX_4_DIGIT, base + 200 + random.nextInt(800));
         }
         return 100 + random.nextInt(900);
+    }
+
+    // 임계값(BigDecimal, 없으면 기본값)을 정수로 변환하고 필드 자릿수 상한을 넘지 않게 자른다
+    private int boundedThreshold(BigDecimal threshold, int defaultValue, int maxValue) {
+        int base = threshold != null ? threshold.intValue() : defaultValue;
+        return Math.min(base, maxValue - 11);
     }
 
     // circuit_count 값 이상하면 최대값으로 보정
