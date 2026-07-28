@@ -1,5 +1,6 @@
 package com.rayworld.firesafety.config.security;
 
+import com.rayworld.firesafety.config.cors.CorsProperties;
 import com.rayworld.firesafety.config.jwt.ConstJwt;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -19,12 +20,13 @@ import java.util.List;
 // Spring Security 기본 정책. at HttpOnly Cookie 기반 JWT 인증
 @Configuration
 @RequiredArgsConstructor
-@EnableConfigurationProperties(ConstJwt.class)
+@EnableConfigurationProperties({ConstJwt.class, CorsProperties.class})
 public class WebSecurityConfiguration {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
+    private final CorsProperties corsProperties;
 
     // 인증/인가 필터 체인 구성
     @Bean
@@ -58,15 +60,7 @@ public class WebSecurityConfiguration {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(
-                "http://localhost:5173",
-                "http://localhost:5174",
-                "http://localhost:5175",
-                "http://localhost:5176",
-                "http://localhost:4173/",
-                "http://192.168.0.239:5173",
-                "http://192.168.0.34:5173"
-        ));
+        config.setAllowedOrigins(corsProperties.getAllowedOrigins());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

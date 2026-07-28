@@ -1,5 +1,7 @@
 package com.rayworld.firesafety.config.websocket;
 
+import com.rayworld.firesafety.config.cors.CorsProperties;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
@@ -8,7 +10,10 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 
 @Configuration
 @EnableWebSocketMessageBroker
+@RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    private final CorsProperties corsProperties;
 
     // 서버에서 프론트로 보내는 topic 브로커 설정
     @Override
@@ -21,13 +26,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws/monitoring")
-                .setAllowedOrigins(
-                        "http://localhost:5173",
-                        "http://localhost:5174",
-                        "http://localhost:5175",
-                        "http://localhost:5176",
-                        "http://192.168.0.239:5173",
-                        "http://192.168.0.34:5173"
-                );
+                .setAllowedOrigins(corsProperties.getAllowedOrigins().toArray(new String[0]));
     }
 }
