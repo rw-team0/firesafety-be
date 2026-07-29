@@ -31,6 +31,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -141,6 +142,55 @@ class DiagnosisQueryServiceTest {
         assertThatThrownBy(() -> diagnosisQueryService.getDiagnosisResults(20L, req))
                 .isInstanceOfSatisfying(BusinessException.class, e ->
                         assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_SIZE));
+    }
+
+    @Test
+    @DisplayName("AI-001: SUPER_ADMIN은 회로의 AI 진단을 수동으로 요청할 수 있다")
+    void superAdminCanTriggerManualDiagnosis() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        Circuit circuit = circuit();
+        Panel panel = panel();
+        when(circuitMapper.findActiveCircuitById(20L)).thenReturn(circuit);
+        when(panelMapper.findActivePanelById(10L)).thenReturn(panel);
+        when(siteMapper.findActiveSiteById(3L)).thenReturn(site());
+
+        // when
+        diagnosisQueryService.triggerManualDiagnosis(20L);
+
+        // then
+        verify(aiPredictionService).predictCircuit(panel, circuit);
+    }
+
+    @Test
+    @DisplayName("AI-001: 담당 현장이 아니면 AI 진단을 수동으로 요청할 수 없다")
+    void unassignedSiteManualDiagnosisIsForbidden() {
+        // given
+        loginAs(2L, UserRole.GENERAL);
+        when(circuitMapper.findActiveCircuitById(20L)).thenReturn(circuit());
+        when(panelMapper.findActivePanelById(10L)).thenReturn(panel());
+        when(siteMapper.findActiveSiteById(3L)).thenReturn(site());
+        when(siteMapper.existsActiveSiteAssignment(2L, 3L)).thenReturn(false);
+
+        // when & then
+        assertThatThrownBy(() -> diagnosisQueryService.triggerManualDiagnosis(20L))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.FORBIDDEN_ROLE));
+        verifyNoInteractions(aiPredictionService);
+    }
+
+    @Test
+    @DisplayName("AI-001: 회로가 없으면 AI 진단을 수동으로 요청할 수 없다")
+    void manualDiagnosisFailsWhenCircuitNotFound() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        when(circuitMapper.findActiveCircuitById(20L)).thenReturn(null);
+
+        // when & then
+        assertThatThrownBy(() -> diagnosisQueryService.triggerManualDiagnosis(20L))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.CIRCUIT_NOT_FOUND));
+        verifyNoInteractions(aiPredictionService);
     }
 
     private void loginAs(Long userId, UserRole role) {

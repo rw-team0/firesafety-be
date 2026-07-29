@@ -1,14 +1,18 @@
 package com.rayworld.firesafety.diagnosis.service;
 
+import com.rayworld.firesafety.common.exception.BusinessException;
 import com.rayworld.firesafety.diagnosis.config.AiPredictionProperties;
 import com.rayworld.firesafety.diagnosis.dto.req.AiPredictionReq;
 import com.rayworld.firesafety.diagnosis.dto.req.AiPredictionSampleReq;
 import com.rayworld.firesafety.diagnosis.dto.res.AiPredictionRes;
 import com.rayworld.firesafety.diagnosis.dto.res.AiPredictionResultRes;
+import com.rayworld.firesafety.diagnosis.exception.DiagnosisErrorCode;
 import com.rayworld.firesafety.diagnosis.mapper.AiDiagnosisResultMapper;
 import com.rayworld.firesafety.diagnosis.model.AiPredictionCircuitTarget;
 import com.rayworld.firesafety.diagnosis.model.AiPredictionPanelTarget;
 import com.rayworld.firesafety.diagnosis.model.Verdict;
+import com.rayworld.firesafety.facility.model.Circuit;
+import com.rayworld.firesafety.facility.model.Panel;
 import com.rayworld.firesafety.monitoring.service.PanelStatusAggregationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,10 +23,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,11 +49,14 @@ class AiPredictionServiceTest {
     @Mock
     private PanelStatusAggregationService panelStatusAggregationService;
 
+    private AiPredictionProperties properties;
     private AiPredictionService aiPredictionService;
 
     @BeforeEach
     void setUp() {
-        AiPredictionProperties properties = new AiPredictionProperties();
+        properties = new AiPredictionProperties();
+        properties.setEnabled(true);
+        properties.setBaseUrl("http://localhost:8000");
         properties.setMinSampleSize(30);
         properties.setSampleSize(60);
 
@@ -83,6 +95,68 @@ class AiPredictionServiceTest {
 
         verify(aiDiagnosisResultSaveService).save(10L, 20L, 30L, Verdict.ARC, 0.87);
         verify(panelStatusAggregationService).aggregatePanelStatus(10L);
+    }
+
+    @Test
+    @DisplayName("AI-001: AI_PREDICTION_ENABLED가 꺼져 있으면 회로 수동 진단은 503으로 거부한다")
+    void predictCircuitFailsWhenNotReady() {
+        // given
+        properties.setEnabled(false);
+
+        // when & then
+        assertThatThrownBy(() -> aiPredictionService.predictCircuit(panel(), circuit()))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(DiagnosisErrorCode.AI_PREDICTION_UNAVAILABLE));
+        verifyNoInteractions(aiPredictionClient);
+    }
+
+    @Test
+    @DisplayName("AI-001: 샘플이 최소 기준보다 적으면 AI 서버를 호출하지 않고 조용히 넘어간다")
+    void predictCircuitSkipsWhenSamplesInsufficient() {
+        // given
+        when(aiDiagnosisResultMapper.findRecentSamples(20L, 60)).thenReturn(sampleListOfSize(10));
+
+        // when
+        aiPredictionService.predictCircuit(panel(), circuit());
+
+        // then
+        verifyNoInteractions(aiPredictionClient);
+        verify(panelStatusAggregationService, never()).aggregatePanelStatus(any());
+    }
+
+    @Test
+    @DisplayName("AI-001: 샘플이 충분하면 AI 서버를 호출해 결과를 저장하고 분전반 상태를 재집계한다")
+    void predictCircuitCallsAiServerAndSavesResult() {
+        // given
+        when(aiDiagnosisResultMapper.findRecentSamples(20L, 60)).thenReturn(sampleListOfSize(30));
+        when(aiDiagnosisResultMapper.findLatestFrameId(20L)).thenReturn(500L);
+        when(aiPredictionClient.predict(any())).thenReturn(aiResponse());
+
+        // when
+        aiPredictionService.predictCircuit(panel(), circuit());
+
+        // then
+        verify(aiDiagnosisResultSaveService).save(10L, 20L, 500L, Verdict.ARC, 0.87);
+        verify(panelStatusAggregationService).aggregatePanelStatus(10L);
+    }
+
+    private Panel panel() {
+        Panel panel = new Panel();
+        panel.setPanelId(10L);
+        panel.setMNo("00001");
+        return panel;
+    }
+
+    private Circuit circuit() {
+        Circuit circuit = new Circuit();
+        circuit.setCircuitId(20L);
+        circuit.setPanelId(10L);
+        circuit.setChannelNo(1);
+        return circuit;
+    }
+
+    private List<AiPredictionSampleReq> sampleListOfSize(int count) {
+        return Collections.nCopies(count, sample("12.3", 4));
     }
 
     private AiPredictionPanelTarget panelTarget() {
