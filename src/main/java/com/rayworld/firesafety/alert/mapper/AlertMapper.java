@@ -2,6 +2,7 @@ package com.rayworld.firesafety.alert.mapper;
 
 import com.rayworld.firesafety.alert.dto.res.AlertExportRes;
 import com.rayworld.firesafety.alert.dto.res.AlertListRes;
+import com.rayworld.firesafety.alert.dto.res.AlertPendingRes;
 import com.rayworld.firesafety.alert.model.Alert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -71,4 +72,16 @@ public interface AlertMapper {
 
     // 경보가 속한 분전반의 현장 ID 조회
     Long findSiteIdByPanelId(@Param("panelId") Long panelId);
+
+    // 미처리(UNCONFIRMED/CONFIRMED) 경보 목록 조회 - 기간 필터 없음 (REQ-306)
+    List<AlertPendingRes> findPendingAlerts(@Param("userId") Long userId,
+                                            @Param("superAdmin") boolean superAdmin,
+                                            @Param("siteId") Long siteId,
+                                            @Param("size") int size,
+                                            @Param("offset") int offset);
+
+    // 미처리 경보 전체 개수 조회 (REQ-306)
+    long countPendingAlerts(@Param("userId") Long userId,
+                            @Param("superAdmin") boolean superAdmin,
+                            @Param("siteId") Long siteId);
 }

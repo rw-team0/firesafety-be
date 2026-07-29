@@ -1,8 +1,10 @@
 package com.rayworld.firesafety.alert.controller;
 
 import com.rayworld.firesafety.alert.dto.req.AlertListReq;
+import com.rayworld.firesafety.alert.dto.req.AlertPendingReq;
 import com.rayworld.firesafety.alert.dto.req.AlertResolveReq;
 import com.rayworld.firesafety.alert.dto.res.AlertListPageRes;
+import com.rayworld.firesafety.alert.dto.res.AlertPendingPageRes;
 import com.rayworld.firesafety.alert.service.AlertService;
 import com.rayworld.firesafety.common.response.ResultResponse;
 import com.rayworld.firesafety.config.swagger.OpenApiConfig;
@@ -40,6 +42,15 @@ public class AlertController {
     @GetMapping
     public ResultResponse<AlertListPageRes> getAlerts(@ModelAttribute AlertListReq req) {
         AlertListPageRes alerts = alertService.getAlerts(req);
+        return ResultResponse.success(String.format("%d rows", alerts.getContent().size()), alerts);
+    }
+
+    // 미처리 조치 목록 조회 (GET /api/alerts/pending, REQ-306)
+    // 기간 필터 없이 UNCONFIRMED/CONFIRMED 경보만 모아서 보여준다. 지연 판단(elapsedHours)은 서버가 계산해서 내려준다
+    @Operation(summary = "미처리 조치 목록 조회", description = "기간 필터 없이 UNCONFIRMED/CONFIRMED 상태 경보만 조회한다. 각 항목의 elapsedHours로 지연 여부를 판단한다.")
+    @GetMapping("/pending")
+    public ResultResponse<AlertPendingPageRes> getPendingAlerts(@ModelAttribute AlertPendingReq req) {
+        AlertPendingPageRes alerts = alertService.getPendingAlerts(req);
         return ResultResponse.success(String.format("%d rows", alerts.getContent().size()), alerts);
     }
 

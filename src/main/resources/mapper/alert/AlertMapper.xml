@@ -86,6 +86,35 @@
         </where>
     </sql>
 
+    <resultMap id="alertPendingResultMap" type="com.rayworld.firesafety.alert.dto.res.AlertPendingRes">
+        <id property="alertId" column="alert_id"/>
+        <result property="panelName" column="panel_name"/>
+        <result property="type" column="type"/>
+        <result property="status" column="status"/>
+        <result property="triggeredAt" column="triggered_at"/>
+        <result property="elapsedHours" column="elapsed_hours"/>
+    </resultMap>
+
+    <sql id="alertPendingFromAndFilter">
+        FROM alert a
+        LEFT JOIN panel p ON p.panel_id = a.panel_id
+        <where>
+            AND a.status IN ('UNCONFIRMED', 'CONFIRMED')
+            <if test="siteId != null">
+                AND p.site_id = #{siteId}
+            </if>
+            <if test="!superAdmin">
+                AND EXISTS (
+                    SELECT 1
+                    FROM user_site us
+                    WHERE us.user_id = #{userId}
+                      AND us.site_id = p.site_id
+                      AND us.deleted_at IS NULL
+                )
+            </if>
+        </where>
+    </sql>
+
     <sql id="alertExportFromAndFilter">
         FROM alert a
         LEFT JOIN panel p ON p.panel_id = a.panel_id
@@ -279,5 +308,28 @@
         SELECT site_id
         FROM panel
         WHERE panel_id = #{panelId}
+    </select>
+
+    <!-- 미처리(UNCONFIRMED/CONFIRMED) 경보 목록: 기간 필터 없이 최신순. 지연 판단은 프론트가 elapsed_hours로 직접 계산 -->
+    <select id="findPendingAlerts" resultMap="alertPendingResultMap">
+        SELECT
+            a.alert_id,
+            p.name AS panel_name,
+            a.type,
+            a.status,
+            a.triggered_at,
+            TIMESTAMPDIFF(HOUR, a.triggered_at, CURRENT_TIMESTAMP) AS elapsed_hours
+        <include refid="alertPendingFromAndFilter"/>
+        ORDER BY
+            a.triggered_at ASC,
+            a.alert_id ASC
+        LIMIT #{size}
+        OFFSET #{offset}
+    </select>
+
+    <!-- 미처리 경보 전체 개수 조회 -->
+    <select id="countPendingAlerts" resultType="long">
+        SELECT COUNT(*)
+        <include refid="alertPendingFromAndFilter"/>
     </select>
 </mapper>

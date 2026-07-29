@@ -1,10 +1,13 @@
 package com.rayworld.firesafety.alert.service;
 
 import com.rayworld.firesafety.alert.dto.req.AlertListReq;
+import com.rayworld.firesafety.alert.dto.req.AlertPendingReq;
 import com.rayworld.firesafety.alert.dto.req.AlertResolveReq;
 import com.rayworld.firesafety.alert.dto.res.AlertExportRes;
 import com.rayworld.firesafety.alert.dto.res.AlertListPageRes;
 import com.rayworld.firesafety.alert.dto.res.AlertListRes;
+import com.rayworld.firesafety.alert.dto.res.AlertPendingPageRes;
+import com.rayworld.firesafety.alert.dto.res.AlertPendingRes;
 import com.rayworld.firesafety.alert.exception.AlertErrorCode;
 import com.rayworld.firesafety.alert.mapper.AlertMapper;
 import com.rayworld.firesafety.alert.model.Alert;
@@ -76,6 +79,58 @@ public class AlertService {
         );
 
         return new AlertListPageRes(content, totalElements, page, size);
+    }
+
+    // 미처리 조치 목록 조회 (REQ-306)
+    // 과거엔 프론트가 /alerts를 기간 무관 전체 스캔해서 이 화면을 만들다가 성능 문제로 롤백된 적이 있어서,
+    // 이번엔 필터링과 경과시간 계산을 전부 쿼리에서 처리해 페이지 단위로만 내려준다.
+    // 1. 현재 사용자 확인 → 2. 페이징 계산 → 3. 목록/개수 조회
+    @Transactional(readOnly = true)
+    public AlertPendingPageRes getPendingAlerts(AlertPendingReq req) {
+        UserPrincipal actor = getCurrentUser();
+        AlertPendingReq searchReq = normalizePendingReq(req);
+        int page = resolvePendingPage(searchReq);
+        int size = resolvePendingSize(searchReq);
+        int offset = page * size;
+        boolean superAdmin = UserRole.SUPER_ADMIN.name().equals(actor.getRole());
+
+        List<AlertPendingRes> content = alertMapper.findPendingAlerts(
+                actor.getUserId(),
+                superAdmin,
+                searchReq.getSiteId(),
+                size,
+                offset
+        );
+        long totalElements = alertMapper.countPendingAlerts(actor.getUserId(), superAdmin, searchReq.getSiteId());
+
+        return new AlertPendingPageRes(content, totalElements);
+    }
+
+    // null 요청도 기본 목록 조회로 처리
+    private AlertPendingReq normalizePendingReq(AlertPendingReq req) {
+        return req == null ? new AlertPendingReq() : req;
+    }
+
+    // page 미입력 시 첫 페이지 조회
+    private int resolvePendingPage(AlertPendingReq req) {
+        if (req.getPage() == null) {
+            return DEFAULT_PAGE;
+        }
+        if (req.getPage() < 0) {
+            throw new BusinessException(CommonErrorCode.INVALID_PAGE);
+        }
+        return req.getPage();
+    }
+
+    // size 미입력 시 20개, 최대 100개까지 허용
+    private int resolvePendingSize(AlertPendingReq req) {
+        if (req.getSize() == null) {
+            return DEFAULT_SIZE;
+        }
+        if (req.getSize() < 1 || req.getSize() > MAX_SIZE) {
+            throw new BusinessException(CommonErrorCode.INVALID_SIZE);
+        }
+        return req.getSize();
     }
 
     // 경보 이력 엑셀 다운로드
