@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.rayworld.firesafety.inspection.mapper.InspectionMapper">
+    <resultMap id="inspectionItemResResultMap" type="com.rayworld.firesafety.inspection.dto.res.InspectionItemRes">
+        <id property="itemId" column="item_id"/>
+        <result property="panelId" column="panel_id"/>
+        <result property="itemName" column="item_name"/>
+        <result property="description" column="description"/>
+    </resultMap>
+
+    <resultMap id="inspectionHistoryResResultMap" type="com.rayworld.firesafety.inspection.dto.res.InspectionHistoryRes">
+        <id property="inspectionId" column="inspection_id"/>
+        <result property="inspectedAt" column="inspected_at"/>
+        <result property="inspectorName" column="inspector_name"/>
+        <result property="note" column="note"/>
+    </resultMap>
+
+    <resultMap id="inspectionResultItemResResultMap" type="com.rayworld.firesafety.inspection.dto.res.InspectionResultItemRes">
+        <result property="itemId" column="item_id"/>
+        <result property="itemName" column="item_name"/>
+        <result property="result" column="result"/>
+    </resultMap>
+
+    <!-- 점검 항목 등록 -->
+    <insert id="insertInspectionItem"
+            parameterType="com.rayworld.firesafety.inspection.model.InspectionItem"
+            useGeneratedKeys="true"
+            keyProperty="itemId">
+        INSERT INTO inspection_item (panel_id, item_name, description)
+        VALUES (#{panelId}, #{itemName}, #{description})
+    </insert>
+
+    <!-- 분전반의 점검 항목 목록 조회 -->
+    <select id="findInspectionItemsByPanelId" resultMap="inspectionItemResResultMap">
+        SELECT item_id, panel_id, item_name, description
+        FROM inspection_item
+        WHERE panel_id = #{panelId}
+        ORDER BY item_id ASC
+    </select>
+
+    <!-- 점검 항목이 해당 분전반 소속으로 실제 존재하는지 확인 (체크리스트 저장 시 유효성 검증용) -->
+    <select id="existsInspectionItem" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1 FROM inspection_item
+            WHERE item_id = #{itemId} AND panel_id = #{panelId}
+        )
+    </select>
+
+    <!-- 점검 실행 1건 등록 -->
+    <insert id="insertInspectionResult"
+            parameterType="com.rayworld.firesafety.inspection.model.InspectionResult"
+            useGeneratedKeys="true"
+            keyProperty="inspectionId">
+        INSERT INTO inspection_result (panel_id, inspected_at, inspector_id, note)
+        VALUES (#{panelId}, #{inspectedAt}, #{inspectorId}, #{note})
+    </insert>
+
+    <!-- 점검 실행 1건에 딸린 항목별 결과 등록 -->
+    <insert id="insertInspectionResultItem" parameterType="com.rayworld.firesafety.inspection.model.InspectionResultItem">
+        INSERT INTO inspection_result_item (inspection_id, item_id, result)
+        VALUES (#{inspectionId}, #{itemId}, #{result})
+    </insert>
+
+    <sql id="inspectionHistoryFilter">
+        <where>
+            AND r.panel_id = #{panelId}
+            <if test="fromAt != null">
+                AND r.inspected_at &gt;= #{fromAt}
+            </if>
+            <if test="toAt != null">
+                AND r.inspected_at &lt; #{toAt}
+            </if>
+        </where>
+    </sql>
+
+    <!-- 분전반의 점검 이력 목록 조회 (항목별 결과는 findResultItemsByInspectionId로 별도 조립) -->
+    <select id="findInspectionHistory" resultMap="inspectionHistoryResResultMap">
+        SELECT
+            r.inspection_id,
+            r.inspected_at,
+            u.name AS inspector_name,
+            r.note
+        FROM inspection_result r
+        LEFT JOIN `user` u ON u.user_id = r.inspector_id
+        <include refid="inspectionHistoryFilter"/>
+        ORDER BY r.inspected_at DESC, r.inspection_id DESC
+        LIMIT #{size}
+        OFFSET #{offset}
+    </select>
+
+    <!-- 점검 이력 전체 개수 조회 -->
+    <select id="countInspectionHistory" resultType="long">
+        SELECT COUNT(*)
+        FROM inspection_result r
+        <include refid="inspectionHistoryFilter"/>
+    </select>
+
+    <!-- 점검 실행 1건의 항목별 결과 조회 (항목명 포함) -->
+    <select id="findResultItemsByInspectionId" resultMap="inspectionResultItemResResultMap">
+        SELECT
+            i.item_id,
+            i.item_name,
+            ri.result
+        FROM inspection_result_item ri
+        INNER JOIN inspection_item i ON i.item_id = ri.item_id
+        WHERE ri.inspection_id = #{inspectionId}
+        ORDER BY i.item_id ASC
+    </select>
+</mapper>
