@@ -1,10 +1,13 @@
 package com.rayworld.firesafety.alert.service;
 
 import com.rayworld.firesafety.alert.dto.req.AlertListReq;
+import com.rayworld.firesafety.alert.dto.req.AlertPendingReq;
 import com.rayworld.firesafety.alert.dto.req.AlertResolveReq;
 import com.rayworld.firesafety.alert.dto.res.AlertExportRes;
 import com.rayworld.firesafety.alert.dto.res.AlertListPageRes;
 import com.rayworld.firesafety.alert.dto.res.AlertListRes;
+import com.rayworld.firesafety.alert.dto.res.AlertPendingPageRes;
+import com.rayworld.firesafety.alert.dto.res.AlertPendingRes;
 import com.rayworld.firesafety.alert.exception.AlertErrorCode;
 import com.rayworld.firesafety.alert.mapper.AlertMapper;
 import com.rayworld.firesafety.alert.model.Alert;
@@ -117,6 +120,59 @@ class AlertServiceTest {
 
         // when & then
         assertThatThrownBy(() -> alertService.getAlerts(req))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_SIZE));
+    }
+
+    @Test
+    @DisplayName("API-306: SUPER_ADMIN은 현장 필터로 미처리 조치 목록을 조회할 수 있다")
+    void superAdminCanSearchPendingAlerts() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        AlertPendingReq req = new AlertPendingReq();
+        req.setSiteId(3L);
+        req.setPage(0);
+        req.setSize(10);
+
+        when(alertMapper.findPendingAlerts(1L, true, 3L, 10, 0)).thenReturn(List.of(alertPendingRes()));
+        when(alertMapper.countPendingAlerts(1L, true, 3L)).thenReturn(1L);
+
+        // when
+        AlertPendingPageRes result = alertService.getPendingAlerts(req);
+
+        // then
+        assertThat(result.getTotalElements()).isEqualTo(1L);
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getElapsedHours()).isEqualTo(26L);
+        verify(alertMapper).findPendingAlerts(1L, true, 3L, 10, 0);
+    }
+
+    @Test
+    @DisplayName("API-306: ADMIN은 담당 현장의 미처리 조치만 조회하도록 Mapper에 전달한다")
+    void adminSearchesAssignedSitePendingAlerts() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(alertMapper.findPendingAlerts(2L, false, null, 20, 0)).thenReturn(List.of());
+        when(alertMapper.countPendingAlerts(2L, false, null)).thenReturn(0L);
+
+        // when
+        AlertPendingPageRes result = alertService.getPendingAlerts(new AlertPendingReq());
+
+        // then
+        assertThat(result.getTotalElements()).isZero();
+        verify(alertMapper).findPendingAlerts(2L, false, null, 20, 0);
+    }
+
+    @Test
+    @DisplayName("API-306: 미처리 조치 목록도 잘못된 페이징 조건이면 400을 반환한다")
+    void pendingAlertsInvalidSizeFails() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        AlertPendingReq req = new AlertPendingReq();
+        req.setSize(0);
+
+        // when & then
+        assertThatThrownBy(() -> alertService.getPendingAlerts(req))
                 .isInstanceOfSatisfying(BusinessException.class, e ->
                         assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_SIZE));
     }
@@ -246,6 +302,17 @@ class AlertServiceTest {
         res.setType(AlertType.ARC);
         res.setStatus(AlertStatus.UNCONFIRMED);
         res.setTriggeredAt(LocalDateTime.of(2026, 7, 23, 10, 0));
+        return res;
+    }
+
+    private AlertPendingRes alertPendingRes() {
+        AlertPendingRes res = new AlertPendingRes();
+        res.setAlertId(1L);
+        res.setPanelName("분전반A");
+        res.setType(AlertType.ARC);
+        res.setStatus(AlertStatus.UNCONFIRMED);
+        res.setTriggeredAt(LocalDateTime.of(2026, 7, 28, 8, 0));
+        res.setElapsedHours(26L);
         return res;
     }
 
