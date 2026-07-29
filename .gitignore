@@ -15,6 +15,7 @@ AGENTS.md
 WEBSOCKET_FCM_GUIDE.md
 API_GUIDE.md
 docs
+.DS_Store
 
 ### STS ###
 .apt_generated

@@ -25,6 +25,8 @@ services:
   nginx:
     image: nginx:1.27-alpine
     container_name: arcguard-nginx
+    environment:
+      - TZ=Asia/Seoul
     ports:
       - "22222:22222"
     # :Z 접미사 — 서버가 SELinux Enforcing이라 bind mount에 이게 없으면 컨테이너가 파일을 못 읽는다(AVC denial)
@@ -47,6 +49,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: arcguard-backend
+    environment:
+      - TZ=Asia/Seoul
     env_file:
       - .env.production
     # HTTPS 2차 전환 때 FIREBASE_ENABLED=true로 켤 예정이라 파일은 미리 마운트해둔다.
@@ -68,6 +72,8 @@ services:
     # 빌드: firesafety-fe 레포 루트에서 `docker build -t arcguard-frontend:latest .`
     image: arcguard-frontend:latest
     container_name: arcguard-frontend
+    environment:
+      - TZ=Asia/Seoul
     networks:
       - firesafety-net
     restart: unless-stopped
@@ -85,6 +91,8 @@ services:
     profiles: ["ai"]
     image: arcguard-ai-service:latest
     container_name: arcguard-ai-service
+    environment:
+      - TZ=Asia/Seoul
     env_file:
       - .env.production
     # 외부 노출 없음. backend가 내부 네트워크(firesafety-net)로만 호출한다.
@@ -97,6 +105,7 @@ services:
     image: mysql:8.0
     container_name: arcguard-mysql
     environment:
+      TZ: Asia/Seoul
       MYSQL_DATABASE: arcguard_db
       MYSQL_USER: ${DB_USERNAME}
       MYSQL_PASSWORD: ${DB_PASSWORD}
