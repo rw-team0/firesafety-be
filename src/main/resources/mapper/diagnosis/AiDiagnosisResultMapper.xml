@@ -112,6 +112,13 @@
         ORDER BY latest.reading_id ASC
     </select>
 
+    <!-- 수동 진단 실행 시 저장에 쓸, 이 회로의 가장 최근 프레임ID -->
+    <select id="findLatestFrameId" resultType="java.lang.Long">
+        SELECT MAX(sfc.frame_id)
+        FROM sensor_frame_circuit sfc
+        WHERE sfc.circuit_id = #{circuitId}
+    </select>
+
     <!-- 회로별 AI 판정 이력 조회 -->
     <select id="findDiagnosisResults" resultMap="diagnosisResultResResultMap">
         SELECT

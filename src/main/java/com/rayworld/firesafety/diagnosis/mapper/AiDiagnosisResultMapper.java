@@ -28,6 +28,9 @@ public interface AiDiagnosisResultMapper {
     List<AiPredictionSampleReq> findRecentSamples(@Param("circuitId") Long circuitId,
                                                   @Param("sampleSize") int sampleSize);
 
+    // 수동 진단 실행 시 저장용으로 쓸 회로의 가장 최근 프레임ID 조회 (없으면 null)
+    Long findLatestFrameId(@Param("circuitId") Long circuitId);
+
     // 회로별 AI 판정 이력 조회
     List<DiagnosisResultRes> findDiagnosisResults(@Param("circuitId") Long circuitId,
                                                   @Param("size") int size,

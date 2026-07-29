@@ -48,6 +48,9 @@ class DiagnosisQueryServiceTest {
     @Mock
     private SiteMapper siteMapper;
 
+    @Mock
+    private AiPredictionService aiPredictionService;
+
     private DiagnosisQueryService diagnosisQueryService;
 
     @BeforeEach
@@ -56,7 +59,8 @@ class DiagnosisQueryServiceTest {
                 aiDiagnosisResultMapper,
                 circuitMapper,
                 panelMapper,
-                siteMapper
+                siteMapper,
+                aiPredictionService
         );
     }
 

@@ -35,6 +35,7 @@ public class DiagnosisQueryService {
     private final CircuitMapper circuitMapper;
     private final PanelMapper panelMapper;
     private final SiteMapper siteMapper;
+    private final AiPredictionService aiPredictionService;
 
     // 회로 진단결과 조회
     // 1. 현재 사용자 확인 → 2. 회로/상위 설비 확인 → 3. 현장 접근 권한 확인 → 4. AI 판정 이력 조회
@@ -54,6 +55,18 @@ public class DiagnosisQueryService {
         long totalElements = aiDiagnosisResultMapper.countDiagnosisResults(circuitId);
 
         return new DiagnosisResultPageRes(content, totalElements, page, size);
+    }
+
+    // AI 진단 수동 실행 (REQ-102)
+    // 1. 현재 사용자 확인 → 2. 회로/상위 설비 확인 → 3. 현장 접근 권한 확인 → 4. AI 서버 호출 위임
+    // 조회 API와 같은 권한 검증을 그대로 재사용한다. AI 서버 호출은 외부 HTTP라 트랜잭션으로 묶지 않는다.
+    public void triggerManualDiagnosis(Long circuitId) {
+        UserPrincipal actor = getCurrentUser();
+        Circuit circuit = findActiveCircuit(circuitId);
+        Panel panel = findActivePanel(circuit.getPanelId());
+        validateSiteAccess(actor, panel.getSiteId());
+
+        aiPredictionService.predictCircuit(panel, circuit);
     }
 
     // null 요청도 기본 목록 조회로 처리
