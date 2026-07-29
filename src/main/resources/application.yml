@@ -92,6 +92,13 @@ constants:
     delay-ms: ${SENSOR_MOCK_DELAY_MS:5000}
     ai-delay-ms: ${SENSOR_MOCK_AI_DELAY_MS:20000}
 
+  # SW 버전 정보 화면(REQ-702)용 정적 값. 배포 시 실제 값으로 환경변수만 갱신하면 코드 재빌드 없이 반영됨
+  system:
+    version: ${APP_VERSION:0.0.1-SNAPSHOT}
+    build-date: ${APP_BUILD_DATE:}
+    changelog-url: ${APP_CHANGELOG_URL:}
+    registration-info: ${APP_REGISTRATION_INFO:}
+
 monitoring:
   communication-lost-check-delay-ms: ${COMMUNICATION_LOST_CHECK_DELAY_MS:30000}
   communication-lost-check-initial-delay-ms: ${COMMUNICATION_LOST_CHECK_INITIAL_DELAY_MS:30000}
