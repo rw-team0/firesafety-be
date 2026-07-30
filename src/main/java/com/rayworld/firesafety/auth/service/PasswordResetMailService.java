@@ -56,15 +56,15 @@ public class PasswordResetMailService {
         return """
                 <!DOCTYPE html>
                 <html>
-                <body style="margin:0;padding:0;background:#f3f4f6;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;">
+                <body style="margin:0;padding:0;background:#f4f7f9;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;">
                   <table width="100%%" cellpadding="0" cellspacing="0">
                     <tr>
                       <td align="center" style="padding:40px 16px;">
-                        <table width="520" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(107,114,128,0.15);">
+                        <table width="520" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(18,58,74,0.15);">
 
                           <!-- 헤더 -->
                           <tr>
-                            <td style="background:#6b7280;padding:24px 32px;">
+                            <td style="background:#123a4a;padding:24px 32px;">
                               <table cellpadding="0" cellspacing="0">
                                 <tr>
                                   <td style="vertical-align:middle;padding-right:10px;">
@@ -90,7 +90,7 @@ public class PasswordResetMailService {
                               <!-- 버튼 -->
                               <div style="margin:32px 0;text-align:center;">
                                 <a href="%s"
-                                   style="display:inline-block;background:#d32f2f;color:#fff;font-size:15px;font-weight:700;padding:14px 36px;border-radius:8px;text-decoration:none;">
+                                   style="display:inline-block;background:#2a91b3;color:#fff;font-size:15px;font-weight:700;padding:14px 36px;border-radius:8px;text-decoration:none;">
                                   비밀번호 재설정하기
                                 </a>
                               </div>
