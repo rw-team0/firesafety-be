@@ -123,7 +123,7 @@ services:
     # 127.0.0.1(루프백)에만 바인딩 — LAN(192.168.0.22)이나 외부에는 노출 안 됨.
     # DB 관리 도구(Workbench 등)로 볼 때는 SSH 터널을 거쳐야만 접근 가능.
     ports:
-      - "127.0.0.1:3306:3306"
+      - "22223:3306"
     networks:
       - firesafety-net
     restart: unless-stopped
