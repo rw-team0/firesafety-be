@@ -78,8 +78,8 @@ public class SensorIngestService {
         validateLength(params, "volt", 3);
         validateLength(params, "hct_count", 4);
         validateLength(params, "s_circuit", 2);
-        validateLength(params, "tem", 3);
-        validateLength(params, "humi", 3);
+        validateSignedLength(params, "tem", 3);
+        validateSignedLength(params, "humi", 3);
         validateLength(params, "fire", 4);
         validateLength(params, "gas", 4);
         validateLength(params, "door", 1);
@@ -97,6 +97,18 @@ public class SensorIngestService {
     private void validateLength(Map<String, String> params, String name, int length) {
         String value = params.get(name);
         if (value == null || value.length() != length) {
+            throw new BusinessException(SensorErrorCode.INVALID_FRAME_PARAMETER);
+        }
+    }
+
+    // tem/humi는 영하 값(부호 포함)이 올 수 있어 부호는 제외하고 나머지 자리수만 검증한다
+    private void validateSignedLength(Map<String, String> params, String name, int length) {
+        String value = params.get(name);
+        if (value == null) {
+            throw new BusinessException(SensorErrorCode.INVALID_FRAME_PARAMETER);
+        }
+        String digits = value.startsWith("-") ? value.substring(1) : value;
+        if (digits.length() != length) {
             throw new BusinessException(SensorErrorCode.INVALID_FRAME_PARAMETER);
         }
     }

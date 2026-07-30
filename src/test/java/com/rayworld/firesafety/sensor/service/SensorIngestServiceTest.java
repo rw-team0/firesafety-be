@@ -132,6 +132,48 @@ class SensorIngestServiceTest {
     }
 
     @Test
+    @DisplayName("API-016: 영하 온습도(부호 포함 4자리)는 부호를 제외한 자리수로 검증해 정상 저장한다")
+    void negativeTemperatureAndHumidityAreAccepted() {
+        // given
+        Map<String, String> params = validParams();
+        params.put("tem", "-050");
+        params.put("humi", "-010");
+        Panel panel = panel(10L, 5);
+        when(panelMapper.findActivePanelByMNo("00001")).thenReturn(panel);
+        when(circuitMapper.findActiveCircuitsByPanelId(10L))
+                .thenReturn(java.util.List.of(circuit(1), circuit(2), circuit(3), circuit(4), circuit(5)));
+        doAnswer(invocation -> {
+            SensorFrame sensorFrame = invocation.getArgument(0);
+            sensorFrame.setFrameId(100L);
+            return null;
+        }).when(sensorFrameMapper).insertSensorFrame(any(SensorFrame.class));
+
+        // when
+        sensorIngestService.ingest(params);
+
+        // then
+        ArgumentCaptor<SensorFrame> frameCaptor = ArgumentCaptor.forClass(SensorFrame.class);
+        verify(sensorFrameMapper).insertSensorFrame(frameCaptor.capture());
+        assertThat(frameCaptor.getValue().getTemperature()).isEqualByComparingTo(new BigDecimal("-5.0"));
+        assertThat(frameCaptor.getValue().getHumidity()).isEqualByComparingTo(new BigDecimal("-1.0"));
+    }
+
+    @Test
+    @DisplayName("API-016: 온습도가 부호를 제외하고 3자리가 아니면 400을 반환한다")
+    void temperatureWithWrongDigitCountFails() {
+        // given
+        Map<String, String> params = validParams();
+        params.put("tem", "-99");
+
+        // when & then
+        assertThatThrownBy(() -> sensorIngestService.ingest(params))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(SensorErrorCode.INVALID_FRAME_PARAMETER));
+
+        verify(sensorFrameMapper, never()).insertSensorFrame(any());
+    }
+
+    @Test
     @DisplayName("API-016: 장비번호에 해당하는 분전반이 없으면 저장하지 않는다")
     void missingPanelFails() {
         // given
