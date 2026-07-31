@@ -136,7 +136,7 @@ public class UserService {
 
         // 삭제된 사용자는 수정하지 않고 복구 API를 먼저 사용
         User targetUser = findActiveTargetUser(userId);
-        validateUpdatableRole(actor, targetUser.getRole(), req.getRole());
+        validateUpdatableRole(actor, targetUser, req.getRole());
 
         if (!targetUser.getEmail().equals(email)
                 && authMapper.existsUserByEmail(email)) {
@@ -250,7 +250,7 @@ public class UserService {
             return;
         }
 
-        if (actorRole == UserRole.ADMIN && targetRole == UserRole.GENERAL) {
+        if (actorRole == UserRole.ADMIN && targetRole != UserRole.SUPER_ADMIN) {
             return;
         }
 
@@ -258,18 +258,19 @@ public class UserService {
     }
 
     // 계정 수정 권한 확인
-    private void validateUpdatableRole(UserPrincipal actor, UserRole currentRole, UserRole requestedRole) {
+    private void validateUpdatableRole(UserPrincipal actor, User targetUser, UserRole requestedRole) {
         UserRole actorRole = UserRole.valueOf(actor.getRole());
 
         if (actorRole == UserRole.SUPER_ADMIN
-                && currentRole != UserRole.SUPER_ADMIN
+                && targetUser.getRole() != UserRole.SUPER_ADMIN
                 && requestedRole != UserRole.SUPER_ADMIN) {
             return;
         }
 
         if (actorRole == UserRole.ADMIN
-                && currentRole == UserRole.GENERAL
-                && requestedRole == UserRole.GENERAL) {
+                && targetUser.getRole() != UserRole.SUPER_ADMIN
+                && requestedRole != UserRole.SUPER_ADMIN
+                && hasActiveSharedSite(actor, targetUser)) {
             return;
         }
 
@@ -282,7 +283,7 @@ public class UserService {
             throw new BusinessException(AuthErrorCode.SELF_DELETE_NOT_ALLOWED);
         }
 
-        if (canManageTargetRole(actor, targetUser.getRole())) {
+        if (canManageActiveTarget(actor, targetUser)) {
             return;
         }
 
@@ -295,7 +296,7 @@ public class UserService {
             throw new BusinessException(AuthErrorCode.SELF_DELETE_NOT_ALLOWED);
         }
 
-        if (canManageTargetRole(actor, targetUser.getRole())) {
+        if (canManageActiveTarget(actor, targetUser)) {
             return;
         }
 
@@ -304,13 +305,26 @@ public class UserService {
 
     // 계정 복구 권한 확인
     private void validateRestorableRole(UserPrincipal actor, User targetUser) {
-        if (!canManageTargetRole(actor, targetUser.getRole())) {
+        if (!canRestoreTargetRole(actor, targetUser.getRole())) {
             throw new BusinessException(AuthErrorCode.FORBIDDEN_ROLE);
         }
     }
 
-    // ADMIN은 GENERAL만, SUPER_ADMIN은 ADMIN/GENERAL만 관리 가능
-    private boolean canManageTargetRole(UserPrincipal actor, UserRole targetRole) {
+    // ADMIN은 같은 활성 현장에 배정된 ADMIN/GENERAL, SUPER_ADMIN은 ADMIN/GENERAL만 관리 가능
+    private boolean canManageActiveTarget(UserPrincipal actor, User targetUser) {
+        UserRole actorRole = UserRole.valueOf(actor.getRole());
+
+        if (actorRole == UserRole.SUPER_ADMIN) {
+            return targetUser.getRole() != UserRole.SUPER_ADMIN;
+        }
+
+        return actorRole == UserRole.ADMIN
+                && targetUser.getRole() != UserRole.SUPER_ADMIN
+                && hasActiveSharedSite(actor, targetUser);
+    }
+
+    // 복구는 기존 계약을 유지한다. ADMIN 복구 권한 확대는 별도 정책 확정 후 반영한다.
+    private boolean canRestoreTargetRole(UserPrincipal actor, UserRole targetRole) {
         UserRole actorRole = UserRole.valueOf(actor.getRole());
 
         if (actorRole == UserRole.SUPER_ADMIN) {
@@ -318,6 +332,10 @@ public class UserService {
         }
 
         return actorRole == UserRole.ADMIN && targetRole == UserRole.GENERAL;
+    }
+
+    private boolean hasActiveSharedSite(UserPrincipal actor, User targetUser) {
+        return authMapper.existsActiveSharedSiteAssignment(actor.getUserId(), targetUser.getUserId());
     }
 
     // 등록 요청값 확인

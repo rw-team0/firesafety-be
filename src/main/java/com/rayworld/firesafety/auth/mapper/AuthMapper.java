@@ -40,6 +40,10 @@ public interface AuthMapper {
     // 현장 담당 직원 목록/연락망 조회. 담당 현장 범위 판단은 호출한 facility 서비스가 먼저 처리
     List<User> findActiveSiteUsersByRoles(@Param("siteId") Long siteId, @Param("roles") List<String> roles);
 
+    // ADMIN이 대상 사용자와 같은 활성 현장에 배정되어 있는지 확인
+    boolean existsActiveSharedSiteAssignment(@Param("actorUserId") Long actorUserId,
+                                             @Param("targetUserId") Long targetUserId);
+
     // SUPER_ADMIN 계정관리 이력 화면에서 사용자 변경 감사 로그 조회
     List<UserAuditLog> findUserAuditLogs();
 

@@ -175,7 +175,7 @@
 
     <!-- 현장에 배정된 활성 사용자만 역할 필터로 조회. 응답에 쓰지 않는 password/삭제 감사 컬럼은 조회하지 않는다 -->
     <select id="findActiveSiteUsersByRoles" resultMap="userResultMap">
-        SELECT
+        SELECT DISTINCT
             u.user_id,
             u.email,
             u.name,
@@ -196,6 +196,21 @@
               #{role}
           </foreach>
         ORDER BY u.user_id DESC
+    </select>
+
+    <!-- ADMIN의 같은 활성 현장 배정 여부 확인. 사용자/배정/현장 soft delete row는 권한 근거에서 제외 -->
+    <select id="existsActiveSharedSiteAssignment" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM user_site actor_us
+            INNER JOIN user_site target_us ON target_us.site_id = actor_us.site_id
+            INNER JOIN site s ON s.site_id = actor_us.site_id
+            WHERE actor_us.user_id = #{actorUserId}
+              AND target_us.user_id = #{targetUserId}
+              AND actor_us.deleted_at IS NULL
+              AND target_us.deleted_at IS NULL
+              AND s.deleted_at IS NULL
+        )
     </select>
 
     <!-- SUPER_ADMIN 계정관리 이력 화면에서 최신 변경 이력부터 조회 -->

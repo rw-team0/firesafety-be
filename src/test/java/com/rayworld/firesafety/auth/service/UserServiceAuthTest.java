@@ -1,7 +1,9 @@
 package com.rayworld.firesafety.auth.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rayworld.firesafety.auth.dto.req.UserBulkDeleteReq;
 import com.rayworld.firesafety.auth.dto.req.UserCreateReq;
+import com.rayworld.firesafety.auth.dto.req.UserUpdateReq;
 import com.rayworld.firesafety.auth.exception.AuthErrorCode;
 import com.rayworld.firesafety.auth.mapper.AuthMapper;
 import com.rayworld.firesafety.auth.model.User;
@@ -23,6 +25,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -43,7 +47,7 @@ class UserServiceAuthTest {
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(authMapper, passwordEncoder, new ObjectMapper(), new CredentialPolicy());
+        userService = new UserService(authMapper, passwordEncoder, new ObjectMapper().findAndRegisterModules(), new CredentialPolicy());
     }
 
     @AfterEach
@@ -77,23 +81,27 @@ class UserServiceAuthTest {
     }
 
     @Test
-    @DisplayName("AUTH-005: ADMIN이 ADMIN 계정 등록 시도 시 403을 반환한다")
-    void adminCannotCreateAdmin() {
+    @DisplayName("AUTH-005: ADMIN은 ADMIN 계정을 등록할 수 있다")
+    void adminCanCreateAdmin() {
         // given
         loginAs(2L, UserRole.ADMIN);
+        when(authMapper.existsUserByEmail("admin2@example.com")).thenReturn(false);
+        when(passwordEncoder.encode("password1")).thenReturn("encoded-password");
 
-        // when & then
-        assertThatThrownBy(() -> userService.createUser(new UserCreateReq(
+        // when
+        userService.createUser(new UserCreateReq(
                 "admin2@example.com",
                 "password1",
                 "관리자2",
                 "010-0000-0001",
                 UserRole.ADMIN
-        )))
-                .isInstanceOfSatisfying(BusinessException.class, e ->
-                        assertThat(e.getErrorCode()).isEqualTo(AuthErrorCode.FORBIDDEN_ROLE));
+        ));
 
-        verify(authMapper, never()).insertUser(any());
+        // then
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(authMapper).insertUser(userCaptor.capture());
+        assertThat(userCaptor.getValue().getRole()).isEqualTo(UserRole.ADMIN);
+        assertThat(userCaptor.getValue().getCreatedBy()).isEqualTo(2L);
     }
 
     @Test
@@ -122,11 +130,30 @@ class UserServiceAuthTest {
     }
 
     @Test
-    @DisplayName("AUTH-007: ADMIN이 다른 ADMIN 계정 삭제 시도 시 403을 반환한다")
-    void adminCannotDeleteAnotherAdmin() {
+    @DisplayName("AUTH-007: ADMIN은 같은 활성 현장에 배정된 ADMIN 계정을 삭제할 수 있다")
+    void adminCanDeleteSharedAdmin() {
         // given
         loginAs(2L, UserRole.ADMIN);
         when(authMapper.findUserById(3L)).thenReturn(activeUser(3L, UserRole.ADMIN));
+        when(authMapper.existsActiveSharedSiteAssignment(2L, 3L)).thenReturn(true);
+        when(authMapper.softDeleteUser(3L, 2L)).thenReturn(1);
+
+        // when
+        userService.deleteUser(3L);
+
+        // then
+        verify(authMapper).softDeleteUser(3L, 2L);
+        verify(authMapper).revokeAllRefreshTokensByUserId(3L);
+        verify(authMapper).insertUserAuditLog(any());
+    }
+
+    @Test
+    @DisplayName("ADMIN은 같은 활성 현장 배정이 없는 ADMIN 계정을 삭제할 수 없다")
+    void adminCannotDeleteAdminWithoutSharedSite() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(authMapper.findUserById(3L)).thenReturn(activeUser(3L, UserRole.ADMIN));
+        when(authMapper.existsActiveSharedSiteAssignment(2L, 3L)).thenReturn(false);
 
         // when & then
         assertThatThrownBy(() -> userService.deleteUser(3L))
@@ -135,6 +162,89 @@ class UserServiceAuthTest {
 
         verify(authMapper, never()).softDeleteUser(any(), any());
         verify(authMapper, never()).revokeAllRefreshTokensByUserId(any());
+    }
+
+    @Test
+    @DisplayName("ADMIN은 같은 활성 현장에 배정된 ADMIN 계정을 수정할 수 있다")
+    void adminCanUpdateSharedAdmin() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(authMapper.findUserById(3L)).thenReturn(activeUser(3L, UserRole.ADMIN));
+        when(authMapper.existsActiveSharedSiteAssignment(2L, 3L)).thenReturn(true);
+
+        // when
+        userService.updateUser(3L, new UserUpdateReq(
+                "target@example.com",
+                "수정관리자",
+                "010-1111-2222",
+                UserRole.ADMIN
+        ));
+
+        // then
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(authMapper).updateUser(userCaptor.capture());
+        assertThat(userCaptor.getValue().getRole()).isEqualTo(UserRole.ADMIN);
+        assertThat(userCaptor.getValue().getUpdatedBy()).isEqualTo(2L);
+        verify(authMapper).insertUserAuditLog(any());
+    }
+
+    @Test
+    @DisplayName("ADMIN은 같은 활성 현장 배정이 없는 사용자를 수정할 수 없다")
+    void adminCannotUpdateUserWithoutSharedSite() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(authMapper.findUserById(3L)).thenReturn(activeUser(3L, UserRole.GENERAL));
+        when(authMapper.existsActiveSharedSiteAssignment(2L, 3L)).thenReturn(false);
+
+        // when & then
+        assertThatThrownBy(() -> userService.updateUser(3L, new UserUpdateReq(
+                "target@example.com",
+                "수정직원",
+                "010-1111-2222",
+                UserRole.GENERAL
+        )))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(AuthErrorCode.FORBIDDEN_ROLE));
+
+        verify(authMapper, never()).updateUser(any());
+    }
+
+    @Test
+    @DisplayName("ADMIN은 사용자를 SUPER_ADMIN으로 수정할 수 없다")
+    void adminCannotUpdateUserToSuperAdmin() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(authMapper.findUserById(3L)).thenReturn(activeUser(3L, UserRole.GENERAL));
+
+        // when & then
+        assertThatThrownBy(() -> userService.updateUser(3L, new UserUpdateReq(
+                "target@example.com",
+                "수정직원",
+                "010-1111-2222",
+                UserRole.SUPER_ADMIN
+        )))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(AuthErrorCode.FORBIDDEN_ROLE));
+
+        verify(authMapper, never()).updateUser(any());
+    }
+
+    @Test
+    @DisplayName("ADMIN 일괄 삭제에 담당 범위 밖 대상이 포함되면 전체 삭제를 수행하지 않는다")
+    void adminBulkDeleteRollsBackWhenOutOfScopeTargetIncluded() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(authMapper.findUserById(3L)).thenReturn(activeUser(3L, UserRole.ADMIN));
+        when(authMapper.findUserById(4L)).thenReturn(activeUser(4L, UserRole.GENERAL));
+        when(authMapper.existsActiveSharedSiteAssignment(2L, 3L)).thenReturn(true);
+        when(authMapper.existsActiveSharedSiteAssignment(2L, 4L)).thenReturn(false);
+
+        // when & then
+        assertThatThrownBy(() -> userService.deleteUsers(new UserBulkDeleteReq(List.of(3L, 4L))))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(AuthErrorCode.BULK_DELETE_FORBIDDEN_TARGET));
+
+        verify(authMapper, never()).softDeleteUser(any(), any());
     }
 
     @Test

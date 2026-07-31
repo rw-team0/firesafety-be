@@ -23,8 +23,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SiteStaffService {
 
-    // 현장 담당 직원 목록에는 GENERAL만 노출한다 (ADMIN 명단은 SUPER_ADMIN 전용 /api/users 소관)
-    private static final List<String> MANAGED_USER_ROLES = List.of(UserRole.GENERAL.name());
+    // SUPER_ADMIN/ADMIN 관리 목록은 현장에 배정된 ADMIN/GENERAL을 함께 조회한다.
+    private static final List<String> MANAGED_USER_ROLES =
+            List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name());
 
     // 연락망은 같은 현장에서 실제로 연락할 대상인 ADMIN/GENERAL을 함께 노출
     private static final List<String> STAFF_CONTACT_ROLES = List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name());
@@ -35,13 +36,12 @@ public class SiteStaffService {
     // user 조회는 auth 도메인 mapper를 통해서만 수행
     private final AuthMapper authMapper;
 
-    // 현장 담당 직원(GENERAL) 목록 조회
-    // 1. 현재 사용자 확인 → 2. ADMIN 이상 확인 → 3. 현장 접근 권한 재조회 → 4. 활성 GENERAL만 조회
+    // 현장 담당 직원 목록 조회
+    // 1. 현재 사용자 확인 → 2. 현장 접근 권한 재조회 → 3. 활성 ADMIN/GENERAL 조회
     @Transactional(readOnly = true)
     public List<SiteManagedUserRes> getManagedUsers(Long siteId) {
         UserPrincipal actor = getCurrentUser();
         validateSiteId(siteId);
-        requireAdminOrSuperAdmin(actor);
 
         findAccessibleSite(actor, siteId);
 
@@ -88,14 +88,6 @@ public class SiteStaffService {
             throw new BusinessException(FacilityErrorCode.FORBIDDEN_ROLE);
         }
         return site;
-    }
-
-    // ADMIN 이상 권한 확인
-    private void requireAdminOrSuperAdmin(UserPrincipal actor) {
-        if (UserRole.SUPER_ADMIN.name().equals(actor.getRole()) || UserRole.ADMIN.name().equals(actor.getRole())) {
-            return;
-        }
-        throw new BusinessException(FacilityErrorCode.FORBIDDEN_ROLE);
     }
 
     // SecurityContext에서 현재 로그인 사용자 조회

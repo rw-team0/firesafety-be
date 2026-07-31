@@ -27,7 +27,7 @@ public class UserUpdateReq {
     @Schema(description = "전화번호(선택)", example = "01012345678")
     private String phone;
 
-    @Schema(description = "등급. ADMIN 대상 수정은 SUPER_ADMIN만 가능", example = "GENERAL")
+    @Schema(description = "등급. SUPER_ADMIN/ADMIN은 ADMIN/GENERAL로 수정 가능", example = "GENERAL")
     @NotNull(message = "역할은 필수입니다")
     private UserRole role;
 }

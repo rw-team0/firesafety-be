@@ -26,11 +26,11 @@ public class SiteStaffController {
     private final SiteStaffService siteStaffService;
 
     // 현장 담당 직원 목록 조회 (GET /api/sites/{siteId}/managed-users)
-    // ADMIN이 전체 사용자 목록(SUPER_ADMIN 전용) 대신 담당 현장 직원만 조회하는 용도
+    // 역할 공통 직원 목록 조회. 권한별 차이는 조회 데이터가 아니라 관리 API 권한에서 구분한다.
     @Operation(summary = "현장 담당 직원 목록 조회",
-            description = "ADMIN은 본인에게 배정된 현장만, SUPER_ADMIN은 모든 활성 현장을 조회할 수 있다. GENERAL은 403. "
+            description = "SUPER_ADMIN은 모든 활성 현장, ADMIN/GENERAL은 본인에게 배정된 현장만 조회할 수 있다. "
                     + "요청 siteId는 신뢰하지 않고 인증된 userId로 user_site를 재조회해 배정 여부를 검증한다. "
-                    + "반환 대상은 해당 현장에 배정된 활성 GENERAL 계정만이며, 다른 ADMIN은 포함하지 않는다. "
+                    + "해당 현장에 배정된 활성 ADMIN/GENERAL을 반환하고 SUPER_ADMIN은 제외한다. "
                     + "소프트 삭제된 사용자/배정/현장은 모두 제외된다. 인증은 at 쿠키를 사용한다.")
     @GetMapping("/{siteId}/managed-users")
     public ResultResponse<List<SiteManagedUserRes>> getManagedUsers(@PathVariable Long siteId) {

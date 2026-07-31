@@ -78,7 +78,8 @@ public class UserController {
 
     // 계정 등록 (POST /api/users)
     // 공개 회원가입이 아니라 관리자가 하위 계정을 생성
-    @Operation(summary = "계정 등록", description = "공개 회원가입이 아니라 관리자가 하위 계정을 생성한다. 아이디는 이메일 형식이다.")
+    @Operation(summary = "계정 등록",
+            description = "공개 회원가입이 아니라 관리자가 ADMIN/GENERAL 계정을 생성한다. SUPER_ADMIN 계정은 생성할 수 없다. 아이디는 이메일 형식이다.")
     @PostMapping
     public ResultResponse<UserCreateRes> createUser(@Valid @RequestBody UserCreateReq req) {
         UserCreateRes user = userService.createUser(req);
@@ -87,7 +88,8 @@ public class UserController {
 
     // 계정 수정 (PUT /api/users/{userId})
     // 대상 등급과 수정 후 등급을 함께 권한 검증
-    @Operation(summary = "계정 수정", description = "대상 등급과 수정 후 등급을 함께 권한 검증한다.")
+    @Operation(summary = "계정 수정",
+            description = "대상 등급과 수정 후 등급을 함께 권한 검증한다. ADMIN은 같은 활성 현장에 배정된 ADMIN/GENERAL만 수정할 수 있다.")
     @PutMapping("/{userId}")
     public ResultResponse<UserUpdateRes> updateUser(@PathVariable Long userId, @Valid @RequestBody UserUpdateReq req) {
         UserUpdateRes user = userService.updateUser(userId, req);
@@ -96,7 +98,8 @@ public class UserController {
 
     // 계정 삭제 (DELETE /api/users/{userId})
     // 소프트 삭제 처리 후 대상 RT 전체 폐기
-    @Operation(summary = "계정 삭제", description = "물리 삭제하지 않고 account_status/deleted_at을 기록하며 대상 사용자의 Refresh Token을 모두 폐기한다.")
+    @Operation(summary = "계정 삭제",
+            description = "물리 삭제하지 않고 account_status/deleted_at을 기록하며 대상 사용자의 Refresh Token을 모두 폐기한다. ADMIN은 같은 활성 현장에 배정된 ADMIN/GENERAL만 삭제할 수 있다.")
     @DeleteMapping("/{userId}")
     public ResultResponse<Void> deleteUser(@PathVariable Long userId) {
         userService.deleteUser(userId);
@@ -105,7 +108,8 @@ public class UserController {
 
     // 계정 일괄 삭제 (PATCH /api/users/bulk-delete)
     // 대상 중 하나라도 삭제 불가하면 전체 롤백
-    @Operation(summary = "계정 일괄 삭제", description = "대상 중 자기 자신, 권한 밖, 이미 삭제된 사용자가 포함되면 전체 롤백한다.")
+    @Operation(summary = "계정 일괄 삭제",
+            description = "대상 중 자기 자신, 권한 밖, 이미 삭제된 사용자가 포함되면 전체 롤백한다. ADMIN은 같은 활성 현장에 배정된 ADMIN/GENERAL만 삭제할 수 있다.")
     @PatchMapping("/bulk-delete")
     public ResultResponse<UserBulkDeleteRes> deleteUsers(@RequestBody UserBulkDeleteReq req) {
         UserBulkDeleteRes result = userService.deleteUsers(req);

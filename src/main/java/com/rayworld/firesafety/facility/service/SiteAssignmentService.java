@@ -182,7 +182,7 @@ public class SiteAssignmentService {
         throw new BusinessException(AuthErrorCode.FORBIDDEN_ROLE);
     }
 
-    // SUPER_ADMIN은 ADMIN/GENERAL, ADMIN은 GENERAL만 관리 가능
+    // SUPER_ADMIN은 ADMIN/GENERAL, ADMIN은 본인 배정 가능 현장 안에서 ADMIN/GENERAL 관리 가능
     private boolean canManageTargetRole(UserPrincipal actor, UserRole targetRole) {
         UserRole actorRole = UserRole.valueOf(actor.getRole());
 
@@ -190,7 +190,7 @@ public class SiteAssignmentService {
             return targetRole != UserRole.SUPER_ADMIN;
         }
 
-        return actorRole == UserRole.ADMIN && targetRole == UserRole.GENERAL;
+        return actorRole == UserRole.ADMIN && targetRole != UserRole.SUPER_ADMIN;
     }
 
     // SecurityContext에서 현재 로그인 사용자 조회

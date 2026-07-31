@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "계정 등록 요청. SUPER_ADMIN은 ADMIN을, ADMIN은 GENERAL을 등록 가능")
+@Schema(description = "계정 등록 요청. SUPER_ADMIN/ADMIN은 ADMIN/GENERAL 등록 가능")
 public class UserCreateReq {
 
     @Schema(description = "로그인 아이디로 쓸 이메일. 중복 불가", example = "new-user@example.com")

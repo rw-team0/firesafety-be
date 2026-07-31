@@ -22,11 +22,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -53,32 +57,51 @@ class SiteStaffServiceTest {
     }
 
     @Test
-    @DisplayName("ADMIN은 담당 현장의 GENERAL 직원 목록을 조회할 수 있다")
-    void assignedAdminCanReadManagedUsers() {
+    @DisplayName("SUPER_ADMIN은 현장 ADMIN과 GENERAL 직원을 함께 조회할 수 있다")
+    void superAdminCanReadManagedAdminsAndGenerals() {
         // given
-        loginAs(2L, UserRole.ADMIN);
+        loginAs(1L, UserRole.SUPER_ADMIN);
         when(siteMapper.findActiveSiteById(1L)).thenReturn(site());
-        when(siteMapper.existsActiveSiteAssignment(2L, 1L)).thenReturn(true);
-        when(authMapper.findActiveSiteUsersByRoles(1L, List.of(UserRole.GENERAL.name())))
-                .thenReturn(List.of(user(10L, "직원1", UserRole.GENERAL)));
+        when(authMapper.findActiveSiteUsersByRoles(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name())))
+                .thenReturn(List.of(user(2L, "관리자", UserRole.ADMIN), user(10L, "직원1", UserRole.GENERAL)));
 
         // when
         List<SiteManagedUserRes> result = siteStaffService.getManagedUsers(1L);
 
         // then
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getUserId()).isEqualTo(10L);
-        assertThat(result.get(0).getRole()).isEqualTo(UserRole.GENERAL);
+        assertThat(result).extracting(SiteManagedUserRes::getRole)
+                .containsExactly(UserRole.ADMIN, UserRole.GENERAL);
+        verify(siteMapper, never()).existsActiveSiteAssignment(anyLong(), anyLong());
+        verify(authMapper).findActiveSiteUsersByRoles(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name()));
     }
 
     @Test
-    @DisplayName("다른 ADMIN은 담당 직원 목록에 노출되지 않는다")
-    void managedUsersQueryExcludesOtherAdmins() {
+    @DisplayName("ADMIN은 담당 현장의 ADMIN과 GENERAL 직원을 함께 조회할 수 있다")
+    void assignedAdminCanReadManagedUsers() {
         // given
         loginAs(2L, UserRole.ADMIN);
         when(siteMapper.findActiveSiteById(1L)).thenReturn(site());
         when(siteMapper.existsActiveSiteAssignment(2L, 1L)).thenReturn(true);
-        when(authMapper.findActiveSiteUsersByRoles(1L, List.of(UserRole.GENERAL.name())))
+        when(authMapper.findActiveSiteUsersByRoles(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name())))
+                .thenReturn(List.of(user(2L, "관리자", UserRole.ADMIN), user(10L, "직원1", UserRole.GENERAL)));
+
+        // when
+        List<SiteManagedUserRes> result = siteStaffService.getManagedUsers(1L);
+
+        // then
+        assertThat(result).extracting(SiteManagedUserRes::getRole)
+                .containsExactly(UserRole.ADMIN, UserRole.GENERAL);
+        verify(authMapper).findActiveSiteUsersByRoles(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name()));
+    }
+
+    @Test
+    @DisplayName("현장 직원 목록 조회는 SUPER_ADMIN 역할을 요청하지 않는다")
+    void managedUsersQueryExcludesSuperAdmins() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(siteMapper.findActiveSiteById(1L)).thenReturn(site());
+        when(siteMapper.existsActiveSiteAssignment(2L, 1L)).thenReturn(true);
+        when(authMapper.findActiveSiteUsersByRoles(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name())))
                 .thenReturn(List.of());
 
         // when
@@ -86,8 +109,7 @@ class SiteStaffServiceTest {
 
         // then
         assertThat(result).isEmpty();
-        // 삭제 사용자/삭제 배정 제외와 ADMIN 제외는 GENERAL 역할 필터 + SQL 조건으로 처리한다
-        verify(authMapper).findActiveSiteUsersByRoles(1L, List.of(UserRole.GENERAL.name()));
+        verify(authMapper).findActiveSiteUsersByRoles(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name()));
         verify(authMapper, never()).findActiveUsers();
     }
 
@@ -107,10 +129,30 @@ class SiteStaffServiceTest {
     }
 
     @Test
-    @DisplayName("GENERAL이 담당 직원 목록을 조회하면 403을 반환한다")
-    void generalCannotReadManagedUsers() {
+    @DisplayName("GENERAL은 담당 현장의 ADMIN과 GENERAL 직원을 조회할 수 있다")
+    void assignedGeneralCanReadManagedUsers() {
         // given
         loginAs(3L, UserRole.GENERAL);
+        when(siteMapper.findActiveSiteById(1L)).thenReturn(site());
+        when(siteMapper.existsActiveSiteAssignment(3L, 1L)).thenReturn(true);
+        when(authMapper.findActiveSiteUsersByRoles(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name())))
+                .thenReturn(List.of(user(2L, "관리자", UserRole.ADMIN), user(3L, "직원", UserRole.GENERAL)));
+
+        // when
+        List<SiteManagedUserRes> result = siteStaffService.getManagedUsers(1L);
+
+        // then
+        assertThat(result).extracting(SiteManagedUserRes::getRole)
+                .containsExactly(UserRole.ADMIN, UserRole.GENERAL);
+    }
+
+    @Test
+    @DisplayName("GENERAL이 미배정 현장의 직원 목록을 조회하면 403을 반환한다")
+    void unassignedGeneralCannotReadManagedUsers() {
+        // given
+        loginAs(3L, UserRole.GENERAL);
+        when(siteMapper.findActiveSiteById(1L)).thenReturn(site());
+        when(siteMapper.existsActiveSiteAssignment(3L, 1L)).thenReturn(false);
 
         // when & then
         assertThatThrownBy(() -> siteStaffService.getManagedUsers(1L))
@@ -169,6 +211,30 @@ class SiteStaffServiceTest {
                         assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.SITE_NOT_FOUND));
     }
 
+    @Test
+    @DisplayName("현장 직원 조회 SQL은 삭제 사용자와 삭제 배정과 삭제 현장을 제외한다")
+    void managedUsersSqlExcludesDeletedRows() throws IOException {
+        // given
+        String sql = authMapperXml();
+
+        // when & then
+        assertThat(sql).contains("us.deleted_at IS NULL");
+        assertThat(sql).contains("s.deleted_at IS NULL");
+        assertThat(sql).contains("u.deleted_at IS NULL");
+        assertThat(sql).contains("u.account_status = 'ACTIVE'");
+    }
+
+    @Test
+    @DisplayName("현장 직원 조회 SQL은 다른 현장 사용자를 포함하지 않고 중복 반환을 방지한다")
+    void managedUsersSqlExcludesOtherSitesAndDuplicates() throws IOException {
+        // given
+        String sql = authMapperXml();
+
+        // when & then
+        assertThat(sql).contains("SELECT DISTINCT");
+        assertThat(sql).contains("WHERE us.site_id = #{siteId}");
+    }
+
     private void loginAs(Long userId, UserRole role) {
         UserPrincipal principal = new UserPrincipal(new JwtUser(userId, role.name()));
         UsernamePasswordAuthenticationToken authentication =
@@ -193,5 +259,9 @@ class SiteStaffServiceTest {
         user.setRole(role);
         user.setAccountStatus(UserAccountStatus.ACTIVE);
         return user;
+    }
+
+    private String authMapperXml() throws IOException {
+        return Files.readString(Path.of("src/main/resources/mapper/auth/AuthMapper.xml"));
     }
 }

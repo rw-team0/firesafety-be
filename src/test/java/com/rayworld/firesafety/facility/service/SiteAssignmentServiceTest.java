@@ -1,6 +1,5 @@
 package com.rayworld.firesafety.facility.service;
 
-import com.rayworld.firesafety.auth.exception.AuthErrorCode;
 import com.rayworld.firesafety.auth.mapper.AuthMapper;
 import com.rayworld.firesafety.auth.model.User;
 import com.rayworld.firesafety.auth.model.UserAccountStatus;
@@ -98,19 +97,51 @@ class SiteAssignmentServiceTest {
     }
 
     @Test
-    @DisplayName("ADMIN이 다른 ADMIN의 담당 현장을 관리하려 하면 403을 반환한다")
-    void adminCannotManageAnotherAdmin() {
+    @DisplayName("ADMIN은 담당 현장 안에서 ADMIN의 담당 현장을 배정한다")
+    void adminAssignsSitesToAdmin() {
         // given
         loginAs(1L, UserRole.ADMIN);
         when(authMapper.findUserById(20L)).thenReturn(activeUser(20L, UserRole.ADMIN));
+        when(userSiteMapper.countActiveSitesBySiteIds(List.of(1L))).thenReturn(1);
+        when(userSiteMapper.countActiveAssignmentsByUserIdAndSiteIds(1L, List.of(1L))).thenReturn(1);
+        when(userSiteMapper.findAssignmentsByUserId(20L)).thenReturn(List.of());
+        when(userSiteMapper.findActiveAssignmentsByUserIdWithinManagerSites(20L, 1L))
+                .thenReturn(List.of(assignment(1L, 20L, 1L)));
 
         SiteAssignmentSaveReq req = new SiteAssignmentSaveReq();
         req.setSiteIds(List.of(1L));
 
-        // when & then
-        assertThatThrownBy(() -> siteAssignmentService.saveSiteAssignments(20L, req))
-                .isInstanceOfSatisfying(BusinessException.class, e ->
-                        assertThat(e.getErrorCode()).isEqualTo(AuthErrorCode.FORBIDDEN_ROLE));
+        // when
+        List<SiteAssignmentRes> result = siteAssignmentService.saveSiteAssignments(20L, req);
+
+        // then
+        assertThat(result).hasSize(1);
+        verify(userSiteMapper).insertAssignment(any(UserSite.class));
+        verify(userSiteMapper).softDeleteAssignmentsNotInWithinManagerSites(20L, List.of(1L), 1L);
+    }
+
+    @Test
+    @DisplayName("ADMIN이 담당현장을 저장해도 본인 범위 밖 기존 배정은 보존한다")
+    void adminPreservesOutOfScopeAssignmentsWhenSavingVisibleSites() {
+        // given
+        loginAs(1L, UserRole.ADMIN);
+        when(authMapper.findUserById(20L)).thenReturn(activeUser(20L, UserRole.ADMIN));
+        when(userSiteMapper.countActiveSitesBySiteIds(List.of(1L))).thenReturn(1);
+        when(userSiteMapper.countActiveAssignmentsByUserIdAndSiteIds(1L, List.of(1L))).thenReturn(1);
+        when(userSiteMapper.findAssignmentsByUserId(20L))
+                .thenReturn(List.of(assignmentRow(20L, 1L), assignmentRow(20L, 2L)));
+        when(userSiteMapper.findActiveAssignmentsByUserIdWithinManagerSites(20L, 1L))
+                .thenReturn(List.of(assignment(1L, 20L, 1L)));
+
+        SiteAssignmentSaveReq req = new SiteAssignmentSaveReq();
+        req.setSiteIds(List.of(1L));
+
+        // when
+        siteAssignmentService.saveSiteAssignments(20L, req);
+
+        // then
+        verify(userSiteMapper).softDeleteAssignmentsNotInWithinManagerSites(20L, List.of(1L), 1L);
+        verify(userSiteMapper, never()).softDeleteAssignmentsNotIn(any(), any());
     }
 
     private void loginAs(Long userId, UserRole role) {
@@ -135,5 +166,12 @@ class SiteAssignmentServiceTest {
         assignment.setSiteId(siteId);
         assignment.setSiteName("레이월드1");
         return assignment;
+    }
+
+    private UserSite assignmentRow(Long userId, Long siteId) {
+        UserSite userSite = new UserSite();
+        userSite.setUserId(userId);
+        userSite.setSiteId(siteId);
+        return userSite;
     }
 }
