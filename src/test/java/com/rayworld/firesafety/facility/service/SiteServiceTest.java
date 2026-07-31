@@ -8,7 +8,9 @@ import com.rayworld.firesafety.common.security.JwtUser;
 import com.rayworld.firesafety.common.security.UserPrincipal;
 import com.rayworld.firesafety.facility.dto.req.SiteCreateReq;
 import com.rayworld.firesafety.facility.dto.res.SiteCreateRes;
+import com.rayworld.firesafety.facility.dto.res.SiteDetailRes;
 import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
+import com.rayworld.firesafety.facility.mapper.PanelMapper;
 import com.rayworld.firesafety.facility.mapper.SiteMapper;
 import com.rayworld.firesafety.facility.model.Site;
 import org.junit.jupiter.api.AfterEach;
@@ -24,6 +26,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -33,11 +36,14 @@ class SiteServiceTest {
     @Mock
     private SiteMapper siteMapper;
 
+    @Mock
+    private PanelMapper panelMapper;
+
     private SiteService siteService;
 
     @BeforeEach
     void setUp() {
-        siteService = new SiteService(siteMapper, new ObjectMapper());
+        siteService = new SiteService(siteMapper, panelMapper, new ObjectMapper());
     }
 
     @AfterEach
@@ -112,6 +118,81 @@ class SiteServiceTest {
         assertThatThrownBy(() -> siteService.createSite(req))
                 .isInstanceOfSatisfying(BusinessException.class, e ->
                         assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.SITE_ADDRESS_REQUIRED));
+    }
+
+    @Test
+    @DisplayName("활성 현장과 이름이 겹치면 409를 반환하고 현장을 저장하지 않는다")
+    void duplicatedActiveSiteNameFails() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        SiteCreateReq req = new SiteCreateReq("레이월드1", "서울시 강남구", "06134");
+        when(siteMapper.existsActiveSiteByName("레이월드1", null)).thenReturn(true);
+
+        // when & then
+        assertThatThrownBy(() -> siteService.createSite(req))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.DUPLICATED_SITE_NAME));
+        verify(siteMapper, never()).insertSite(any());
+    }
+
+    @Test
+    @DisplayName("SUPER_ADMIN은 배정 여부와 관계없이 현장 상세를 조회할 수 있다")
+    void superAdminCanReadSiteDetail() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        when(siteMapper.findActiveSiteById(1L)).thenReturn(savedSite());
+        when(panelMapper.countActivePanelsBySiteId(1L)).thenReturn(3);
+
+        // when
+        SiteDetailRes result = siteService.getSite(1L);
+
+        // then
+        assertThat(result.getSiteId()).isEqualTo(1L);
+        assertThat(result.getPanelCount()).isEqualTo(3);
+        verify(siteMapper, never()).existsActiveSiteAssignment(any(), any());
+    }
+
+    @Test
+    @DisplayName("배정된 ADMIN은 현장 상세를 조회할 수 있다")
+    void assignedAdminCanReadSiteDetail() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(siteMapper.findActiveSiteById(1L)).thenReturn(savedSite());
+        when(siteMapper.existsActiveSiteAssignment(2L, 1L)).thenReturn(true);
+        when(panelMapper.countActivePanelsBySiteId(1L)).thenReturn(0);
+
+        // when
+        SiteDetailRes result = siteService.getSite(1L);
+
+        // then
+        assertThat(result.getName()).isEqualTo("레이월드1");
+    }
+
+    @Test
+    @DisplayName("미배정 현장의 상세를 조회하면 403을 반환한다")
+    void unassignedUserCannotReadSiteDetail() {
+        // given
+        loginAs(3L, UserRole.GENERAL);
+        when(siteMapper.findActiveSiteById(1L)).thenReturn(savedSite());
+        when(siteMapper.existsActiveSiteAssignment(3L, 1L)).thenReturn(false);
+
+        // when & then
+        assertThatThrownBy(() -> siteService.getSite(1L))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.FORBIDDEN_ROLE));
+    }
+
+    @Test
+    @DisplayName("삭제된 현장의 상세를 조회하면 404를 반환한다")
+    void deletedSiteDetailFails() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        when(siteMapper.findActiveSiteById(9L)).thenReturn(null);
+
+        // when & then
+        assertThatThrownBy(() -> siteService.getSite(9L))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.SITE_NOT_FOUND));
     }
 
     private void loginAs(Long userId, UserRole role) {

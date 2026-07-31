@@ -9,9 +9,11 @@ import com.rayworld.firesafety.common.security.UserPrincipal;
 import com.rayworld.firesafety.facility.dto.req.SiteCreateReq;
 import com.rayworld.firesafety.facility.dto.req.SiteUpdateReq;
 import com.rayworld.firesafety.facility.dto.res.SiteCreateRes;
+import com.rayworld.firesafety.facility.dto.res.SiteDetailRes;
 import com.rayworld.firesafety.facility.dto.res.SiteListRes;
 import com.rayworld.firesafety.facility.dto.res.SiteUpdateRes;
 import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
+import com.rayworld.firesafety.facility.mapper.PanelMapper;
 import com.rayworld.firesafety.facility.mapper.SiteMapper;
 import com.rayworld.firesafety.facility.model.FacilityAuditAction;
 import com.rayworld.firesafety.facility.model.FacilityAuditLog;
@@ -36,6 +38,9 @@ public class SiteService {
     // site, user_site, facility_audit_log 테이블 접근
     private final SiteMapper siteMapper;
 
+    // 현장 상세의 분전반 수 집계
+    private final PanelMapper panelMapper;
+
     // 감사 로그 after JSON 변환
     private final ObjectMapper objectMapper;
 
@@ -46,6 +51,7 @@ public class SiteService {
         UserPrincipal actor = getCurrentUser();
         requireSuperAdmin(actor);
         validateCreateRequest(req);
+        validateDuplicatedName(req.getName(), null);
 
         Site site = buildSiteForCreate(req);
         siteMapper.insertSite(site);
@@ -76,6 +82,19 @@ public class SiteService {
                 .toList();
     }
 
+    // 현장 상세 조회
+    // 1. 현재 사용자 확인 → 2. 활성 현장 조회 → 3. 현장 접근 권한 확인 → 4. 분전반 수 집계
+    @Transactional(readOnly = true)
+    public SiteDetailRes getSite(Long siteId) {
+        UserPrincipal actor = getCurrentUser();
+        validateSiteId(siteId);
+
+        Site site = findActiveSite(siteId);
+        validateSiteAccess(actor, siteId);
+
+        return SiteDetailRes.from(site, panelMapper.countActivePanelsBySiteId(siteId));
+    }
+
     // 현장 수정
     // 1. 현재 사용자 확인 → 2. SUPER_ADMIN 권한 확인 → 3. 현장 조회 → 4. 수정 → 5. 감사 로그 저장
     @Transactional
@@ -83,6 +102,7 @@ public class SiteService {
         UserPrincipal actor = getCurrentUser();
         requireSuperAdmin(actor);
         validateUpdateRequest(siteId, req);
+        validateDuplicatedName(req.getName(), siteId);
 
         Site site = findActiveSite(siteId);
         String beforeData = toAuditJson(site);
@@ -175,6 +195,26 @@ public class SiteService {
             throw new BusinessException(FacilityErrorCode.SITE_NOT_FOUND);
         }
         return site;
+    }
+
+    // 현장명 중복 확인
+    // site.name에는 DB UNIQUE 제약이 없다 — 삭제된 현장 이름은 재등록할 수 있어야 해서 활성 현장끼리만 서비스에서 막는다
+    private void validateDuplicatedName(String name, Long excludeSiteId) {
+        if (siteMapper.existsActiveSiteByName(name, excludeSiteId)) {
+            throw new BusinessException(FacilityErrorCode.DUPLICATED_SITE_NAME);
+        }
+    }
+
+    // 현장 접근 권한 확인
+    private void validateSiteAccess(UserPrincipal actor, Long siteId) {
+        if (UserRole.SUPER_ADMIN.name().equals(actor.getRole())) {
+            return;
+        }
+
+        // 요청으로 넘어온 siteId를 그대로 믿지 않고 인증된 userId 기준으로 배정 여부를 재조회
+        if (!siteMapper.existsActiveSiteAssignment(actor.getUserId(), siteId)) {
+            throw new BusinessException(FacilityErrorCode.FORBIDDEN_ROLE);
+        }
     }
 
     // SUPER_ADMIN 권한 확인

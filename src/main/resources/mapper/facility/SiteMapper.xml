@@ -124,6 +124,19 @@
         )
     </select>
 
+    <!-- 활성 현장끼리만 이름 중복을 막는다 (삭제된 현장 이름은 재등록 허용) -->
+    <select id="existsActiveSiteByName" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM site
+            WHERE name = #{name}
+              AND deleted_at IS NULL
+            <if test="excludeSiteId != null">
+              AND site_id != #{excludeSiteId}
+            </if>
+        )
+    </select>
+
     <!-- 최고관리자가 현장 기본 정보를 수정 -->
     <update id="updateSite" parameterType="com.rayworld.firesafety.facility.model.Site">
         UPDATE site

@@ -22,6 +22,9 @@ public interface PanelMapper {
     // 디바이스 장비번호로 활성 분전반 조회
     Panel findActivePanelByMNo(@Param("mNo") String mNo);
 
+    // 현장 상세의 분전반 수
+    int countActivePanelsBySiteId(@Param("siteId") Long siteId);
+
     // SUPER_ADMIN 분전반 목록 조회
     List<Panel> findActivePanels(@Param("siteId") Long siteId, @Param("status") String status);
 

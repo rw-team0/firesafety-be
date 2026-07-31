@@ -27,6 +27,9 @@ public interface SiteMapper {
     // ADMIN/GENERAL 담당 현장 배정 여부 확인
     boolean existsActiveSiteAssignment(@Param("userId") Long userId, @Param("siteId") Long siteId);
 
+    // 현장명 중복 확인. 삭제된 현장 이름은 재사용 가능하므로 활성 현장만 비교
+    boolean existsActiveSiteByName(@Param("name") String name, @Param("excludeSiteId") Long excludeSiteId);
+
     // 현장 기본 정보 수정
     int updateSite(Site site);
 

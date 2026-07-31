@@ -121,6 +121,16 @@
           AND s.deleted_at IS NULL
     </select>
 
+    <!-- 현장 상세에 표시할 활성 분전반 수 -->
+    <select id="countActivePanelsBySiteId" resultType="int">
+        SELECT COUNT(*)
+        FROM panel p
+        INNER JOIN site s ON s.site_id = p.site_id
+        WHERE p.site_id = #{siteId}
+          AND p.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+    </select>
+
     <!-- SUPER_ADMIN은 전체 활성 분전반 조회 -->
     <select id="findActivePanels" resultMap="panelResultMap">
         SELECT
