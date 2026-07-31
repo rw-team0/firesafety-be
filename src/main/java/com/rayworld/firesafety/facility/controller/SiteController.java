@@ -3,9 +3,13 @@ package com.rayworld.firesafety.facility.controller;
 import com.rayworld.firesafety.common.response.ResultResponse;
 import com.rayworld.firesafety.facility.dto.req.SiteCreateReq;
 import com.rayworld.firesafety.facility.dto.req.SiteUpdateReq;
+import com.rayworld.firesafety.facility.dto.req.SiteWithAdminCreateReq;
 import com.rayworld.firesafety.facility.dto.res.SiteCreateRes;
+import com.rayworld.firesafety.facility.dto.res.SiteDetailRes;
 import com.rayworld.firesafety.facility.dto.res.SiteListRes;
 import com.rayworld.firesafety.facility.dto.res.SiteUpdateRes;
+import com.rayworld.firesafety.facility.dto.res.SiteWithAdminCreateRes;
+import com.rayworld.firesafety.facility.service.SiteRegistrationService;
 import com.rayworld.firesafety.facility.service.SiteService;
 import com.rayworld.firesafety.config.swagger.OpenApiConfig;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,6 +36,8 @@ public class SiteController {
 
     private final SiteService siteService;
 
+    private final SiteRegistrationService siteRegistrationService;
+
     // 현장 목록 조회 (GET /api/sites)
     // SUPER_ADMIN은 전체, ADMIN/GENERAL은 배정 현장만 조회
     @Operation(summary = "현장 목록 조회", description = "SUPER_ADMIN은 전체, ADMIN/GENERAL은 배정된 활성 현장만 조회한다.")
@@ -43,16 +49,43 @@ public class SiteController {
 
     // 현장 등록 (POST /api/sites)
     // SUPER_ADMIN 전용, 등록 이력은 facility_audit_log에 기록
-    @Operation(summary = "현장 등록", description = "SUPER_ADMIN 전용. 등록 이력은 facility_audit_log에 기록한다.")
+    @Operation(summary = "현장 등록", description = "SUPER_ADMIN 전용. 등록 이력은 facility_audit_log에 기록한다. "
+            + "현장명은 활성 현장 기준으로 중복을 막는다(중복 시 409, 삭제된 현장 이름은 재사용 가능).")
     @PostMapping
     public ResultResponse<SiteCreateRes> createSite(@RequestBody SiteCreateReq req) {
         SiteCreateRes site = siteService.createSite(req);
         return ResultResponse.success("현장 등록 성공", site);
     }
 
+    // 현장 + 현장관리자 통합 등록 (POST /api/sites/with-admin)
+    // 현장 생성 / ADMIN 계정 생성 / 담당 현장 배정을 한 트랜잭션으로 처리
+    @Operation(summary = "현장+현장관리자 통합 등록",
+            description = "SUPER_ADMIN 전용. 현장 등록, 현장관리자(ADMIN) 계정 생성, 담당 현장 배정을 하나의 트랜잭션으로 처리한다. "
+                    + "현장명 중복(409)/이메일 중복(409)/입력값 오류(400) 등 어느 단계에서 실패해도 현장과 계정이 모두 롤백된다. "
+                    + "현장명은 활성 현장 기준으로만 중복을 막는다(삭제된 현장 이름은 재사용 가능). "
+                    + "현장/계정 이력은 각각 facility_audit_log, user_audit_log에 기록된다. 인증은 at 쿠키를 사용한다.")
+    @PostMapping("/with-admin")
+    public ResultResponse<SiteWithAdminCreateRes> createSiteWithAdmin(@RequestBody SiteWithAdminCreateReq req) {
+        SiteWithAdminCreateRes result = siteRegistrationService.createSiteWithAdmin(req);
+        return ResultResponse.success("현장 및 현장관리자 등록 성공", result);
+    }
+
+    // 현장 상세 조회 (GET /api/sites/{siteId})
+    // SUPER_ADMIN은 전체, ADMIN/GENERAL은 배정 현장만 조회
+    @Operation(summary = "현장 상세 조회",
+            description = "SUPER_ADMIN은 모든 활성 현장, ADMIN/GENERAL은 본인에게 배정된 현장만 조회한다. "
+                    + "요청 siteId는 신뢰하지 않고 인증된 userId로 user_site를 재조회해 검증한다(미배정 403). "
+                    + "삭제된 현장은 404, panelCount는 활성 분전반 수만 집계한다. 인증은 at 쿠키를 사용한다.")
+    @GetMapping("/{siteId}")
+    public ResultResponse<SiteDetailRes> getSite(@PathVariable Long siteId) {
+        SiteDetailRes site = siteService.getSite(siteId);
+        return ResultResponse.success("현장 상세 조회 성공", site);
+    }
+
     // 현장 수정 (PUT /api/sites/{siteId})
     // SUPER_ADMIN 전용, 수정 전/후 이력은 facility_audit_log에 기록
-    @Operation(summary = "현장 수정", description = "SUPER_ADMIN 전용. 수정 전/후 이력은 facility_audit_log에 기록한다.")
+    @Operation(summary = "현장 수정", description = "SUPER_ADMIN 전용. 수정 전/후 이력은 facility_audit_log에 기록한다. "
+            + "다른 활성 현장과 이름이 겹치면 409를 반환한다.")
     @PutMapping("/{siteId}")
     public ResultResponse<SiteUpdateRes> updateSite(@PathVariable Long siteId, @RequestBody SiteUpdateReq req) {
         SiteUpdateRes site = siteService.updateSite(siteId, req);
