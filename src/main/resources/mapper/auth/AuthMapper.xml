@@ -173,6 +173,31 @@
         ORDER BY user_id DESC
     </select>
 
+    <!-- 현장에 배정된 활성 사용자만 역할 필터로 조회. 응답에 쓰지 않는 password/삭제 감사 컬럼은 조회하지 않는다 -->
+    <select id="findActiveSiteUsersByRoles" resultMap="userResultMap">
+        SELECT
+            u.user_id,
+            u.email,
+            u.name,
+            u.phone,
+            u.role,
+            u.account_status,
+            u.created_at
+        FROM `user` u
+        INNER JOIN user_site us ON us.user_id = u.user_id
+        INNER JOIN site s ON s.site_id = us.site_id
+        WHERE us.site_id = #{siteId}
+          AND us.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+          AND u.deleted_at IS NULL
+          AND u.account_status = 'ACTIVE'
+          AND u.role IN
+          <foreach collection="roles" item="role" open="(" separator="," close=")">
+              #{role}
+          </foreach>
+        ORDER BY u.user_id DESC
+    </select>
+
     <!-- SUPER_ADMIN 계정관리 이력 화면에서 최신 변경 이력부터 조회 -->
     <select id="findUserAuditLogs" resultMap="userAuditLogResultMap">
         SELECT

@@ -37,6 +37,9 @@ public interface AuthMapper {
     // SUPER_ADMIN 계정관리 화면에서 삭제되지 않은 사용자 목록 조회
     List<User> findActiveUsers();
 
+    // 현장 담당 직원 목록/연락망 조회. 담당 현장 범위 판단은 호출한 facility 서비스가 먼저 처리
+    List<User> findActiveSiteUsersByRoles(@Param("siteId") Long siteId, @Param("roles") List<String> roles);
+
     // SUPER_ADMIN 계정관리 이력 화면에서 사용자 변경 감사 로그 조회
     List<UserAuditLog> findUserAuditLogs();
 
