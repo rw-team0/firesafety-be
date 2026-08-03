@@ -25,13 +25,34 @@ public interface PanelMapper {
     // 현장 상세의 분전반 수
     int countActivePanelsBySiteId(@Param("siteId") Long siteId);
 
+    // 전체 활성 분전반 조회(필터/페이징 없음) — Mock 센서/AI 스케줄러 등 내부 배치용, 화면 목록 API에는 쓰지 않는다
+    List<Panel> findAllActivePanels();
+
     // SUPER_ADMIN 분전반 목록 조회
-    List<Panel> findActivePanels(@Param("siteId") Long siteId, @Param("status") String status);
+    List<Panel> findActivePanels(@Param("siteId") Long siteId,
+                                  @Param("status") String status,
+                                  @Param("keyword") String keyword,
+                                  @Param("size") int size,
+                                  @Param("offset") int offset);
+
+    // SUPER_ADMIN 분전반 목록 전체 개수
+    long countActivePanels(@Param("siteId") Long siteId,
+                            @Param("status") String status,
+                            @Param("keyword") String keyword);
 
     // ADMIN/GENERAL 담당 현장 분전반 목록 조회
     List<Panel> findActivePanelsByUserId(@Param("userId") Long userId,
                                           @Param("siteId") Long siteId,
-                                          @Param("status") String status);
+                                          @Param("status") String status,
+                                          @Param("keyword") String keyword,
+                                          @Param("size") int size,
+                                          @Param("offset") int offset);
+
+    // ADMIN/GENERAL 담당 현장 분전반 목록 전체 개수
+    long countActivePanelsByUserId(@Param("userId") Long userId,
+                                    @Param("siteId") Long siteId,
+                                    @Param("status") String status,
+                                    @Param("keyword") String keyword);
 
     // 장비 시리얼 중복 확인
     boolean existsPanelByDeviceSerial(@Param("deviceSerial") String deviceSerial);

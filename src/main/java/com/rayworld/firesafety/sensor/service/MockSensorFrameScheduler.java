@@ -34,7 +34,7 @@ public class MockSensorFrameScheduler {
             return;
         }
 
-        List<Panel> activePanels = panelMapper.findActivePanels(null, null);
+        List<Panel> activePanels = panelMapper.findAllActivePanels();
         if (activePanels.isEmpty()) {
             log.info("Mock 센서 스케줄러 - 활성 분전반이 없어 이번 주기는 건너뜀");
             return;

@@ -44,7 +44,7 @@ public class MockAiPredictionScheduler {
             return;
         }
 
-        List<Panel> activePanels = panelMapper.findActivePanels(null, null);
+        List<Panel> activePanels = panelMapper.findAllActivePanels();
         for (Panel panel : activePanels) {
             if (random.nextDouble() < ARC_PROBABILITY) {
                 predictOneCircuit(panel);

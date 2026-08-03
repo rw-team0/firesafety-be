@@ -13,6 +13,7 @@ import com.rayworld.firesafety.facility.dto.res.PanelDetailRes;
 import com.rayworld.firesafety.facility.dto.res.PanelCircuitStatusRes;
 import com.rayworld.firesafety.facility.dto.res.PanelRecentAlertRes;
 import com.rayworld.firesafety.facility.dto.res.PanelCreateRes;
+import com.rayworld.firesafety.facility.dto.res.PanelListPageRes;
 import com.rayworld.firesafety.facility.dto.res.PanelListRes;
 import com.rayworld.firesafety.facility.dto.res.PanelUpdateRes;
 import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
@@ -52,6 +53,9 @@ public class PanelService {
     private static final Integer DEFAULT_GAS_THRESHOLD = 5000;
     private static final Integer DEFAULT_FIRE_THRESHOLD = 5000;
     private static final int RECENT_ALERT_LIMIT = 5;
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 20;
+    private static final int MAX_SIZE = 100;
 
     // panel 테이블 접근
     private final PanelMapper panelMapper;
@@ -94,25 +98,65 @@ public class PanelService {
     }
 
     // 분전반 목록 조회
-    // 1. 현재 사용자 확인 → 2. 현장/상태 필터 확인 → 3. 역할별 조회 범위 적용
+    // 1. 현재 사용자 확인 → 2. 현장/상태/검색어 필터 확인 → 3. 페이징 계산 → 4. 역할별 조회 범위 적용
     @Transactional(readOnly = true)
-    public List<PanelListRes> getPanels(PanelListReq req) {
+    public PanelListPageRes getPanels(PanelListReq req) {
         UserPrincipal actor = getCurrentUser();
-        Long siteId = req == null ? null : req.getSiteId();
-        String status = req == null || req.getStatus() == null ? null : req.getStatus().name();
+        PanelListReq searchReq = req == null ? new PanelListReq() : req;
+        Long siteId = searchReq.getSiteId();
+        String status = searchReq.getStatus() == null ? null : searchReq.getStatus().name();
+        String keyword = normalizeKeyword(searchReq.getKeyword());
+        int page = resolvePage(searchReq);
+        int size = resolveSize(searchReq);
+        int offset = page * size;
 
         UserRole actorRole = UserRole.valueOf(actor.getRole());
         List<Panel> panels;
+        long totalElements;
         if (actorRole == UserRole.SUPER_ADMIN) {
-            panels = panelMapper.findActivePanels(siteId, status);
+            panels = panelMapper.findActivePanels(siteId, status, keyword, size, offset);
+            totalElements = panelMapper.countActivePanels(siteId, status, keyword);
         } else {
             // ADMIN/GENERAL은 배정된 현장 안에서만 조회
-            panels = panelMapper.findActivePanelsByUserId(actor.getUserId(), siteId, status);
+            panels = panelMapper.findActivePanelsByUserId(actor.getUserId(), siteId, status, keyword, size, offset);
+            totalElements = panelMapper.countActivePanelsByUserId(actor.getUserId(), siteId, status, keyword);
         }
 
-        return panels.stream()
+        List<PanelListRes> content = panels.stream()
                 .map(PanelListRes::from)
                 .toList();
+        return new PanelListPageRes(content, totalElements);
+    }
+
+    // 공백만 입력한 검색어는 필터 없음으로 처리
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null) {
+            return null;
+        }
+        String trimmed = keyword.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    // page 미입력 시 첫 페이지 조회
+    private int resolvePage(PanelListReq req) {
+        if (req.getPage() == null) {
+            return DEFAULT_PAGE;
+        }
+        if (req.getPage() < 0) {
+            throw new BusinessException(CommonErrorCode.INVALID_PAGE);
+        }
+        return req.getPage();
+    }
+
+    // size 미입력 시 20개, 최대 100개까지 허용
+    private int resolveSize(PanelListReq req) {
+        if (req.getSize() == null) {
+            return DEFAULT_SIZE;
+        }
+        if (req.getSize() < 1 || req.getSize() > MAX_SIZE) {
+            throw new BusinessException(CommonErrorCode.INVALID_SIZE);
+        }
+        return req.getSize();
     }
 
     // 분전반 상세 조회

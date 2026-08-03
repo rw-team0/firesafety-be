@@ -6,7 +6,7 @@ import com.rayworld.firesafety.facility.dto.req.PanelListReq;
 import com.rayworld.firesafety.facility.dto.req.PanelUpdateReq;
 import com.rayworld.firesafety.facility.dto.res.PanelDetailRes;
 import com.rayworld.firesafety.facility.dto.res.PanelCreateRes;
-import com.rayworld.firesafety.facility.dto.res.PanelListRes;
+import com.rayworld.firesafety.facility.dto.res.PanelListPageRes;
 import com.rayworld.firesafety.facility.dto.res.PanelUpdateRes;
 import com.rayworld.firesafety.facility.service.PanelService;
 import com.rayworld.firesafety.config.swagger.OpenApiConfig;
@@ -24,8 +24,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api")
@@ -36,12 +34,12 @@ public class PanelController {
     private final PanelService panelService;
 
     // 분전반 목록 조회 (GET /api/panels)
-    // siteId와 status로 필터링 가능
-    @Operation(summary = "분전반 목록 조회", description = "siteId/status 필터를 지원한다. 삭제된 분전반과 삭제된 현장 소속 분전반은 제외한다.")
+    // siteId/status/keyword 필터 + page/size 페이징 지원
+    @Operation(summary = "분전반 목록 조회", description = "siteId/status/keyword(분전반명 부분일치) 필터와 page/size 페이징을 지원한다. 삭제된 분전반과 삭제된 현장 소속 분전반은 제외한다.")
     @GetMapping("/panels")
-    public ResultResponse<List<PanelListRes>> getPanels(@ModelAttribute PanelListReq req) {
-        List<PanelListRes> panels = panelService.getPanels(req);
-        return ResultResponse.success(String.format("%d rows", panels.size()), panels);
+    public ResultResponse<PanelListPageRes> getPanels(@ModelAttribute PanelListReq req) {
+        PanelListPageRes panels = panelService.getPanels(req);
+        return ResultResponse.success(String.format("%d rows", panels.getContent().size()), panels);
     }
 
     // 분전반 상세 조회 (GET /api/panels/{panelId})
