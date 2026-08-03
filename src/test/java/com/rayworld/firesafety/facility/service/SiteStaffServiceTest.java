@@ -7,6 +7,8 @@ import com.rayworld.firesafety.auth.model.UserRole;
 import com.rayworld.firesafety.common.exception.BusinessException;
 import com.rayworld.firesafety.common.security.JwtUser;
 import com.rayworld.firesafety.common.security.UserPrincipal;
+import com.rayworld.firesafety.facility.dto.req.SiteManagedUserListReq;
+import com.rayworld.firesafety.facility.dto.res.SiteManagedUserPageRes;
 import com.rayworld.firesafety.facility.dto.res.SiteManagedUserRes;
 import com.rayworld.firesafety.facility.dto.res.SiteStaffContactRes;
 import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
@@ -30,6 +32,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -62,17 +65,20 @@ class SiteStaffServiceTest {
         // given
         loginAs(1L, UserRole.SUPER_ADMIN);
         when(siteMapper.findActiveSiteById(1L)).thenReturn(site());
-        when(authMapper.findActiveSiteUsersByRoles(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name())))
+        when(authMapper.findActiveSiteUsersByRolesPaged(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name()), null, 20, 0))
                 .thenReturn(List.of(user(2L, "관리자", UserRole.ADMIN), user(10L, "직원1", UserRole.GENERAL)));
+        when(authMapper.countActiveSiteUsersByRoles(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name()), null))
+                .thenReturn(2L);
 
         // when
-        List<SiteManagedUserRes> result = siteStaffService.getManagedUsers(1L);
+        SiteManagedUserPageRes result = siteStaffService.getManagedUsers(1L, null);
 
         // then
-        assertThat(result).extracting(SiteManagedUserRes::getRole)
+        assertThat(result.getContent()).extracting(SiteManagedUserRes::getRole)
                 .containsExactly(UserRole.ADMIN, UserRole.GENERAL);
+        assertThat(result.getTotalElements()).isEqualTo(2L);
         verify(siteMapper, never()).existsActiveSiteAssignment(anyLong(), anyLong());
-        verify(authMapper).findActiveSiteUsersByRoles(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name()));
+        verify(authMapper).findActiveSiteUsersByRolesPaged(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name()), null, 20, 0);
     }
 
     @Test
@@ -82,16 +88,18 @@ class SiteStaffServiceTest {
         loginAs(2L, UserRole.ADMIN);
         when(siteMapper.findActiveSiteById(1L)).thenReturn(site());
         when(siteMapper.existsActiveSiteAssignment(2L, 1L)).thenReturn(true);
-        when(authMapper.findActiveSiteUsersByRoles(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name())))
+        when(authMapper.findActiveSiteUsersByRolesPaged(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name()), null, 20, 0))
                 .thenReturn(List.of(user(2L, "관리자", UserRole.ADMIN), user(10L, "직원1", UserRole.GENERAL)));
+        when(authMapper.countActiveSiteUsersByRoles(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name()), null))
+                .thenReturn(2L);
 
         // when
-        List<SiteManagedUserRes> result = siteStaffService.getManagedUsers(1L);
+        SiteManagedUserPageRes result = siteStaffService.getManagedUsers(1L, null);
 
         // then
-        assertThat(result).extracting(SiteManagedUserRes::getRole)
+        assertThat(result.getContent()).extracting(SiteManagedUserRes::getRole)
                 .containsExactly(UserRole.ADMIN, UserRole.GENERAL);
-        verify(authMapper).findActiveSiteUsersByRoles(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name()));
+        verify(authMapper).findActiveSiteUsersByRolesPaged(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name()), null, 20, 0);
     }
 
     @Test
@@ -101,15 +109,17 @@ class SiteStaffServiceTest {
         loginAs(2L, UserRole.ADMIN);
         when(siteMapper.findActiveSiteById(1L)).thenReturn(site());
         when(siteMapper.existsActiveSiteAssignment(2L, 1L)).thenReturn(true);
-        when(authMapper.findActiveSiteUsersByRoles(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name())))
+        when(authMapper.findActiveSiteUsersByRolesPaged(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name()), null, 20, 0))
                 .thenReturn(List.of());
+        when(authMapper.countActiveSiteUsersByRoles(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name()), null))
+                .thenReturn(0L);
 
         // when
-        List<SiteManagedUserRes> result = siteStaffService.getManagedUsers(1L);
+        SiteManagedUserPageRes result = siteStaffService.getManagedUsers(1L, null);
 
         // then
-        assertThat(result).isEmpty();
-        verify(authMapper).findActiveSiteUsersByRoles(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name()));
+        assertThat(result.getContent()).isEmpty();
+        verify(authMapper).findActiveSiteUsersByRolesPaged(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name()), null, 20, 0);
         verify(authMapper, never()).findActiveUsers();
     }
 
@@ -122,10 +132,10 @@ class SiteStaffServiceTest {
         when(siteMapper.existsActiveSiteAssignment(2L, 1L)).thenReturn(false);
 
         // when & then
-        assertThatThrownBy(() -> siteStaffService.getManagedUsers(1L))
+        assertThatThrownBy(() -> siteStaffService.getManagedUsers(1L, null))
                 .isInstanceOfSatisfying(BusinessException.class, e ->
                         assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.FORBIDDEN_ROLE));
-        verify(authMapper, never()).findActiveSiteUsersByRoles(any(), any());
+        verify(authMapper, never()).findActiveSiteUsersByRolesPaged(any(), any(), any(), anyInt(), anyInt());
     }
 
     @Test
@@ -135,14 +145,16 @@ class SiteStaffServiceTest {
         loginAs(3L, UserRole.GENERAL);
         when(siteMapper.findActiveSiteById(1L)).thenReturn(site());
         when(siteMapper.existsActiveSiteAssignment(3L, 1L)).thenReturn(true);
-        when(authMapper.findActiveSiteUsersByRoles(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name())))
+        when(authMapper.findActiveSiteUsersByRolesPaged(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name()), null, 20, 0))
                 .thenReturn(List.of(user(2L, "관리자", UserRole.ADMIN), user(3L, "직원", UserRole.GENERAL)));
+        when(authMapper.countActiveSiteUsersByRoles(1L, List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name()), null))
+                .thenReturn(2L);
 
         // when
-        List<SiteManagedUserRes> result = siteStaffService.getManagedUsers(1L);
+        SiteManagedUserPageRes result = siteStaffService.getManagedUsers(1L, null);
 
         // then
-        assertThat(result).extracting(SiteManagedUserRes::getRole)
+        assertThat(result.getContent()).extracting(SiteManagedUserRes::getRole)
                 .containsExactly(UserRole.ADMIN, UserRole.GENERAL);
     }
 
@@ -155,10 +167,10 @@ class SiteStaffServiceTest {
         when(siteMapper.existsActiveSiteAssignment(3L, 1L)).thenReturn(false);
 
         // when & then
-        assertThatThrownBy(() -> siteStaffService.getManagedUsers(1L))
+        assertThatThrownBy(() -> siteStaffService.getManagedUsers(1L, null))
                 .isInstanceOfSatisfying(BusinessException.class, e ->
                         assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.FORBIDDEN_ROLE));
-        verify(authMapper, never()).findActiveSiteUsersByRoles(any(), any());
+        verify(authMapper, never()).findActiveSiteUsersByRolesPaged(any(), any(), any(), anyInt(), anyInt());
     }
 
     @Test

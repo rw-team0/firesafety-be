@@ -198,6 +198,64 @@
         ORDER BY u.user_id DESC
     </select>
 
+    <!-- 현장 담당 직원 목록 화면(SCR-404) — keyword(이름/이메일/전화번호 부분일치) + 페이징 -->
+    <select id="findActiveSiteUsersByRolesPaged" resultMap="userResultMap">
+        SELECT DISTINCT
+            u.user_id,
+            u.email,
+            u.name,
+            u.phone,
+            u.role,
+            u.account_status,
+            u.created_at
+        FROM `user` u
+        INNER JOIN user_site us ON us.user_id = u.user_id
+        INNER JOIN site s ON s.site_id = us.site_id
+        WHERE us.site_id = #{siteId}
+          AND us.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+          AND u.deleted_at IS NULL
+          AND u.account_status = 'ACTIVE'
+          AND u.role IN
+          <foreach collection="roles" item="role" open="(" separator="," close=")">
+              #{role}
+          </foreach>
+        <if test="keyword != null and keyword != ''">
+          AND (
+            u.name LIKE CONCAT('%', #{keyword}, '%')
+            OR u.email LIKE CONCAT('%', #{keyword}, '%')
+            OR u.phone LIKE CONCAT('%', #{keyword}, '%')
+          )
+        </if>
+        ORDER BY u.user_id DESC
+        LIMIT #{size}
+        OFFSET #{offset}
+    </select>
+
+    <!-- 현장 담당 직원 목록 전체 개수 -->
+    <select id="countActiveSiteUsersByRoles" resultType="long">
+        SELECT COUNT(DISTINCT u.user_id)
+        FROM `user` u
+        INNER JOIN user_site us ON us.user_id = u.user_id
+        INNER JOIN site s ON s.site_id = us.site_id
+        WHERE us.site_id = #{siteId}
+          AND us.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+          AND u.deleted_at IS NULL
+          AND u.account_status = 'ACTIVE'
+          AND u.role IN
+          <foreach collection="roles" item="role" open="(" separator="," close=")">
+              #{role}
+          </foreach>
+        <if test="keyword != null and keyword != ''">
+          AND (
+            u.name LIKE CONCAT('%', #{keyword}, '%')
+            OR u.email LIKE CONCAT('%', #{keyword}, '%')
+            OR u.phone LIKE CONCAT('%', #{keyword}, '%')
+          )
+        </if>
+    </select>
+
     <!-- ADMIN의 같은 활성 현장 배정 여부 확인. 사용자/배정/현장 soft delete row는 권한 근거에서 제외 -->
     <select id="existsActiveSharedSiteAssignment" resultType="boolean">
         SELECT EXISTS(

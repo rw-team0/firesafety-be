@@ -37,8 +37,20 @@ public interface AuthMapper {
     // SUPER_ADMIN 계정관리 화면에서 삭제되지 않은 사용자 목록 조회
     List<User> findActiveUsers();
 
-    // 현장 담당 직원 목록/연락망 조회. 담당 현장 범위 판단은 호출한 facility 서비스가 먼저 처리
+    // 현장 담당 직원 목록/연락망 조회(필터/페이징 없음). 담당 현장 범위 판단은 호출한 facility 서비스가 먼저 처리
     List<User> findActiveSiteUsersByRoles(@Param("siteId") Long siteId, @Param("roles") List<String> roles);
+
+    // 현장 담당 직원 목록 화면(SCR-404)용 — keyword(이름/이메일/전화번호 부분일치)/페이징 지원
+    List<User> findActiveSiteUsersByRolesPaged(@Param("siteId") Long siteId,
+                                                @Param("roles") List<String> roles,
+                                                @Param("keyword") String keyword,
+                                                @Param("size") int size,
+                                                @Param("offset") int offset);
+
+    // 현장 담당 직원 목록 전체 개수
+    long countActiveSiteUsersByRoles(@Param("siteId") Long siteId,
+                                      @Param("roles") List<String> roles,
+                                      @Param("keyword") String keyword);
 
     // ADMIN이 대상 사용자와 같은 활성 현장에 배정되어 있는지 확인
     boolean existsActiveSharedSiteAssignment(@Param("actorUserId") Long actorUserId,

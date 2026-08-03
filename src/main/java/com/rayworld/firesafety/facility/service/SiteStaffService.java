@@ -6,6 +6,8 @@ import com.rayworld.firesafety.auth.model.UserRole;
 import com.rayworld.firesafety.common.exception.BusinessException;
 import com.rayworld.firesafety.common.exception.CommonErrorCode;
 import com.rayworld.firesafety.common.security.UserPrincipal;
+import com.rayworld.firesafety.facility.dto.req.SiteManagedUserListReq;
+import com.rayworld.firesafety.facility.dto.res.SiteManagedUserPageRes;
 import com.rayworld.firesafety.facility.dto.res.SiteManagedUserRes;
 import com.rayworld.firesafety.facility.dto.res.SiteStaffContactRes;
 import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
@@ -23,6 +25,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SiteStaffService {
 
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 20;
+    private static final int MAX_SIZE = 100;
+
     // SUPER_ADMIN/ADMIN 관리 목록은 현장에 배정된 ADMIN/GENERAL을 함께 조회한다.
     private static final List<String> MANAGED_USER_ROLES =
             List.of(UserRole.ADMIN.name(), UserRole.GENERAL.name());
@@ -36,18 +42,59 @@ public class SiteStaffService {
     // user 조회는 auth 도메인 mapper를 통해서만 수행
     private final AuthMapper authMapper;
 
-    // 현장 담당 직원 목록 조회
-    // 1. 현재 사용자 확인 → 2. 현장 접근 권한 재조회 → 3. 활성 ADMIN/GENERAL 조회
+    // 현장 담당 직원 목록 조회(SCR-404) — keyword/role 필터 + page/size 페이징
+    // 1. 현재 사용자 확인 → 2. 현장 접근 권한 재조회 → 3. 필터/페이징 계산 → 4. 활성 ADMIN/GENERAL 조회
     @Transactional(readOnly = true)
-    public List<SiteManagedUserRes> getManagedUsers(Long siteId) {
+    public SiteManagedUserPageRes getManagedUsers(Long siteId, SiteManagedUserListReq req) {
         UserPrincipal actor = getCurrentUser();
         validateSiteId(siteId);
-
         findAccessibleSite(actor, siteId);
 
-        return authMapper.findActiveSiteUsersByRoles(siteId, MANAGED_USER_ROLES).stream()
+        SiteManagedUserListReq searchReq = req == null ? new SiteManagedUserListReq() : req;
+        List<String> roles = searchReq.getRole() == null ? MANAGED_USER_ROLES : List.of(searchReq.getRole().name());
+        String keyword = normalizeKeyword(searchReq.getKeyword());
+        int page = resolvePage(searchReq);
+        int size = resolveSize(searchReq);
+        int offset = page * size;
+
+        List<SiteManagedUserRes> content = authMapper
+                .findActiveSiteUsersByRolesPaged(siteId, roles, keyword, size, offset).stream()
                 .map(SiteManagedUserRes::from)
                 .toList();
+        long totalElements = authMapper.countActiveSiteUsersByRoles(siteId, roles, keyword);
+
+        return new SiteManagedUserPageRes(content, totalElements);
+    }
+
+    // 공백만 입력한 검색어는 필터 없음으로 처리
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null) {
+            return null;
+        }
+        String trimmed = keyword.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    // page 미입력 시 첫 페이지 조회
+    private int resolvePage(SiteManagedUserListReq req) {
+        if (req.getPage() == null) {
+            return DEFAULT_PAGE;
+        }
+        if (req.getPage() < 0) {
+            throw new BusinessException(CommonErrorCode.INVALID_PAGE);
+        }
+        return req.getPage();
+    }
+
+    // size 미입력 시 20개, 최대 100개까지 허용
+    private int resolveSize(SiteManagedUserListReq req) {
+        if (req.getSize() == null) {
+            return DEFAULT_SIZE;
+        }
+        if (req.getSize() < 1 || req.getSize() > MAX_SIZE) {
+            throw new BusinessException(CommonErrorCode.INVALID_SIZE);
+        }
+        return req.getSize();
     }
 
     // 같은 현장 직원 연락망 조회
