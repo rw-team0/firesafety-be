@@ -41,11 +41,15 @@ class PanelServiceTest {
     @Mock
     private SiteMapper siteMapper;
 
+    @Mock
+    private CircuitService circuitService;
+
     private PanelService panelService;
 
     @BeforeEach
     void setUp() {
-        panelService = new PanelService(panelMapper, siteMapper, new ObjectMapper());
+        ObjectMapper objectMapper = new ObjectMapper().registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+        panelService = new PanelService(panelMapper, siteMapper, circuitService, objectMapper);
     }
 
     @AfterEach
@@ -81,6 +85,23 @@ class PanelServiceTest {
         assertThatThrownBy(() -> panelService.createPanel(1L, req))
                 .isInstanceOfSatisfying(BusinessException.class, e ->
                         assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.DUPLICATED_DEVICE_SERIAL));
+    }
+
+    @Test
+    @DisplayName("이미 등록된 장비번호면 409를 반환한다")
+    void duplicatedMNoFails() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        when(siteMapper.findActiveSiteById(1L)).thenReturn(site(1L));
+        when(panelMapper.existsPanelByDeviceSerial(any())).thenReturn(false);
+        when(panelMapper.existsPanelByMNo("00099")).thenReturn(true);
+
+        PanelCreateReq req = createReq(3, null, null);
+
+        // when & then
+        assertThatThrownBy(() -> panelService.createPanel(1L, req))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.DUPLICATED_M_NO));
     }
 
     @Test
@@ -176,6 +197,24 @@ class PanelServiceTest {
         // then
         assertThat(result.getName()).isEqualTo("분전반1");
         verify(siteMapper).insertFacilityAuditLog(any());
+        verify(circuitService).createCircuitsForPanel(savedPanel().getPanelId(), savedPanel().getCircuitCount(), 1L);
+    }
+
+    @Test
+    @DisplayName("분전반 삭제 시 소속 회로도 함께 소프트 삭제한다")
+    void deletePanelCascadesToCircuits() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        when(panelMapper.findActivePanelById(1L)).thenReturn(savedPanel());
+        when(siteMapper.findActiveSiteById(1L)).thenReturn(site(1L));
+        when(panelMapper.softDeletePanel(1L)).thenReturn(1);
+
+        // when
+        panelService.deletePanel(1L);
+
+        // then
+        verify(panelMapper).softDeletePanel(1L);
+        verify(circuitService).deleteCircuitsForPanel(1L, 1L);
     }
 
     private void loginAs(Long userId, UserRole role) {

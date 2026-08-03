@@ -7,6 +7,7 @@ import com.rayworld.firesafety.common.exception.BusinessException;
 import com.rayworld.firesafety.common.exception.CommonErrorCode;
 import com.rayworld.firesafety.common.security.UserPrincipal;
 import com.rayworld.firesafety.facility.dto.req.CircuitCreateReq;
+import com.rayworld.firesafety.facility.dto.req.CircuitUpdateReq;
 import com.rayworld.firesafety.facility.dto.res.CircuitCreateRes;
 import com.rayworld.firesafety.facility.dto.res.CircuitDetailRes;
 import com.rayworld.firesafety.facility.dto.res.CircuitListRes;
@@ -79,6 +80,64 @@ public class CircuitService {
         insertFacilityAuditLog(savedCircuit, actor.getUserId(), FacilityAuditAction.CREATE, null, toAuditJson(savedCircuit));
 
         return CircuitCreateRes.from(savedCircuit);
+    }
+
+    // 분전반 등록 시 채널 1~circuitCount까지 loadType 없이 회로 일괄 생성 (PanelService에서 호출)
+    // 이미 권한/현장 검증이 끝난 신규 분전반 대상이라 별도 검증 없이 바로 생성한다.
+    @Transactional
+    public void createCircuitsForPanel(Long panelId, int circuitCount, Long actorUserId) {
+        for (int channelNo = 1; channelNo <= circuitCount; channelNo++) {
+            Circuit circuit = new Circuit();
+            circuit.setPanelId(panelId);
+            circuit.setChannelNo(channelNo);
+            circuitMapper.insertCircuit(circuit);
+
+            Circuit savedCircuit = findActiveCircuit(circuit.getCircuitId());
+            insertFacilityAuditLog(savedCircuit, actorUserId, FacilityAuditAction.CREATE, null, toAuditJson(savedCircuit));
+        }
+    }
+
+    // 분전반 삭제 시 소속 회로도 함께 소프트 삭제 (PanelService.deletePanel()에서 호출)
+    // 물리 삭제는 하지 않는다 — sensor_frame_circuit/ai_diagnosis_result/alert가 circuit을
+    // FK ON DELETE RESTRICT로 참조하고 있어 이력 보존을 위해서도 소프트 삭제가 맞다.
+    @Transactional
+    public void deleteCircuitsForPanel(Long panelId, Long actorUserId) {
+        List<Circuit> circuits = circuitMapper.findActiveCircuitsByPanelId(panelId);
+        for (Circuit circuit : circuits) {
+            String beforeData = toAuditJson(circuit);
+            circuitMapper.softDeleteCircuit(circuit.getCircuitId());
+
+            circuit.setDeletedAt(LocalDateTime.now());
+            circuit.setUpdatedAt(LocalDateTime.now());
+            insertFacilityAuditLog(circuit, actorUserId, FacilityAuditAction.DELETE, beforeData, toAuditJson(circuit));
+        }
+    }
+
+    // 회로 부하종류 수정
+    // 1. 현재 사용자 확인 → 2. ADMIN 이상 확인 → 3. 회로/분전반/현장 권한 확인 → 4. loadType 수정 → 5. 감사 로그 저장
+    @Transactional
+    public CircuitDetailRes updateCircuit(Long circuitId, CircuitUpdateReq req) {
+        UserPrincipal actor = getCurrentUser();
+        requireAdminOrSuperAdmin(actor);
+        validateCircuitId(circuitId);
+        if (StringUtils.hasText(req == null ? null : req.getLoadType()) && req.getLoadType().length() > 50) {
+            throw new BusinessException(FacilityErrorCode.LOAD_TYPE_TOO_LONG);
+        }
+
+        Circuit circuit = findActiveCircuit(circuitId);
+        Panel panel = findActivePanel(circuit.getPanelId());
+        validateSiteAccess(actor, panel.getSiteId());
+
+        String beforeData = toAuditJson(circuit);
+        circuitMapper.updateCircuitLoadType(circuitId, req == null ? null : req.getLoadType());
+
+        Circuit updatedCircuit = findActiveCircuit(circuitId);
+        String afterData = toAuditJson(updatedCircuit);
+        if (!beforeData.equals(afterData)) {
+            insertFacilityAuditLog(updatedCircuit, actor.getUserId(), FacilityAuditAction.UPDATE, beforeData, afterData);
+        }
+
+        return CircuitDetailRes.from(updatedCircuit);
     }
 
     // 회로 목록 조회

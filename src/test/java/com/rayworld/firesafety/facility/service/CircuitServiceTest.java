@@ -6,7 +6,9 @@ import com.rayworld.firesafety.common.exception.BusinessException;
 import com.rayworld.firesafety.common.security.JwtUser;
 import com.rayworld.firesafety.common.security.UserPrincipal;
 import com.rayworld.firesafety.facility.dto.req.CircuitCreateReq;
+import com.rayworld.firesafety.facility.dto.req.CircuitUpdateReq;
 import com.rayworld.firesafety.facility.dto.res.CircuitCreateRes;
+import com.rayworld.firesafety.facility.dto.res.CircuitDetailRes;
 import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
 import com.rayworld.firesafety.facility.mapper.CircuitMapper;
 import com.rayworld.firesafety.facility.mapper.PanelMapper;
@@ -45,7 +47,8 @@ class CircuitServiceTest {
 
     @BeforeEach
     void setUp() {
-        circuitService = new CircuitService(circuitMapper, panelMapper, siteMapper, new ObjectMapper());
+        ObjectMapper objectMapper = new ObjectMapper().registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+        circuitService = new CircuitService(circuitMapper, panelMapper, siteMapper, objectMapper);
     }
 
     @AfterEach
@@ -186,6 +189,87 @@ class CircuitServiceTest {
         assertThat(result.getChannelNo()).isEqualTo(1);
         assertThat(result.getPanelId()).isEqualTo(1L);
         verify(siteMapper).insertFacilityAuditLog(any());
+    }
+
+    @Test
+    @DisplayName("분전반 등록 시 채널 1~circuitCount까지 loadType 없이 회로를 일괄 생성한다")
+    void createCircuitsForPanelBulkCreates() {
+        // given
+        when(circuitMapper.findActiveCircuitById(any())).thenReturn(savedCircuit());
+
+        // when
+        circuitService.createCircuitsForPanel(1L, 3, 1L);
+
+        // then
+        verify(circuitMapper, org.mockito.Mockito.times(3)).insertCircuit(any());
+        verify(siteMapper, org.mockito.Mockito.times(3)).insertFacilityAuditLog(any());
+    }
+
+    @Test
+    @DisplayName("분전반 삭제 시 소속 활성 회로를 전부 소프트 삭제하고 건별로 감사 로그를 남긴다")
+    void deleteCircuitsForPanelSoftDeletesAll() {
+        // given
+        com.rayworld.firesafety.facility.model.Circuit c1 = savedCircuit();
+        com.rayworld.firesafety.facility.model.Circuit c2 = savedCircuit();
+        c2.setCircuitId(2L);
+        c2.setChannelNo(2);
+        when(circuitMapper.findActiveCircuitsByPanelId(1L)).thenReturn(java.util.List.of(c1, c2));
+
+        // when
+        circuitService.deleteCircuitsForPanel(1L, 9L);
+
+        // then
+        verify(circuitMapper).softDeleteCircuit(1L);
+        verify(circuitMapper).softDeleteCircuit(2L);
+        verify(siteMapper, org.mockito.Mockito.times(2)).insertFacilityAuditLog(any());
+    }
+
+    @Test
+    @DisplayName("회로 부하종류를 수정하면 감사 로그를 남긴다")
+    void updateCircuitSuccess() {
+        // given
+        loginAs(1L, UserRole.ADMIN);
+        when(circuitMapper.findActiveCircuitById(1L)).thenReturn(savedCircuit());
+        when(panelMapper.findActivePanelById(1L)).thenReturn(panel(1L, 1L, 10));
+        when(siteMapper.findActiveSiteById(1L)).thenReturn(site(1L));
+        when(siteMapper.existsActiveSiteAssignment(1L, 1L)).thenReturn(true);
+
+        com.rayworld.firesafety.facility.model.Circuit updated = savedCircuit();
+        updated.setLoadType("에어컨");
+        when(circuitMapper.findActiveCircuitById(1L)).thenReturn(savedCircuit(), updated);
+
+        // when
+        CircuitDetailRes result = circuitService.updateCircuit(1L, new CircuitUpdateReq("에어컨"));
+
+        // then
+        assertThat(result.getLoadType()).isEqualTo("에어컨");
+        verify(circuitMapper).updateCircuitLoadType(1L, "에어컨");
+        verify(siteMapper).insertFacilityAuditLog(any());
+    }
+
+    @Test
+    @DisplayName("회로 부하종류가 50자를 초과하면 수정할 수 없다")
+    void updateCircuitLoadTypeTooLongFails() {
+        // given
+        loginAs(1L, UserRole.ADMIN);
+        String tooLong = "a".repeat(51);
+
+        // when & then
+        assertThatThrownBy(() -> circuitService.updateCircuit(1L, new CircuitUpdateReq(tooLong)))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.LOAD_TYPE_TOO_LONG));
+    }
+
+    @Test
+    @DisplayName("GENERAL은 회로 부하종류를 수정할 수 없다")
+    void generalCannotUpdateCircuit() {
+        // given
+        loginAs(1L, UserRole.GENERAL);
+
+        // when & then
+        assertThatThrownBy(() -> circuitService.updateCircuit(1L, new CircuitUpdateReq("조명")))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.FORBIDDEN_ROLE));
     }
 
     private void loginAs(Long userId, UserRole role) {

@@ -2,6 +2,7 @@ package com.rayworld.firesafety.facility.controller;
 
 import com.rayworld.firesafety.common.response.ResultResponse;
 import com.rayworld.firesafety.facility.dto.req.CircuitCreateReq;
+import com.rayworld.firesafety.facility.dto.req.CircuitUpdateReq;
 import com.rayworld.firesafety.facility.dto.res.CircuitCreateRes;
 import com.rayworld.firesafety.facility.dto.res.CircuitDetailRes;
 import com.rayworld.firesafety.facility.dto.res.CircuitListRes;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,6 +57,15 @@ public class CircuitController {
     public ResultResponse<CircuitDetailRes> getCircuit(@PathVariable Long circuitId) {
         CircuitDetailRes circuit = circuitService.getCircuit(circuitId);
         return ResultResponse.success("회로 상세 조회 성공", circuit);
+    }
+
+    // 회로 부하종류 수정 (PUT /api/circuits/{circuitId})
+    // ADMIN 이상 가능, channelNo/panelId는 변경 불가 — loadType만 수정
+    @Operation(summary = "회로 부하종류 수정", description = "ADMIN 이상 가능. loadType만 수정할 수 있다(채널번호/분전반은 변경 불가).")
+    @PutMapping("/circuits/{circuitId}")
+    public ResultResponse<CircuitDetailRes> updateCircuit(@PathVariable Long circuitId, @RequestBody CircuitUpdateReq req) {
+        CircuitDetailRes circuit = circuitService.updateCircuit(circuitId, req);
+        return ResultResponse.success("회로 수정 성공", circuit);
     }
 
     // 회로 삭제 (DELETE /api/circuits/{circuitId})

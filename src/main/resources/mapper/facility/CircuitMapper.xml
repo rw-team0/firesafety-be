@@ -120,4 +120,13 @@
             load_type = #{loadType}
         WHERE circuit_id = #{circuitId}
     </update>
+
+    <!-- 회로 부하종류만 수정 (채널번호/분전반은 변경 불가) -->
+    <update id="updateCircuitLoadType">
+        UPDATE circuit
+        SET load_type = #{loadType},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE circuit_id = #{circuitId}
+          AND deleted_at IS NULL
+    </update>
 </mapper>

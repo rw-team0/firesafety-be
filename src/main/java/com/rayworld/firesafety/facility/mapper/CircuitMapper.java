@@ -31,4 +31,7 @@ public interface CircuitMapper {
 
     // 삭제됐던 회로를 같은 채널번호로 재등록할 때 deleted_at을 되돌려 재활성화
     int reactivateCircuit(@Param("circuitId") Long circuitId, @Param("loadType") String loadType);
+
+    // 회로 부하종류 수정
+    int updateCircuitLoadType(@Param("circuitId") Long circuitId, @Param("loadType") String loadType);
 }

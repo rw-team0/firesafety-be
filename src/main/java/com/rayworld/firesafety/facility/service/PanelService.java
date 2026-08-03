@@ -59,6 +59,9 @@ public class PanelService {
     // site, user_site, facility_audit_log 테이블 접근
     private final SiteMapper siteMapper;
 
+    // 분전반 등록 시 회로 자동 생성 위임
+    private final CircuitService circuitService;
+
     // 감사 로그 after JSON 변환
     private final ObjectMapper objectMapper;
 
@@ -74,12 +77,18 @@ public class PanelService {
         if (panelMapper.existsPanelByDeviceSerial(req.getDeviceSerial())) {
             throw new BusinessException(FacilityErrorCode.DUPLICATED_DEVICE_SERIAL);
         }
+        if (panelMapper.existsPanelByMNo(req.getMNo())) {
+            throw new BusinessException(FacilityErrorCode.DUPLICATED_M_NO);
+        }
 
         Panel panel = buildPanelForCreate(siteId, req);
         panelMapper.insertPanel(panel);
 
         Panel savedPanel = findActivePanel(panel.getPanelId());
         insertFacilityAuditLog(savedPanel, actor.getUserId(), FacilityAuditAction.CREATE, null, toAuditJson(savedPanel));
+
+        // 회로는 loadType 없이 채널 1~circuitCount까지 자동 생성, 이후 프론트에서 채널별로 loadType만 수정
+        circuitService.createCircuitsForPanel(savedPanel.getPanelId(), savedPanel.getCircuitCount(), actor.getUserId());
 
         return PanelCreateRes.from(savedPanel);
     }
@@ -202,6 +211,10 @@ public class PanelService {
                 && panelMapper.existsPanelByDeviceSerialExceptSelf(panelId, req.getDeviceSerial())) {
             throw new BusinessException(FacilityErrorCode.DUPLICATED_DEVICE_SERIAL);
         }
+        if (!panel.getMNo().equals(req.getMNo())
+                && panelMapper.existsPanelByMNoExceptSelf(panelId, req.getMNo())) {
+            throw new BusinessException(FacilityErrorCode.DUPLICATED_M_NO);
+        }
 
         String beforeData = toAuditJson(panel);
         applyUpdate(panel, req);
@@ -241,6 +254,9 @@ public class PanelService {
         panel.setDeletedAt(LocalDateTime.now());
         panel.setUpdatedAt(LocalDateTime.now());
         insertFacilityAuditLog(panel, actor.getUserId(), FacilityAuditAction.DELETE, beforeData, toAuditJson(panel));
+
+        // 분전반이 사라지므로 소속 회로도 함께 소프트 삭제 (물리 삭제 아님 — 과거 이력 보존)
+        circuitService.deleteCircuitsForPanel(panelId, actor.getUserId());
     }
 
     // 등록 요청값 확인
