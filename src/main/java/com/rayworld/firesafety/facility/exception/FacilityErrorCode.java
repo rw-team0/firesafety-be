@@ -29,7 +29,8 @@ public enum FacilityErrorCode implements ErrorCode {
     ADDRESS_SEARCH_KEYWORD_REQUIRED("FACILITY-018", "검색어를 입력해주세요", HttpStatus.BAD_REQUEST),
     EXTERNAL_ADDRESS_API_ERROR("FACILITY-019", "주소 검색 중 오류가 발생했습니다", HttpStatus.SERVICE_UNAVAILABLE),
     SITE_ADDRESS_REQUIRED("FACILITY-020", "현장 주소를 입력해주세요", HttpStatus.BAD_REQUEST),
-    DUPLICATED_SITE_NAME("FACILITY-021", "이미 등록된 현장 이름입니다", HttpStatus.CONFLICT);
+    DUPLICATED_SITE_NAME("FACILITY-021", "이미 등록된 현장 이름입니다", HttpStatus.CONFLICT),
+    DUPLICATED_M_NO("FACILITY-022", "이미 등록된 장비번호입니다", HttpStatus.CONFLICT);
 
     private final String code;
     private final String message;
