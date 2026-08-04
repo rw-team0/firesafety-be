@@ -67,6 +67,15 @@ public class UserController {
         return ResultResponse.success("FCM 토큰 등록 성공", null);
     }
 
+    // FCM 토큰 해제 (DELETE /api/users/me/fcm-token)
+    // 사용자가 이 기기에서 푸시 알림을 끌 때 호출 — 등록과 동일하게 요청 본문의 토큰값 기준으로 삭제
+    @Operation(summary = "FCM 토큰 해제", description = "로그인 사용자의 현재 기기 FCM 토큰을 삭제해 더 이상 푸시가 가지 않게 한다.")
+    @DeleteMapping("/me/fcm-token")
+    public ResultResponse<Void> deleteFcmToken(@RequestBody FcmTokenReq req) {
+        userService.deleteFcmToken(req);
+        return ResultResponse.success("FCM 토큰 해제 성공", null);
+    }
+
     // 이메일 중복확인 (GET /api/users/check-email)
     // 계정 등록 폼에서 실시간으로 사용, ADMIN 이상만 호출 가능
     @Operation(summary = "이메일 중복확인", description = "계정 등록 폼에서 실시간으로 이메일 중복 여부를 확인한다. ADMIN 이상만 호출 가능하다.")

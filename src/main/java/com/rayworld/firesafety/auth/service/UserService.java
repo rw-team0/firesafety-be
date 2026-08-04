@@ -94,6 +94,13 @@ public class UserService {
         authMapper.upsertFcmToken(actor.getUserId(), req.getFcmToken());
     }
 
+    // FCM 토큰 해제 — 소유자 확인 없이 토큰값 기준 삭제(unique 토큰이라 다른 사용자 토큰을 잘못 지울 수 없음, ADR-001과 동일 전제)
+    @Transactional
+    public void deleteFcmToken(FcmTokenReq req) {
+        validateFcmTokenRequest(req);
+        authMapper.deleteFcmTokens(List.of(req.getFcmToken()));
+    }
+
     // 계정 등록
     // 1. 요청값 확인 → 2. 생성 권한 확인 → 3. 이메일 중복 확인 → 4. 사용자 저장 → 5. 감사 로그 저장
     @Transactional
