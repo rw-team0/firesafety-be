@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.rayworld.firesafety.system.mapper.SystemMapper">
+    <resultMap id="releaseResultMap" type="com.rayworld.firesafety.system.model.SystemReleaseHistory">
+        <id property="releaseId" column="release_id"/>
+        <result property="version" column="version"/>
+        <result property="type" column="type"/>
+        <result property="description" column="description"/>
+        <result property="updatedBy" column="updated_by"/>
+        <result property="releasedAt" column="released_at"/>
+    </resultMap>
+
+    <insert id="insertRelease"
+            parameterType="com.rayworld.firesafety.system.model.SystemReleaseHistory"
+            useGeneratedKeys="true"
+            keyProperty="releaseId">
+        INSERT INTO system_release_history (version, type, description, updated_by, released_at)
+        VALUES (#{version}, #{type}, #{description}, #{updatedBy}, #{releasedAt})
+    </insert>
+
+    <select id="findLatestByType" resultMap="releaseResultMap">
+        SELECT release_id, version, type, description, updated_by, released_at
+        FROM system_release_history
+        WHERE type = #{type}
+        ORDER BY released_at DESC, release_id DESC
+        LIMIT 1
+    </select>
+
+    <select id="findReleases" resultMap="releaseResultMap">
+        SELECT release_id, version, type, description, updated_by, released_at
+        FROM system_release_history
+        ORDER BY released_at DESC, release_id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countReleases" resultType="long">
+        SELECT COUNT(*) FROM system_release_history
+    </select>
+</mapper>
