@@ -15,6 +15,8 @@ public class AlertListRes {
 
     @Schema(description = "경보 ID", example = "1")
     private Long alertId;
+    @Schema(description = "분전반 ID", example = "1")
+    private Long panelId;
     @Schema(description = "분전반 이름", example = "분전반1")
     private String panelName;
     @Schema(description = "회로 번호(장비 단위 경보는 null)", example = "1")

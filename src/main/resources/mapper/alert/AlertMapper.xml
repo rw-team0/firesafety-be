@@ -21,6 +21,7 @@
 
     <resultMap id="alertListResultMap" type="com.rayworld.firesafety.alert.dto.res.AlertListRes">
         <id property="alertId" column="alert_id"/>
+        <result property="panelId" column="panel_id"/>
         <result property="panelName" column="panel_name"/>
         <result property="circuitNo" column="circuit_no"/>
         <result property="type" column="type"/>
@@ -88,6 +89,7 @@
 
     <resultMap id="alertPendingResultMap" type="com.rayworld.firesafety.alert.dto.res.AlertPendingRes">
         <id property="alertId" column="alert_id"/>
+        <result property="panelId" column="panel_id"/>
         <result property="panelName" column="panel_name"/>
         <result property="type" column="type"/>
         <result property="status" column="status"/>
@@ -182,6 +184,7 @@
     <select id="findAlerts" resultMap="alertListResultMap">
         SELECT
             a.alert_id,
+            a.panel_id,
             p.name AS panel_name,
             c.channel_no AS circuit_no,
             a.type,
@@ -314,6 +317,7 @@
     <select id="findPendingAlerts" resultMap="alertPendingResultMap">
         SELECT
             a.alert_id,
+            a.panel_id,
             p.name AS panel_name,
             a.type,
             a.status,

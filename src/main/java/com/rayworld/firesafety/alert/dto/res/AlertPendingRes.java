@@ -15,6 +15,8 @@ public class AlertPendingRes {
 
     @Schema(description = "경보 ID", example = "1")
     private Long alertId;
+    @Schema(description = "분전반 ID", example = "1")
+    private Long panelId;
     @Schema(description = "분전반 이름", example = "분전반1")
     private String panelName;
     @Schema(description = "경보 유형", example = "ARC")
