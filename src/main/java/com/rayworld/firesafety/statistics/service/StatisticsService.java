@@ -12,6 +12,7 @@ import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
 import com.rayworld.firesafety.facility.model.PanelStatus;
 import com.rayworld.firesafety.statistics.dto.req.StatisticsReq;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsAlertRes;
+import com.rayworld.firesafety.statistics.dto.res.CircuitCountRow;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsCountRes;
 import com.rayworld.firesafety.statistics.dto.res.InspectionCountRow;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsDiagnosisRes;
@@ -87,9 +88,12 @@ public class StatisticsService {
                                                           Long siteId,
                                                           LocalDateTime fromAt,
                                                           LocalDateTime toAt) {
+        CircuitCountRow circuitRow = statisticsMapper.countCircuitStats(actor.getUserId(), superAdmin, siteId, fromAt, toAt);
         return new StatisticsDiagnosisRes(
                 statisticsMapper.countDiagnoses(actor.getUserId(), superAdmin, siteId, fromAt, toAt),
-                toVerdictCounts(statisticsMapper.countDiagnosesByVerdict(actor.getUserId(), superAdmin, siteId, fromAt, toAt))
+                toVerdictCounts(statisticsMapper.countDiagnosesByVerdict(actor.getUserId(), superAdmin, siteId, fromAt, toAt)),
+                circuitRow != null ? circuitRow.getTotalCircuitCount() : 0L,
+                circuitRow != null ? circuitRow.getDiagnosedCircuitCount() : 0L
         );
     }
 

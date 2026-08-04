@@ -13,6 +13,11 @@
         <result property="count" column="stat_count"/>
     </resultMap>
 
+    <resultMap id="circuitCountRowResultMap" type="com.rayworld.firesafety.statistics.dto.res.CircuitCountRow">
+        <result property="totalCircuitCount" column="total_circuit_count"/>
+        <result property="diagnosedCircuitCount" column="diagnosed_circuit_count"/>
+    </resultMap>
+
     <resultMap id="inspectionCountRowResultMap" type="com.rayworld.firesafety.statistics.dto.res.InspectionCountRow">
         <result property="totalPanelCount" column="total_panel_count"/>
         <result property="inspectedPanelCount" column="inspected_panel_count"/>
@@ -181,6 +186,24 @@
         INNER JOIN panel p ON p.panel_id = c.panel_id
         <include refid="diagnosisStatisticsFilter"/>
         GROUP BY ai.verdict
+    </select>
+
+    <!-- 회로 진단 커버리지 집계: 활성 분전반의 전체 회로 수/기간 내 1회 이상 진단된 회로 수를 한 쿼리로 계산 -->
+    <select id="countCircuitStats" resultMap="circuitCountRowResultMap">
+        SELECT
+            COUNT(DISTINCT c.circuit_id) AS total_circuit_count,
+            COUNT(DISTINCT CASE WHEN ai.result_id IS NOT NULL THEN c.circuit_id END) AS diagnosed_circuit_count
+        FROM circuit c
+        INNER JOIN panel p ON p.panel_id = c.panel_id
+        INNER JOIN site s ON s.site_id = p.site_id
+        LEFT JOIN ai_diagnosis_result ai ON ai.circuit_id = c.circuit_id
+            <if test="fromAt != null">
+                AND ai.diagnosed_at &gt;= #{fromAt}
+            </if>
+            <if test="toAt != null">
+                AND ai.diagnosed_at &lt; #{toAt}
+            </if>
+        WHERE <include refid="activePanelStatisticsFilter"/>
     </select>
 
     <!-- 활성 분전반 전체 개수 조회 -->

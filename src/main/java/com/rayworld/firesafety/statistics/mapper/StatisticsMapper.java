@@ -1,5 +1,6 @@
 package com.rayworld.firesafety.statistics.mapper;
 
+import com.rayworld.firesafety.statistics.dto.res.CircuitCountRow;
 import com.rayworld.firesafety.statistics.dto.res.DailyAlertCountRes;
 import com.rayworld.firesafety.statistics.dto.res.InspectionCountRow;
 import com.rayworld.firesafety.statistics.dto.res.RecentInspectionRes;
@@ -68,6 +69,13 @@ public interface StatisticsMapper {
                                                        @Param("siteId") Long siteId,
                                                        @Param("fromAt") LocalDateTime fromAt,
                                                        @Param("toAt") LocalDateTime toAt);
+
+    // 회로 진단 커버리지 집계(전체 회로 수/기간 내 진단된 회로 수) - 한 쿼리로 계산
+    CircuitCountRow countCircuitStats(@Param("userId") Long userId,
+                                      @Param("superAdmin") boolean superAdmin,
+                                      @Param("siteId") Long siteId,
+                                      @Param("fromAt") LocalDateTime fromAt,
+                                      @Param("toAt") LocalDateTime toAt);
 
     // 활성 분전반 전체 개수 조회
     long countActivePanels(@Param("userId") Long userId,

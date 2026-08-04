@@ -7,6 +7,7 @@ import com.rayworld.firesafety.common.security.JwtUser;
 import com.rayworld.firesafety.common.security.UserPrincipal;
 import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
 import com.rayworld.firesafety.statistics.dto.req.StatisticsReq;
+import com.rayworld.firesafety.statistics.dto.res.CircuitCountRow;
 import com.rayworld.firesafety.statistics.dto.res.DailyAlertCountRes;
 import com.rayworld.firesafety.statistics.dto.res.InspectionCountRow;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsGroupCount;
@@ -74,6 +75,7 @@ class StatisticsServiceTest {
         when(statisticsMapper.countDiagnoses(1L, true, 3L, fromAt, toAt)).thenReturn(2L);
         when(statisticsMapper.countDiagnosesByVerdict(1L, true, 3L, fromAt, toAt))
                 .thenReturn(List.of(group("ARC", 1)));
+        when(statisticsMapper.countCircuitStats(1L, true, 3L, fromAt, toAt)).thenReturn(circuitCountRow(40, 18));
         when(statisticsMapper.countActivePanels(1L, true, 3L)).thenReturn(7L);
         when(statisticsMapper.countActivePanelsByStatus(1L, true, 3L))
                 .thenReturn(List.of(group("RISK", 1)));
@@ -95,6 +97,8 @@ class StatisticsServiceTest {
                     assertThat(count.getCount()).isZero();
                 });
         assertThat(result.getDiagnoses().getTotalCount()).isEqualTo(2L);
+        assertThat(result.getDiagnoses().getTotalCircuitCount()).isEqualTo(40L);
+        assertThat(result.getDiagnoses().getDiagnosedCircuitCount()).isEqualTo(18L);
         assertThat(result.getPanels().getTotalCount()).isEqualTo(7L);
         assertThat(result.getInspections().getTotalPanelCount()).isEqualTo(7L);
         assertThat(result.getInspections().getInspectedPanelCount()).isEqualTo(4L);
@@ -160,6 +164,13 @@ class StatisticsServiceTest {
         row.setTotalPanelCount(totalPanelCount);
         row.setInspectedPanelCount(inspectedPanelCount);
         row.setTotalInspectionCount(totalInspectionCount);
+        return row;
+    }
+
+    private CircuitCountRow circuitCountRow(long totalCircuitCount, long diagnosedCircuitCount) {
+        CircuitCountRow row = new CircuitCountRow();
+        row.setTotalCircuitCount(totalCircuitCount);
+        row.setDiagnosedCircuitCount(diagnosedCircuitCount);
         return row;
     }
 }
