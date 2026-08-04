@@ -12,6 +12,7 @@ import com.rayworld.firesafety.facility.model.Panel;
 import com.rayworld.firesafety.inspection.dto.req.InspectionItemCreateReq;
 import com.rayworld.firesafety.inspection.dto.req.InspectionResultItemReq;
 import com.rayworld.firesafety.inspection.dto.req.InspectionSaveReq;
+import com.rayworld.firesafety.inspection.dto.res.InspectionExportRowRes;
 import com.rayworld.firesafety.inspection.dto.res.InspectionHistoryPageRes;
 import com.rayworld.firesafety.inspection.dto.res.InspectionHistoryRes;
 import com.rayworld.firesafety.inspection.dto.res.InspectionItemCreateRes;
@@ -49,11 +50,14 @@ class InspectionServiceTest {
     @Mock
     private SiteMapper siteMapper;
 
+    @Mock
+    private InspectionExcelService inspectionExcelService;
+
     private InspectionService inspectionService;
 
     @BeforeEach
     void setUp() {
-        inspectionService = new InspectionService(inspectionMapper, panelMapper, siteMapper);
+        inspectionService = new InspectionService(inspectionMapper, panelMapper, siteMapper, inspectionExcelService);
     }
 
     @AfterEach
@@ -115,6 +119,23 @@ class InspectionServiceTest {
         loginAs(2L, UserRole.ADMIN);
         when(panelMapper.findActivePanelById(10L)).thenReturn(panel());
         when(siteMapper.existsActiveSiteAssignment(2L, 3L)).thenReturn(true);
+        when(inspectionMapper.findInspectionItemsByPanelId(10L)).thenReturn(List.of(itemRes()));
+
+        // when
+        List<InspectionItemRes> items = inspectionService.getItems(10L);
+
+        // then
+        assertThat(items).hasSize(1);
+        assertThat(items.get(0).getItemName()).isEqualTo("누전차단기 동작 확인");
+    }
+
+    @Test
+    @DisplayName("FAC-014: GENERAL은 담당 현장 분전반의 점검 항목 목록을 조회할 수 있다")
+    void generalCanGetItems() {
+        // given
+        loginAs(3L, UserRole.GENERAL);
+        when(panelMapper.findActivePanelById(10L)).thenReturn(panel());
+        when(siteMapper.existsActiveSiteAssignment(3L, 3L)).thenReturn(true);
         when(inspectionMapper.findInspectionItemsByPanelId(10L)).thenReturn(List.of(itemRes()));
 
         // when
@@ -220,6 +241,25 @@ class InspectionServiceTest {
         verify(inspectionMapper).findResultItemsByInspectionId(1L);
     }
 
+    @Test
+    @DisplayName("FAC-015: GENERAL은 담당 현장 분전반의 점검 이력을 엑셀로 다운로드할 수 있다")
+    void generalCanExportHistory() {
+        // given
+        loginAs(3L, UserRole.GENERAL);
+        when(panelMapper.findActivePanelById(10L)).thenReturn(panel());
+        when(siteMapper.existsActiveSiteAssignment(3L, 3L)).thenReturn(true);
+        when(inspectionMapper.findInspectionExportRows(10L, null, null)).thenReturn(List.of(exportRowRes()));
+        when(inspectionExcelService.createInspectionHistoryExcel(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new byte[]{1, 2, 3});
+
+        // when
+        byte[] excel = inspectionService.exportHistory(10L, null);
+
+        // then
+        assertThat(excel).containsExactly(1, 2, 3);
+        verify(inspectionMapper).findInspectionExportRows(10L, null, null);
+    }
+
     private void loginAs(Long userId, UserRole role) {
         UserPrincipal principal = new UserPrincipal(new JwtUser(userId, role.name()));
         UsernamePasswordAuthenticationToken authentication =
@@ -246,6 +286,17 @@ class InspectionServiceTest {
         InspectionHistoryRes res = new InspectionHistoryRes();
         res.setInspectionId(1L);
         res.setInspectorName("홍길동");
+        return res;
+    }
+
+    private InspectionExportRowRes exportRowRes() {
+        InspectionExportRowRes res = new InspectionExportRowRes();
+        res.setInspectionId(1L);
+        res.setSiteName("레이월드1호점");
+        res.setPanelName("2층 분전반");
+        res.setItemId(100L);
+        res.setItemName("누전차단기 동작 확인");
+        res.setResult(InspectionResultType.NORMAL);
         return res;
     }
 }

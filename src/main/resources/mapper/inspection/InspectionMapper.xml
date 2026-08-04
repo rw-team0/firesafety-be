@@ -23,6 +23,20 @@
         <result property="result" column="result"/>
     </resultMap>
 
+    <resultMap id="inspectionExportRowResResultMap" type="com.rayworld.firesafety.inspection.dto.res.InspectionExportRowRes">
+        <id property="inspectionId" column="inspection_id"/>
+        <result property="siteName" column="site_name"/>
+        <result property="panelName" column="panel_name"/>
+        <result property="mNo" column="m_no"/>
+        <result property="inspectedAt" column="inspected_at"/>
+        <result property="inspectorName" column="inspector_name"/>
+        <result property="itemId" column="item_id"/>
+        <result property="itemName" column="item_name"/>
+        <result property="description" column="description"/>
+        <result property="result" column="result"/>
+        <result property="note" column="note"/>
+    </resultMap>
+
     <!-- 점검 항목 등록 -->
     <insert id="insertInspectionItem"
             parameterType="com.rayworld.firesafety.inspection.model.InspectionItem"
@@ -107,5 +121,29 @@
         INNER JOIN inspection_item i ON i.item_id = ri.item_id
         WHERE ri.inspection_id = #{inspectionId}
         ORDER BY i.item_id ASC
+    </select>
+
+    <!-- 점검 이력 엑셀 다운로드: 점검 1건을 항목별 row로 펼쳐 조회 -->
+    <select id="findInspectionExportRows" resultMap="inspectionExportRowResResultMap">
+        SELECT
+            r.inspection_id,
+            s.name AS site_name,
+            p.name AS panel_name,
+            p.m_no,
+            r.inspected_at,
+            u.name AS inspector_name,
+            i.item_id,
+            i.item_name,
+            i.description,
+            ri.result,
+            r.note
+        FROM inspection_result r
+        INNER JOIN panel p ON p.panel_id = r.panel_id
+        INNER JOIN site s ON s.site_id = p.site_id
+        LEFT JOIN `user` u ON u.user_id = r.inspector_id
+        INNER JOIN inspection_result_item ri ON ri.inspection_id = r.inspection_id
+        INNER JOIN inspection_item i ON i.item_id = ri.item_id
+        <include refid="inspectionHistoryFilter"/>
+        ORDER BY r.inspected_at DESC, r.inspection_id DESC, i.item_id ASC
     </select>
 </mapper>

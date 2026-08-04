@@ -12,6 +12,7 @@ import com.rayworld.firesafety.inspection.dto.req.InspectionHistoryListReq;
 import com.rayworld.firesafety.inspection.dto.req.InspectionItemCreateReq;
 import com.rayworld.firesafety.inspection.dto.req.InspectionResultItemReq;
 import com.rayworld.firesafety.inspection.dto.req.InspectionSaveReq;
+import com.rayworld.firesafety.inspection.dto.res.InspectionExportRowRes;
 import com.rayworld.firesafety.inspection.dto.res.InspectionHistoryPageRes;
 import com.rayworld.firesafety.inspection.dto.res.InspectionHistoryRes;
 import com.rayworld.firesafety.inspection.dto.res.InspectionItemCreateRes;
@@ -42,6 +43,7 @@ public class InspectionService {
     private final InspectionMapper inspectionMapper;
     private final PanelMapper panelMapper;
     private final SiteMapper siteMapper;
+    private final InspectionExcelService inspectionExcelService;
 
     // 점검 항목 등록 (REQ-511, ADMIN 이상)
     @Transactional
@@ -61,11 +63,10 @@ public class InspectionService {
         return new InspectionItemCreateRes(item.getItemId());
     }
 
-    // 점검 항목 목록 조회 (REQ-511, ADMIN 이상)
+    // 점검 항목 목록 조회 (REQ-511, GENERAL 이상)
     @Transactional(readOnly = true)
     public List<InspectionItemRes> getItems(Long panelId) {
         UserPrincipal actor = getCurrentUser();
-        validateAdminOrSuperAdmin(actor);
         Panel panel = findActivePanel(panelId);
         validateSiteAccess(actor, panel.getSiteId());
 
@@ -122,6 +123,23 @@ public class InspectionService {
         return new InspectionHistoryPageRes(content, totalElements);
     }
 
+    // 점검 이력 엑셀 다운로드 (REQ-512)
+    // 1. 현재 사용자 확인 → 2. 현장 접근 확인 → 3. 기간 검증 → 4. 항목별 row 조회 → 5. xlsx 생성
+    @Transactional(readOnly = true)
+    public byte[] exportHistory(Long panelId, InspectionHistoryListReq req) {
+        UserPrincipal actor = getCurrentUser();
+        Panel panel = findActivePanel(panelId);
+        validateSiteAccess(actor, panel.getSiteId());
+
+        InspectionHistoryListReq searchReq = normalizeHistoryReq(req);
+        validateDateRange(searchReq);
+        LocalDateTime fromAt = toStartDateTime(searchReq);
+        LocalDateTime toAt = toEndDateTime(searchReq);
+
+        List<InspectionExportRowRes> rows = inspectionMapper.findInspectionExportRows(panelId, fromAt, toAt);
+        return inspectionExcelService.createInspectionHistoryExcel(rows, searchReq);
+    }
+
     // 활성 분전반 조회
     private Panel findActivePanel(Long panelId) {
         Panel panel = panelMapper.findActivePanelById(panelId);
@@ -141,7 +159,7 @@ public class InspectionService {
         }
     }
 
-    // 점검 항목 등록/조회는 ADMIN 이상만 가능
+    // 점검 항목 등록은 ADMIN 이상만 가능
     private void validateAdminOrSuperAdmin(UserPrincipal actor) {
         if (UserRole.SUPER_ADMIN.name().equals(actor.getRole()) || UserRole.ADMIN.name().equals(actor.getRole())) {
             return;

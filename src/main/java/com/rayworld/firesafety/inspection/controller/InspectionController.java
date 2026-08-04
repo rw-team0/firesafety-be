@@ -14,6 +14,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @RestController
@@ -42,8 +47,8 @@ public class InspectionController {
         return ResultResponse.success("점검 항목 등록 성공", res);
     }
 
-    // 점검 항목 목록 조회 (GET /api/panels/{panelId}/inspection-items, ADMIN 이상)
-    @Operation(summary = "점검 항목 목록 조회", description = "분전반에 등록된 점검 항목 목록을 조회한다. ADMIN 이상만 가능하다.")
+    // 점검 항목 목록 조회 (GET /api/panels/{panelId}/inspection-items, GENERAL 이상)
+    @Operation(summary = "점검 항목 목록 조회", description = "분전반에 등록된 점검 항목 목록을 조회한다. GENERAL 이상 가능하다.")
     @GetMapping("/inspection-items")
     public ResultResponse<List<InspectionItemRes>> getItems(@PathVariable Long panelId) {
         List<InspectionItemRes> items = inspectionService.getItems(panelId);
@@ -66,5 +71,22 @@ public class InspectionController {
                                                                @ModelAttribute InspectionHistoryListReq req) {
         InspectionHistoryPageRes res = inspectionService.getHistory(panelId, req);
         return ResultResponse.success(String.format("%d rows", res.getContent().size()), res);
+    }
+
+    // 점검 이력 엑셀 다운로드 (GET /api/panels/{panelId}/inspections/export)
+    // GENERAL 이상이 본인 접근 현장 분전반의 점검 이력을 xlsx 파일로 다운로드
+    @Operation(summary = "점검 이력 엑셀 다운로드", description = "GENERAL 이상 가능. 기간 필터 조건의 점검 이력을 항목별 row로 펼쳐 xlsx 파일로 다운로드한다.")
+    @GetMapping("/inspections/export")
+    public ResponseEntity<byte[]> exportHistory(@PathVariable Long panelId,
+                                                @ModelAttribute InspectionHistoryListReq req) {
+        byte[] excel = inspectionService.exportHistory(panelId, req);
+        ContentDisposition contentDisposition = ContentDisposition.attachment()
+                .filename("점검이력.xlsx", StandardCharsets.UTF_8)
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition.toString())
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(excel);
     }
 }
