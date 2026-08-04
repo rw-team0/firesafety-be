@@ -5,6 +5,7 @@ import com.rayworld.firesafety.common.exception.BusinessException;
 import com.rayworld.firesafety.common.exception.CommonErrorCode;
 import com.rayworld.firesafety.common.security.UserPrincipal;
 import com.rayworld.firesafety.diagnosis.dto.req.DiagnosisResultListReq;
+import com.rayworld.firesafety.diagnosis.dto.res.AiModelInfoRes;
 import com.rayworld.firesafety.diagnosis.dto.res.DiagnosisResultPageRes;
 import com.rayworld.firesafety.diagnosis.dto.res.DiagnosisResultRes;
 import com.rayworld.firesafety.diagnosis.mapper.AiDiagnosisResultMapper;
@@ -67,6 +68,11 @@ public class DiagnosisQueryService {
         validateSiteAccess(actor, panel.getSiteId());
 
         aiPredictionService.predictCircuit(panel, circuit);
+    }
+
+    // AI 모델 메타정보 조회 위임 - 회로/현장에 매인 정보가 아니라 별도 접근 검증 없이 로그인 사용자면 조회 가능
+    public AiModelInfoRes getModelInfo() {
+        return aiPredictionService.getModelInfo();
     }
 
     // null 요청도 기본 목록 조회로 처리

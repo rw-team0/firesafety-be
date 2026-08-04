@@ -14,6 +14,7 @@ public class AiPredictionProperties {
     private boolean enabled;
     private String baseUrl;
     private String path;
+    private String modelInfoPath;
     private int minSampleSize;
     private int sampleSize;
     private long schedulerDelayMs;

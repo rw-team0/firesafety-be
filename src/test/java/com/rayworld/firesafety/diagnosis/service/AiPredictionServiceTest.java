@@ -93,7 +93,7 @@ class AiPredictionServiceTest {
         assertThat(request.getCircuits().get(0).getCircuit()).isEqualTo(1);
         assertThat(request.getCircuits().get(0).getSamples()).hasSize(1);
 
-        verify(aiDiagnosisResultSaveService).save(10L, 20L, 30L, Verdict.ARC, 0.87);
+        verify(aiDiagnosisResultSaveService).save(10L, 20L, 30L, Verdict.ARC, 0.87, 60, null);
         verify(panelStatusAggregationService).aggregatePanelStatus(10L);
     }
 
@@ -136,7 +136,7 @@ class AiPredictionServiceTest {
         aiPredictionService.predictCircuit(panel(), circuit());
 
         // then
-        verify(aiDiagnosisResultSaveService).save(10L, 20L, 500L, Verdict.ARC, 0.87);
+        verify(aiDiagnosisResultSaveService).save(10L, 20L, 500L, Verdict.ARC, 0.87, 60, null);
         verify(panelStatusAggregationService).aggregatePanelStatus(10L);
     }
 
@@ -186,6 +186,7 @@ class AiPredictionServiceTest {
         result.setCircuit(1);
         result.setPred(1);
         result.setProba(0.87);
+        result.setNSamples(60);
 
         AiPredictionRes response = new AiPredictionRes();
         response.setMNo("00001");

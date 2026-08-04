@@ -5,6 +5,7 @@ import com.rayworld.firesafety.diagnosis.config.AiPredictionProperties;
 import com.rayworld.firesafety.diagnosis.dto.req.AiPredictionCircuitReq;
 import com.rayworld.firesafety.diagnosis.dto.req.AiPredictionReq;
 import com.rayworld.firesafety.diagnosis.dto.req.AiPredictionSampleReq;
+import com.rayworld.firesafety.diagnosis.dto.res.AiModelInfoRes;
 import com.rayworld.firesafety.diagnosis.dto.res.AiPredictionRes;
 import com.rayworld.firesafety.diagnosis.dto.res.AiPredictionResultRes;
 import com.rayworld.firesafety.diagnosis.exception.DiagnosisErrorCode;
@@ -102,6 +103,14 @@ public class AiPredictionService {
         }
     }
 
+    // AI 서버 모델 메타정보(성능 지표) 조회 - 회로/현장 스코프 없는 전역 정보라 predictCircuit과 달리 권한 검증은 상위(Controller)에서 로그인 여부만 확인
+    public AiModelInfoRes getModelInfo() {
+        if (!aiPredictionProperties.isReady()) {
+            throw new BusinessException(DiagnosisErrorCode.AI_PREDICTION_UNAVAILABLE);
+        }
+        return aiPredictionClient.getModelInfo();
+    }
+
     // AI 요청 DTO 생성
     private AiPredictionReq buildRequest(String mNo, List<AiPredictionCircuitTarget> circuits) {
         List<AiPredictionCircuitReq> circuitRequests = circuits.stream()
@@ -141,7 +150,9 @@ public class AiPredictionService {
                     circuit.getCircuitId(),
                     circuit.getLatestFrameId(),
                     verdict,
-                    result.getProba()
+                    result.getProba(),
+                    result.getNSamples(),
+                    result.getWarning()
             );
             savedCount++;
         }

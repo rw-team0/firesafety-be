@@ -74,8 +74,9 @@ constants:
     enabled: ${AI_PREDICTION_ENABLED:false}
     base-url: ${AI_PREDICTION_BASE_URL:http://localhost:8000}
     path: ${AI_PREDICTION_PATH:/predict}
+    model-info-path: ${AI_PREDICTION_MODEL_INFO_PATH:/model-info}
     min-sample-size: ${AI_PREDICTION_MIN_SAMPLE_SIZE:30}
-    sample-size: ${AI_PREDICTION_SAMPLE_SIZE:60}
+    sample-size: ${AI_PREDICTION_SAMPLE_SIZE:120}
     scheduler-delay-ms: ${AI_PREDICTION_SCHEDULER_DELAY_MS:60000}
     scheduler-initial-delay-ms: ${AI_PREDICTION_SCHEDULER_INITIAL_DELAY_MS:60000}
 

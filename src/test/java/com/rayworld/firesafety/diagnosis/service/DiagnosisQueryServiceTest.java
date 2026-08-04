@@ -6,6 +6,7 @@ import com.rayworld.firesafety.common.exception.CommonErrorCode;
 import com.rayworld.firesafety.common.security.JwtUser;
 import com.rayworld.firesafety.common.security.UserPrincipal;
 import com.rayworld.firesafety.diagnosis.dto.req.DiagnosisResultListReq;
+import com.rayworld.firesafety.diagnosis.dto.res.AiModelInfoRes;
 import com.rayworld.firesafety.diagnosis.dto.res.DiagnosisResultPageRes;
 import com.rayworld.firesafety.diagnosis.dto.res.DiagnosisResultRes;
 import com.rayworld.firesafety.diagnosis.mapper.AiDiagnosisResultMapper;
@@ -191,6 +192,22 @@ class DiagnosisQueryServiceTest {
                 .isInstanceOfSatisfying(BusinessException.class, e ->
                         assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.CIRCUIT_NOT_FOUND));
         verifyNoInteractions(aiPredictionService);
+    }
+
+    @Test
+    @DisplayName("AI 모델 메타정보 조회는 회로/현장 접근 검증 없이 위임만 한다")
+    void getModelInfoDelegatesToAiPredictionService() {
+        // given
+        AiModelInfoRes modelInfo = new AiModelInfoRes();
+        modelInfo.setSklearnVersion("1.9.0");
+        when(aiPredictionService.getModelInfo()).thenReturn(modelInfo);
+
+        // when
+        AiModelInfoRes result = diagnosisQueryService.getModelInfo();
+
+        // then
+        assertThat(result.getSklearnVersion()).isEqualTo("1.9.0");
+        verify(aiPredictionService).getModelInfo();
     }
 
     private void loginAs(Long userId, UserRole role) {

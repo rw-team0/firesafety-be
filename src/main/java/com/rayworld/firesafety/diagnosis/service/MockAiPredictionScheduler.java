@@ -65,7 +65,8 @@ public class MockAiPredictionScheduler {
         double confidence = MIN_CONFIDENCE + random.nextDouble() * CONFIDENCE_RANGE;
         try {
             aiDiagnosisResultSaveService.save(
-                    panel.getPanelId(), circuit.getCircuitId(), circuit.getLatestFrameId(), Verdict.ARC, confidence
+                    panel.getPanelId(), circuit.getCircuitId(), circuit.getLatestFrameId(), Verdict.ARC, confidence,
+                    null, null
             );
         } catch (RuntimeException e) {
             log.warn("Mock AI 판정 저장 실패 - panelId={}, circuitId={}, message={}",

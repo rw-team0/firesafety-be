@@ -27,6 +27,12 @@ public class DiagnosisResultRes {
     @Schema(description = "AI 응답 확률값. AI 서버가 proba를 주는 경우 저장", example = "0.92")
     private Float confidence;
 
+    @Schema(description = "AI 서버가 이번 판정에 실제 사용한 샘플 개수", example = "60")
+    private Integer nSamples;
+
+    @Schema(description = "AI 서버 경고 메시지(예: 샘플 부족). 없으면 null", example = "샘플 45개 — 60개 이상 권장 (정확도 저하 가능)")
+    private String warning;
+
     @Schema(description = "AI 진단 저장 시각", example = "2026-07-23T14:35:00")
     private LocalDateTime diagnosedAt;
 }

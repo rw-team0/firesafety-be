@@ -18,5 +18,7 @@ public class AiDiagnosisResult {
     private Long frameId;
     private Verdict verdict;
     private Float confidence;
+    private Integer nSamples;
+    private String warning;
     private LocalDateTime diagnosedAt;
 }

@@ -25,6 +25,8 @@
         <result property="frameId" column="frame_id"/>
         <result property="verdict" column="verdict"/>
         <result property="confidence" column="confidence"/>
+        <result property="nSamples" column="n_samples"/>
+        <result property="warning" column="warning"/>
         <result property="diagnosedAt" column="diagnosed_at"/>
     </resultMap>
 
@@ -37,12 +39,16 @@
             circuit_id,
             frame_id,
             verdict,
-            confidence
+            confidence,
+            n_samples,
+            warning
         ) VALUES (
             #{circuitId},
             #{frameId},
             #{verdict},
-            #{confidence}
+            #{confidence},
+            #{nSamples},
+            #{warning}
         )
     </insert>
 
@@ -127,6 +133,8 @@
             frame_id,
             verdict,
             confidence,
+            n_samples,
+            warning,
             diagnosed_at
         FROM ai_diagnosis_result
         WHERE circuit_id = #{circuitId}
