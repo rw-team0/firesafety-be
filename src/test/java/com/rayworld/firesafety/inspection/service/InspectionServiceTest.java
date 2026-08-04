@@ -131,6 +131,73 @@ class InspectionServiceTest {
     }
 
     @Test
+    @DisplayName("ADMIN은 점검 항목을 수정할 수 있다")
+    void adminCanUpdateItem() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(siteMapper.findActiveSiteById(3L)).thenReturn(site());
+        when(siteMapper.existsActiveSiteAssignment(2L, 3L)).thenReturn(true);
+        when(inspectionMapper.existsInspectionItemInSite(100L, 3L)).thenReturn(true);
+        InspectionItemCreateReq req = new InspectionItemCreateReq();
+        req.setItemName("누전차단기 동작 확인(수정)");
+
+        // when
+        inspectionService.updateItem(3L, 100L, req);
+
+        // then
+        verify(inspectionMapper).updateInspectionItem(org.mockito.ArgumentMatchers.argThat(item ->
+                item.getItemId().equals(100L) && item.getItemName().equals("누전차단기 동작 확인(수정)")));
+    }
+
+    @Test
+    @DisplayName("GENERAL은 점검 항목을 수정할 수 없다")
+    void generalCannotUpdateItem() {
+        // given
+        loginAs(3L, UserRole.GENERAL);
+        InspectionItemCreateReq req = new InspectionItemCreateReq();
+        req.setItemName("누전차단기 동작 확인(수정)");
+
+        // when & then
+        assertThatThrownBy(() -> inspectionService.updateItem(3L, 100L, req))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.FORBIDDEN));
+    }
+
+    @Test
+    @DisplayName("ADMIN은 사용 중이 아닌 점검 항목을 삭제할 수 있다")
+    void adminCanDeleteUnusedItem() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(siteMapper.findActiveSiteById(3L)).thenReturn(site());
+        when(siteMapper.existsActiveSiteAssignment(2L, 3L)).thenReturn(true);
+        when(inspectionMapper.existsInspectionItemInSite(100L, 3L)).thenReturn(true);
+        when(inspectionMapper.existsPanelInspectionItemByItemId(100L)).thenReturn(false);
+        when(inspectionMapper.existsInspectionResultItemByItemId(100L)).thenReturn(false);
+
+        // when
+        inspectionService.deleteItem(3L, 100L);
+
+        // then
+        verify(inspectionMapper).deleteInspectionItem(100L);
+    }
+
+    @Test
+    @DisplayName("이미 분전반에 적용된 점검 항목은 삭제할 수 없다")
+    void deleteItemFailsWhenAppliedToPanel() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(siteMapper.findActiveSiteById(3L)).thenReturn(site());
+        when(siteMapper.existsActiveSiteAssignment(2L, 3L)).thenReturn(true);
+        when(inspectionMapper.existsInspectionItemInSite(100L, 3L)).thenReturn(true);
+        when(inspectionMapper.existsPanelInspectionItemByItemId(100L)).thenReturn(true);
+
+        // when & then
+        assertThatThrownBy(() -> inspectionService.deleteItem(3L, 100L))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(InspectionErrorCode.ITEM_IN_USE));
+    }
+
+    @Test
     @DisplayName("ADMIN은 분전반에 카탈로그 항목을 일괄 적용(전체교체)할 수 있다")
     void adminCanApplyItems() {
         // given
