@@ -9,6 +9,8 @@ import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
 import com.rayworld.firesafety.facility.mapper.PanelMapper;
 import com.rayworld.firesafety.facility.mapper.SiteMapper;
 import com.rayworld.firesafety.facility.model.Panel;
+import com.rayworld.firesafety.facility.model.Site;
+import com.rayworld.firesafety.inspection.dto.req.InspectionItemApplyReq;
 import com.rayworld.firesafety.inspection.dto.req.InspectionItemCreateReq;
 import com.rayworld.firesafety.inspection.dto.req.InspectionResultItemReq;
 import com.rayworld.firesafety.inspection.dto.req.InspectionSaveReq;
@@ -66,22 +68,22 @@ class InspectionServiceTest {
     }
 
     @Test
-    @DisplayName("FAC-014: ADMIN은 담당 현장 분전반에 점검 항목을 등록할 수 있다")
+    @DisplayName("FAC-014: ADMIN은 담당 현장 점검 항목 카탈로그에 항목을 등록할 수 있다")
     void adminCanCreateItem() {
         // given
         loginAs(2L, UserRole.ADMIN);
-        when(panelMapper.findActivePanelById(10L)).thenReturn(panel());
+        when(siteMapper.findActiveSiteById(3L)).thenReturn(site());
         when(siteMapper.existsActiveSiteAssignment(2L, 3L)).thenReturn(true);
         InspectionItemCreateReq req = new InspectionItemCreateReq();
         req.setItemName("누전차단기 동작 확인");
 
         // when
-        InspectionItemCreateRes res = inspectionService.createItem(10L, req);
+        InspectionItemCreateRes res = inspectionService.createItem(3L, req);
 
         // then
         assertThat(res).isNotNull();
         verify(inspectionMapper).insertInspectionItem(org.mockito.ArgumentMatchers.argThat(item ->
-                item.getPanelId().equals(10L) && item.getItemName().equals("누전차단기 동작 확인")));
+                item.getSiteId().equals(3L) && item.getItemName().equals("누전차단기 동작 확인")));
     }
 
     @Test
@@ -93,7 +95,7 @@ class InspectionServiceTest {
         req.setItemName("누전차단기 동작 확인");
 
         // when & then
-        assertThatThrownBy(() -> inspectionService.createItem(10L, req))
+        assertThatThrownBy(() -> inspectionService.createItem(3L, req))
                 .isInstanceOfSatisfying(BusinessException.class, e ->
                         assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.FORBIDDEN));
     }
@@ -103,13 +105,100 @@ class InspectionServiceTest {
     void createItemFailsWithoutItemName() {
         // given
         loginAs(2L, UserRole.ADMIN);
-        when(panelMapper.findActivePanelById(10L)).thenReturn(panel());
+        when(siteMapper.findActiveSiteById(3L)).thenReturn(site());
         when(siteMapper.existsActiveSiteAssignment(2L, 3L)).thenReturn(true);
 
         // when & then
-        assertThatThrownBy(() -> inspectionService.createItem(10L, new InspectionItemCreateReq()))
+        assertThatThrownBy(() -> inspectionService.createItem(3L, new InspectionItemCreateReq()))
                 .isInstanceOfSatisfying(BusinessException.class, e ->
                         assertThat(e.getErrorCode()).isEqualTo(InspectionErrorCode.ITEM_NAME_REQUIRED));
+    }
+
+    @Test
+    @DisplayName("현장 점검 항목 카탈로그를 조회할 수 있다")
+    void canGetSiteItems() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(siteMapper.findActiveSiteById(3L)).thenReturn(site());
+        when(siteMapper.existsActiveSiteAssignment(2L, 3L)).thenReturn(true);
+        when(inspectionMapper.findInspectionItemsBySiteId(3L)).thenReturn(List.of(itemRes()));
+
+        // when
+        List<InspectionItemRes> items = inspectionService.getSiteItems(3L);
+
+        // then
+        assertThat(items).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("ADMIN은 분전반에 카탈로그 항목을 일괄 적용(전체교체)할 수 있다")
+    void adminCanApplyItems() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(panelMapper.findActivePanelById(10L)).thenReturn(panel());
+        when(siteMapper.existsActiveSiteAssignment(2L, 3L)).thenReturn(true);
+        when(inspectionMapper.existsInspectionItemInSite(100L, 3L)).thenReturn(true);
+        InspectionItemApplyReq req = new InspectionItemApplyReq();
+        req.setItemIds(List.of(100L));
+
+        // when
+        inspectionService.applyItems(10L, req);
+
+        // then
+        verify(inspectionMapper).deletePanelInspectionItems(10L);
+        verify(inspectionMapper).insertPanelInspectionItems(10L, List.of(100L));
+    }
+
+    @Test
+    @DisplayName("GENERAL도 담당 현장 분전반에 점검 항목을 적용할 수 있다(카탈로그 등록과 달리 실무 작업으로 취급)")
+    void generalCanApplyItems() {
+        // given
+        loginAs(3L, UserRole.GENERAL);
+        when(panelMapper.findActivePanelById(10L)).thenReturn(panel());
+        when(siteMapper.existsActiveSiteAssignment(3L, 3L)).thenReturn(true);
+        when(inspectionMapper.existsInspectionItemInSite(100L, 3L)).thenReturn(true);
+        InspectionItemApplyReq req = new InspectionItemApplyReq();
+        req.setItemIds(List.of(100L));
+
+        // when
+        inspectionService.applyItems(10L, req);
+
+        // then
+        verify(inspectionMapper).deletePanelInspectionItems(10L);
+        verify(inspectionMapper).insertPanelInspectionItems(10L, List.of(100L));
+    }
+
+    @Test
+    @DisplayName("담당 현장이 아니면 점검 항목을 적용할 수 없다")
+    void applyItemsFailsWhenSiteNotAssigned() {
+        // given
+        loginAs(3L, UserRole.GENERAL);
+        when(panelMapper.findActivePanelById(10L)).thenReturn(panel());
+        when(siteMapper.existsActiveSiteAssignment(3L, 3L)).thenReturn(false);
+        InspectionItemApplyReq req = new InspectionItemApplyReq();
+        req.setItemIds(List.of(100L));
+
+        // when & then
+        assertThatThrownBy(() -> inspectionService.applyItems(10L, req))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(FacilityErrorCode.FORBIDDEN_ROLE));
+    }
+
+    @Test
+    @DisplayName("다른 현장 소속 항목은 분전반에 적용할 수 없다")
+    void applyItemsFailsWhenItemNotInSite() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(panelMapper.findActivePanelById(10L)).thenReturn(panel());
+        when(siteMapper.existsActiveSiteAssignment(2L, 3L)).thenReturn(true);
+        when(inspectionMapper.existsInspectionItemInSite(999L, 3L)).thenReturn(false);
+        InspectionItemApplyReq req = new InspectionItemApplyReq();
+        req.setItemIds(List.of(999L));
+
+        // when & then
+        assertThatThrownBy(() -> inspectionService.applyItems(10L, req))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(InspectionErrorCode.ITEM_NOT_IN_SITE));
     }
 
     @Test
@@ -274,10 +363,16 @@ class InspectionServiceTest {
         return panel;
     }
 
+    private Site site() {
+        Site site = new Site();
+        site.setSiteId(3L);
+        return site;
+    }
+
     private InspectionItemRes itemRes() {
         InspectionItemRes res = new InspectionItemRes();
         res.setItemId(100L);
-        res.setPanelId(10L);
+        res.setSiteId(3L);
         res.setItemName("누전차단기 동작 확인");
         return res;
     }
