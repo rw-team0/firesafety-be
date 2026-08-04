@@ -19,8 +19,10 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -54,6 +56,23 @@ public class InspectionController {
     public ResultResponse<List<InspectionItemRes>> getSiteItems(@PathVariable Long siteId) {
         List<InspectionItemRes> items = inspectionService.getSiteItems(siteId);
         return ResultResponse.success(String.format("%d rows", items.size()), items);
+    }
+
+    // 점검 항목 수정 (PATCH /api/sites/{siteId}/inspection-items/{itemId}, ADMIN 이상)
+    @Operation(summary = "점검 항목 수정", description = "현장 점검 항목 카탈로그의 항목명/설명을 수정한다. ADMIN 이상만 가능하다.")
+    @PatchMapping("/sites/{siteId}/inspection-items/{itemId}")
+    public ResultResponse<Void> updateItem(@PathVariable Long siteId, @PathVariable Long itemId,
+                                           @RequestBody InspectionItemCreateReq req) {
+        inspectionService.updateItem(siteId, itemId, req);
+        return ResultResponse.success("점검 항목 수정 성공", null);
+    }
+
+    // 점검 항목 삭제 (DELETE /api/sites/{siteId}/inspection-items/{itemId}, ADMIN 이상)
+    @Operation(summary = "점검 항목 삭제", description = "현장 점검 항목 카탈로그에서 항목을 삭제한다. 이미 분전반에 적용됐거나 점검 결과에 쓰인 항목은 삭제할 수 없다.")
+    @DeleteMapping("/sites/{siteId}/inspection-items/{itemId}")
+    public ResultResponse<Void> deleteItem(@PathVariable Long siteId, @PathVariable Long itemId) {
+        inspectionService.deleteItem(siteId, itemId);
+        return ResultResponse.success("점검 항목 삭제 성공", null);
     }
 
     // 분전반에 점검 항목 일괄 적용 (POST /api/panels/{panelId}/inspection-items, GENERAL 이상) — 요청 목록으로 전체교체

@@ -20,6 +20,18 @@ public interface InspectionMapper {
     // 점검 항목 등록 (현장 카탈로그)
     void insertInspectionItem(InspectionItem item);
 
+    // 점검 항목 수정 (현장 카탈로그)
+    void updateInspectionItem(InspectionItem item);
+
+    // 점검 항목 삭제 (현장 카탈로그)
+    void deleteInspectionItem(@Param("itemId") Long itemId);
+
+    // 점검 항목이 어느 분전반에든 적용돼 있는지 확인 (삭제 가능 여부 판단용)
+    boolean existsPanelInspectionItemByItemId(@Param("itemId") Long itemId);
+
+    // 점검 항목이 점검 결과에 이미 쓰인 적 있는지 확인 (삭제 가능 여부 판단용)
+    boolean existsInspectionResultItemByItemId(@Param("itemId") Long itemId);
+
     // 현장의 점검 항목 카탈로그 전체 조회
     List<InspectionItemRes> findInspectionItemsBySiteId(@Param("siteId") Long siteId);
 

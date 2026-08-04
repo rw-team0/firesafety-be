@@ -46,6 +46,28 @@
         VALUES (#{siteId}, #{itemName}, #{description})
     </insert>
 
+    <!-- 점검 항목 수정 (현장 카탈로그) -->
+    <update id="updateInspectionItem" parameterType="com.rayworld.firesafety.inspection.model.InspectionItem">
+        UPDATE inspection_item
+        SET item_name = #{itemName}, description = #{description}
+        WHERE item_id = #{itemId}
+    </update>
+
+    <!-- 점검 항목 삭제 (현장 카탈로그) -->
+    <delete id="deleteInspectionItem">
+        DELETE FROM inspection_item WHERE item_id = #{itemId}
+    </delete>
+
+    <!-- 점검 항목이 어느 분전반에든 적용돼 있는지 확인 -->
+    <select id="existsPanelInspectionItemByItemId" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM panel_inspection_item WHERE item_id = #{itemId})
+    </select>
+
+    <!-- 점검 항목이 점검 결과에 이미 쓰인 적 있는지 확인 -->
+    <select id="existsInspectionResultItemByItemId" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM inspection_result_item WHERE item_id = #{itemId})
+    </select>
+
     <!-- 현장의 점검 항목 카탈로그 전체 조회 -->
     <select id="findInspectionItemsBySiteId" resultMap="inspectionItemResResultMap">
         SELECT item_id, site_id, item_name, description

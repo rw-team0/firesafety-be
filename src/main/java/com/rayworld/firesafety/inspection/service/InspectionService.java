@@ -65,6 +65,41 @@ public class InspectionService {
         return new InspectionItemCreateRes(item.getItemId());
     }
 
+    // 점검 항목 수정 (ADMIN 이상)
+    @Transactional
+    public void updateItem(Long siteId, Long itemId, InspectionItemCreateReq req) {
+        UserPrincipal actor = getCurrentUser();
+        validateAdminOrSuperAdmin(actor);
+        findActiveSite(siteId);
+        validateSiteAccess(actor, siteId);
+        validateItemName(req);
+        if (!inspectionMapper.existsInspectionItemInSite(itemId, siteId)) {
+            throw new BusinessException(InspectionErrorCode.ITEM_NOT_FOUND);
+        }
+
+        InspectionItem item = new InspectionItem();
+        item.setItemId(itemId);
+        item.setItemName(req.getItemName().trim());
+        item.setDescription(normalizeDescription(req.getDescription()));
+        inspectionMapper.updateInspectionItem(item);
+    }
+
+    // 점검 항목 삭제 (ADMIN 이상) — 이미 분전반에 적용됐거나 점검 결과에 쓰인 적 있으면 삭제 불가(하드 삭제라 참조 무결성 대신 사전 확인으로 막는다)
+    @Transactional
+    public void deleteItem(Long siteId, Long itemId) {
+        UserPrincipal actor = getCurrentUser();
+        validateAdminOrSuperAdmin(actor);
+        findActiveSite(siteId);
+        validateSiteAccess(actor, siteId);
+        if (!inspectionMapper.existsInspectionItemInSite(itemId, siteId)) {
+            throw new BusinessException(InspectionErrorCode.ITEM_NOT_FOUND);
+        }
+        if (inspectionMapper.existsPanelInspectionItemByItemId(itemId) || inspectionMapper.existsInspectionResultItemByItemId(itemId)) {
+            throw new BusinessException(InspectionErrorCode.ITEM_IN_USE);
+        }
+        inspectionMapper.deleteInspectionItem(itemId);
+    }
+
     // 현장의 점검 항목 카탈로그 전체 조회 (GENERAL 이상) — 분전반에 적용할 항목을 고를 때 후보 목록으로 쓴다
     @Transactional(readOnly = true)
     public List<InspectionItemRes> getSiteItems(Long siteId) {
