@@ -8,6 +8,7 @@ import com.rayworld.firesafety.common.security.UserPrincipal;
 import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
 import com.rayworld.firesafety.statistics.dto.req.StatisticsReq;
 import com.rayworld.firesafety.statistics.dto.res.DailyAlertCountRes;
+import com.rayworld.firesafety.statistics.dto.res.InspectionCountRow;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsGroupCount;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsSummaryRes;
 import com.rayworld.firesafety.statistics.mapper.StatisticsMapper;
@@ -76,6 +77,8 @@ class StatisticsServiceTest {
         when(statisticsMapper.countActivePanels(1L, true, 3L)).thenReturn(7L);
         when(statisticsMapper.countActivePanelsByStatus(1L, true, 3L))
                 .thenReturn(List.of(group("RISK", 1)));
+        when(statisticsMapper.countInspectionStats(1L, true, 3L, fromAt, toAt)).thenReturn(inspectionCountRow(7, 4, 9));
+        when(statisticsMapper.findRecentInspections(1L, true, 3L, fromAt, toAt, 5)).thenReturn(List.of());
 
         // when
         StatisticsSummaryRes result = statisticsService.getStatistics(req);
@@ -93,6 +96,10 @@ class StatisticsServiceTest {
                 });
         assertThat(result.getDiagnoses().getTotalCount()).isEqualTo(2L);
         assertThat(result.getPanels().getTotalCount()).isEqualTo(7L);
+        assertThat(result.getInspections().getTotalPanelCount()).isEqualTo(7L);
+        assertThat(result.getInspections().getInspectedPanelCount()).isEqualTo(4L);
+        assertThat(result.getInspections().getUninspectedPanelCount()).isEqualTo(3L);
+        assertThat(result.getInspections().getTotalInspectionCount()).isEqualTo(9L);
         verify(statisticsMapper).countAlerts(1L, true, 3L, fromAt, toAt);
     }
 
@@ -146,5 +153,13 @@ class StatisticsServiceTest {
         daily.setDate(date);
         daily.setCount(count);
         return daily;
+    }
+
+    private InspectionCountRow inspectionCountRow(long totalPanelCount, long inspectedPanelCount, long totalInspectionCount) {
+        InspectionCountRow row = new InspectionCountRow();
+        row.setTotalPanelCount(totalPanelCount);
+        row.setInspectedPanelCount(inspectedPanelCount);
+        row.setTotalInspectionCount(totalInspectionCount);
+        return row;
     }
 }

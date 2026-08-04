@@ -1,6 +1,8 @@
 package com.rayworld.firesafety.statistics.mapper;
 
 import com.rayworld.firesafety.statistics.dto.res.DailyAlertCountRes;
+import com.rayworld.firesafety.statistics.dto.res.InspectionCountRow;
+import com.rayworld.firesafety.statistics.dto.res.RecentInspectionRes;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsGroupCount;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -76,4 +78,19 @@ public interface StatisticsMapper {
     List<StatisticsGroupCount> countActivePanelsByStatus(@Param("userId") Long userId,
                                                          @Param("superAdmin") boolean superAdmin,
                                                          @Param("siteId") Long siteId);
+
+    // 점검 현황 집계(분전반 전체 수/점검한 분전반 수/전체 점검 건수) - 한 쿼리로 계산해 N+1 호출을 피한다
+    InspectionCountRow countInspectionStats(@Param("userId") Long userId,
+                                            @Param("superAdmin") boolean superAdmin,
+                                            @Param("siteId") Long siteId,
+                                            @Param("fromAt") LocalDateTime fromAt,
+                                            @Param("toAt") LocalDateTime toAt);
+
+    // 최근 점검 이력 조회(통계 화면 요약용, 최신순 limit개)
+    List<RecentInspectionRes> findRecentInspections(@Param("userId") Long userId,
+                                                    @Param("superAdmin") boolean superAdmin,
+                                                    @Param("siteId") Long siteId,
+                                                    @Param("fromAt") LocalDateTime fromAt,
+                                                    @Param("toAt") LocalDateTime toAt,
+                                                    @Param("limit") int limit);
 }

@@ -23,4 +23,6 @@ public class StatisticsSummaryRes {
     private StatisticsDiagnosisRes diagnoses;
     @Schema(description = "분전반 상태 통계")
     private StatisticsPanelRes panels;
+    @Schema(description = "점검 현황 통계")
+    private StatisticsInspectionRes inspections;
 }

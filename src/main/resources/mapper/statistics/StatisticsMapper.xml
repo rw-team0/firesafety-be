@@ -13,6 +13,19 @@
         <result property="count" column="stat_count"/>
     </resultMap>
 
+    <resultMap id="inspectionCountRowResultMap" type="com.rayworld.firesafety.statistics.dto.res.InspectionCountRow">
+        <result property="totalPanelCount" column="total_panel_count"/>
+        <result property="inspectedPanelCount" column="inspected_panel_count"/>
+        <result property="totalInspectionCount" column="total_inspection_count"/>
+    </resultMap>
+
+    <resultMap id="recentInspectionResultMap" type="com.rayworld.firesafety.statistics.dto.res.RecentInspectionRes">
+        <result property="panelId" column="panel_id"/>
+        <result property="panelName" column="panel_name"/>
+        <result property="inspectedAt" column="inspected_at"/>
+        <result property="inspectorName" column="inspector_name"/>
+    </resultMap>
+
     <sql id="alertStatisticsFilter">
         <where>
             <if test="siteId != null">
@@ -187,5 +200,46 @@
         INNER JOIN site s ON s.site_id = p.site_id
         WHERE <include refid="activePanelStatisticsFilter"/>
         GROUP BY p.status
+    </select>
+
+    <!-- 점검 현황 집계: 활성 분전반 전체 수/기간 내 점검한 분전반 수/전체 점검 건수를 한 쿼리로 계산 -->
+    <!-- 날짜 필터를 LEFT JOIN 조건에 둬야 "기간 내 점검 안 한 분전반"도 total에는 잡히고 inspected에서만 빠진다 -->
+    <select id="countInspectionStats" resultMap="inspectionCountRowResultMap">
+        SELECT
+            COUNT(DISTINCT p.panel_id) AS total_panel_count,
+            COUNT(DISTINCT CASE WHEN r.inspection_id IS NOT NULL THEN p.panel_id END) AS inspected_panel_count,
+            COUNT(r.inspection_id) AS total_inspection_count
+        FROM panel p
+        INNER JOIN site s ON s.site_id = p.site_id
+        LEFT JOIN inspection_result r ON r.panel_id = p.panel_id
+            <if test="fromAt != null">
+                AND r.inspected_at &gt;= #{fromAt}
+            </if>
+            <if test="toAt != null">
+                AND r.inspected_at &lt; #{toAt}
+            </if>
+        WHERE <include refid="activePanelStatisticsFilter"/>
+    </select>
+
+    <!-- 최근 점검 이력 조회(통계 화면 요약용) -->
+    <select id="findRecentInspections" resultMap="recentInspectionResultMap">
+        SELECT
+            p.panel_id,
+            p.name AS panel_name,
+            r.inspected_at,
+            u.name AS inspector_name
+        FROM inspection_result r
+        INNER JOIN panel p ON p.panel_id = r.panel_id
+        INNER JOIN site s ON s.site_id = p.site_id
+        LEFT JOIN `user` u ON u.user_id = r.inspector_id
+        WHERE <include refid="activePanelStatisticsFilter"/>
+        <if test="fromAt != null">
+            AND r.inspected_at &gt;= #{fromAt}
+        </if>
+        <if test="toAt != null">
+            AND r.inspected_at &lt; #{toAt}
+        </if>
+        ORDER BY r.inspected_at DESC
+        LIMIT #{limit}
     </select>
 </mapper>

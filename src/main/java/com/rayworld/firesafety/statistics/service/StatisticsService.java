@@ -13,8 +13,10 @@ import com.rayworld.firesafety.facility.model.PanelStatus;
 import com.rayworld.firesafety.statistics.dto.req.StatisticsReq;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsAlertRes;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsCountRes;
+import com.rayworld.firesafety.statistics.dto.res.InspectionCountRow;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsDiagnosisRes;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsGroupCount;
+import com.rayworld.firesafety.statistics.dto.res.StatisticsInspectionRes;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsPanelRes;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsSummaryRes;
 import com.rayworld.firesafety.statistics.mapper.StatisticsMapper;
@@ -34,6 +36,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class StatisticsService {
+
+    private static final int RECENT_INSPECTION_LIMIT = 5;
 
     private final StatisticsMapper statisticsMapper;
 
@@ -57,7 +61,8 @@ public class StatisticsService {
                 searchReq.getSiteId(),
                 getAlertStatistics(actor, superAdmin, searchReq.getSiteId(), fromAt, toAt),
                 getDiagnosisStatistics(actor, superAdmin, searchReq.getSiteId(), fromAt, toAt),
-                getPanelStatistics(actor, superAdmin, searchReq.getSiteId())
+                getPanelStatistics(actor, superAdmin, searchReq.getSiteId()),
+                getInspectionStatistics(actor, superAdmin, searchReq.getSiteId(), fromAt, toAt)
         );
     }
 
@@ -93,6 +98,26 @@ public class StatisticsService {
         return new StatisticsPanelRes(
                 statisticsMapper.countActivePanels(actor.getUserId(), superAdmin, siteId),
                 toPanelStatusCounts(statisticsMapper.countActivePanelsByStatus(actor.getUserId(), superAdmin, siteId))
+        );
+    }
+
+    // 점검 현황 통계 집계 — 분전반별 반복 조회(N+1) 대신 집계 쿼리 1개 + 최근 이력 조회 1개로 계산한다
+    private StatisticsInspectionRes getInspectionStatistics(UserPrincipal actor,
+                                                             boolean superAdmin,
+                                                             Long siteId,
+                                                             LocalDateTime fromAt,
+                                                             LocalDateTime toAt) {
+        InspectionCountRow row = statisticsMapper.countInspectionStats(actor.getUserId(), superAdmin, siteId, fromAt, toAt);
+        long totalPanelCount = row != null ? row.getTotalPanelCount() : 0L;
+        long inspectedPanelCount = row != null ? row.getInspectedPanelCount() : 0L;
+        long totalInspectionCount = row != null ? row.getTotalInspectionCount() : 0L;
+
+        return new StatisticsInspectionRes(
+                totalPanelCount,
+                inspectedPanelCount,
+                totalPanelCount - inspectedPanelCount,
+                totalInspectionCount,
+                statisticsMapper.findRecentInspections(actor.getUserId(), superAdmin, siteId, fromAt, toAt, RECENT_INSPECTION_LIMIT)
         );
     }
 
