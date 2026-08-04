@@ -17,14 +17,26 @@ import java.util.List;
 @Mapper
 public interface InspectionMapper {
 
-    // 점검 항목 등록
+    // 점검 항목 등록 (현장 카탈로그)
     void insertInspectionItem(InspectionItem item);
 
-    // 분전반의 점검 항목 목록 조회
+    // 현장의 점검 항목 카탈로그 전체 조회
+    List<InspectionItemRes> findInspectionItemsBySiteId(@Param("siteId") Long siteId);
+
+    // 분전반에 적용된 점검 항목 목록 조회 (panel_inspection_item으로 카탈로그를 조인)
     List<InspectionItemRes> findInspectionItemsByPanelId(@Param("panelId") Long panelId);
 
-    // 점검 항목 존재 여부 확인 (같은 분전반 소속인지까지 함께 확인)
+    // 점검 항목이 해당 현장 카탈로그 소속인지 확인 (분전반 적용 시 다른 현장 항목 섞이는 것 방지)
+    boolean existsInspectionItemInSite(@Param("itemId") Long itemId, @Param("siteId") Long siteId);
+
+    // 점검 항목이 해당 분전반에 적용된 상태인지 확인 (체크리스트 저장 시 유효성 검증용)
     boolean existsInspectionItem(@Param("itemId") Long itemId, @Param("panelId") Long panelId);
+
+    // 분전반에 적용된 점검 항목 전체 삭제 (전체교체의 delete 단계)
+    void deletePanelInspectionItems(@Param("panelId") Long panelId);
+
+    // 분전반에 점검 항목 일괄 적용 (전체교체의 insert 단계)
+    void insertPanelInspectionItems(@Param("panelId") Long panelId, @Param("itemIds") List<Long> itemIds);
 
     // 점검 실행 1건 등록
     void insertInspectionResult(InspectionResult inspectionResult);

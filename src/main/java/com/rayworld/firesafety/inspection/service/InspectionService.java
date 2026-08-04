@@ -8,7 +8,9 @@ import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
 import com.rayworld.firesafety.facility.mapper.PanelMapper;
 import com.rayworld.firesafety.facility.mapper.SiteMapper;
 import com.rayworld.firesafety.facility.model.Panel;
+import com.rayworld.firesafety.facility.model.Site;
 import com.rayworld.firesafety.inspection.dto.req.InspectionHistoryListReq;
+import com.rayworld.firesafety.inspection.dto.req.InspectionItemApplyReq;
 import com.rayworld.firesafety.inspection.dto.req.InspectionItemCreateReq;
 import com.rayworld.firesafety.inspection.dto.req.InspectionResultItemReq;
 import com.rayworld.firesafety.inspection.dto.req.InspectionSaveReq;
@@ -45,17 +47,17 @@ public class InspectionService {
     private final SiteMapper siteMapper;
     private final InspectionExcelService inspectionExcelService;
 
-    // 점검 항목 등록 (REQ-511, ADMIN 이상)
+    // 점검 항목 등록 (REQ-511, ADMIN 이상) — 분전반이 아니라 현장 카탈로그에 등록한다
     @Transactional
-    public InspectionItemCreateRes createItem(Long panelId, InspectionItemCreateReq req) {
+    public InspectionItemCreateRes createItem(Long siteId, InspectionItemCreateReq req) {
         UserPrincipal actor = getCurrentUser();
         validateAdminOrSuperAdmin(actor);
-        Panel panel = findActivePanel(panelId);
-        validateSiteAccess(actor, panel.getSiteId());
+        findActiveSite(siteId);
+        validateSiteAccess(actor, siteId);
         validateItemName(req);
 
         InspectionItem item = new InspectionItem();
-        item.setPanelId(panelId);
+        item.setSiteId(siteId);
         item.setItemName(req.getItemName().trim());
         item.setDescription(normalizeDescription(req.getDescription()));
         inspectionMapper.insertInspectionItem(item);
@@ -63,7 +65,17 @@ public class InspectionService {
         return new InspectionItemCreateRes(item.getItemId());
     }
 
-    // 점검 항목 목록 조회 (REQ-511, GENERAL 이상)
+    // 현장의 점검 항목 카탈로그 전체 조회 (GENERAL 이상) — 분전반에 적용할 항목을 고를 때 후보 목록으로 쓴다
+    @Transactional(readOnly = true)
+    public List<InspectionItemRes> getSiteItems(Long siteId) {
+        UserPrincipal actor = getCurrentUser();
+        findActiveSite(siteId);
+        validateSiteAccess(actor, siteId);
+
+        return inspectionMapper.findInspectionItemsBySiteId(siteId);
+    }
+
+    // 분전반에 적용된 점검 항목 목록 조회 (REQ-511, GENERAL 이상)
     @Transactional(readOnly = true)
     public List<InspectionItemRes> getItems(Long panelId) {
         UserPrincipal actor = getCurrentUser();
@@ -71,6 +83,28 @@ public class InspectionService {
         validateSiteAccess(actor, panel.getSiteId());
 
         return inspectionMapper.findInspectionItemsByPanelId(panelId);
+    }
+
+    // 분전반에 점검 항목 일괄 적용 (GENERAL 이상) — 카탈로그(항목 정의)는 ADMIN 전용이지만, 이미 있는 항목 중
+    // 이 분전반에서 무엇을 점검할지 고르는 건 점검결과 저장(saveChecklist)과 같은 등급의 실무 작업으로 본다.
+    // 현재 적용 상태를 요청 목록으로 전체교체한다.
+    @Transactional
+    public void applyItems(Long panelId, InspectionItemApplyReq req) {
+        UserPrincipal actor = getCurrentUser();
+        Panel panel = findActivePanel(panelId);
+        validateSiteAccess(actor, panel.getSiteId());
+
+        List<Long> itemIds = req != null && req.getItemIds() != null ? req.getItemIds() : List.of();
+        for (Long itemId : itemIds) {
+            if (!inspectionMapper.existsInspectionItemInSite(itemId, panel.getSiteId())) {
+                throw new BusinessException(InspectionErrorCode.ITEM_NOT_IN_SITE);
+            }
+        }
+
+        inspectionMapper.deletePanelInspectionItems(panelId);
+        if (!itemIds.isEmpty()) {
+            inspectionMapper.insertPanelInspectionItems(panelId, itemIds);
+        }
     }
 
     // 점검 체크리스트 저장 (REQ-511)
@@ -147,6 +181,15 @@ public class InspectionService {
             throw new BusinessException(FacilityErrorCode.PANEL_NOT_FOUND);
         }
         return panel;
+    }
+
+    // 활성 현장 조회
+    private Site findActiveSite(Long siteId) {
+        Site site = siteMapper.findActiveSiteById(siteId);
+        if (site == null) {
+            throw new BusinessException(FacilityErrorCode.SITE_NOT_FOUND);
+        }
+        return site;
     }
 
     // 현장 접근 권한 확인 - SUPER_ADMIN은 전체, ADMIN/GENERAL은 담당 현장만
