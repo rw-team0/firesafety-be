@@ -2,6 +2,7 @@ package com.rayworld.firesafety.statistics.mapper;
 
 import com.rayworld.firesafety.statistics.dto.res.CircuitCountRow;
 import com.rayworld.firesafety.statistics.dto.res.DailyAlertCountRes;
+import com.rayworld.firesafety.statistics.dto.res.DailyResolutionRow;
 import com.rayworld.firesafety.statistics.dto.res.InspectionCountRow;
 import com.rayworld.firesafety.statistics.dto.res.RecentInspectionRes;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsGroupCount;
@@ -55,6 +56,13 @@ public interface StatisticsMapper {
                                               @Param("siteId") Long siteId,
                                               @Param("fromAt") LocalDateTime fromAt,
                                               @Param("toAt") LocalDateTime toAt);
+
+    // 일자별 경보 발생/조치완료 개수 조회 (예방조치 이행률 추이용)
+    List<DailyResolutionRow> countDailyAlertResolutions(@Param("userId") Long userId,
+                                                        @Param("superAdmin") boolean superAdmin,
+                                                        @Param("siteId") Long siteId,
+                                                        @Param("fromAt") LocalDateTime fromAt,
+                                                        @Param("toAt") LocalDateTime toAt);
 
     // 기간/권한 범위 안의 AI 진단 전체 개수 조회
     long countDiagnoses(@Param("userId") Long userId,

@@ -21,4 +21,6 @@ public class StatisticsAlertRes {
     private List<StatisticsCountRes> sourceCounts;
     @Schema(description = "일자별 경보 발생 수 목록")
     private List<DailyAlertCountRes> dailyCounts;
+    @Schema(description = "일자별 예방조치 이행률(조치완료 비율) 추이 — 화면 목표선은 90%")
+    private List<DailyResolutionRateRes> dailyResolutionRates;
 }

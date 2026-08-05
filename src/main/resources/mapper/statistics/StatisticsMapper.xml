@@ -13,6 +13,12 @@
         <result property="count" column="stat_count"/>
     </resultMap>
 
+    <resultMap id="dailyResolutionRowResultMap" type="com.rayworld.firesafety.statistics.dto.res.DailyResolutionRow">
+        <result property="date" column="stat_date"/>
+        <result property="totalCount" column="total_count"/>
+        <result property="resolvedCount" column="resolved_count"/>
+    </resultMap>
+
     <resultMap id="circuitCountRowResultMap" type="com.rayworld.firesafety.statistics.dto.res.CircuitCountRow">
         <result property="totalCircuitCount" column="total_circuit_count"/>
         <result property="diagnosedCircuitCount" column="diagnosed_circuit_count"/>
@@ -160,6 +166,19 @@
         SELECT
             DATE(a.triggered_at) AS stat_date,
             COUNT(*) AS stat_count
+        FROM alert a
+        LEFT JOIN panel p ON p.panel_id = a.panel_id
+        <include refid="alertStatisticsFilter"/>
+        GROUP BY DATE(a.triggered_at)
+        ORDER BY stat_date ASC
+    </select>
+
+    <!-- 일자별 경보 발생/조치완료 개수 조회 (예방조치 이행률 추이용) -->
+    <select id="countDailyAlertResolutions" resultMap="dailyResolutionRowResultMap">
+        SELECT
+            DATE(a.triggered_at) AS stat_date,
+            COUNT(*) AS total_count,
+            SUM(CASE WHEN a.status = 'RESOLVED' THEN 1 ELSE 0 END) AS resolved_count
         FROM alert a
         LEFT JOIN panel p ON p.panel_id = a.panel_id
         <include refid="alertStatisticsFilter"/>

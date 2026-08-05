@@ -13,6 +13,8 @@ import com.rayworld.firesafety.facility.model.PanelStatus;
 import com.rayworld.firesafety.statistics.dto.req.StatisticsReq;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsAlertRes;
 import com.rayworld.firesafety.statistics.dto.res.CircuitCountRow;
+import com.rayworld.firesafety.statistics.dto.res.DailyResolutionRateRes;
+import com.rayworld.firesafety.statistics.dto.res.DailyResolutionRow;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsCountRes;
 import com.rayworld.firesafety.statistics.dto.res.InspectionCountRow;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsDiagnosisRes;
@@ -78,8 +80,23 @@ public class StatisticsService {
                 toAlertStatusCounts(statisticsMapper.countAlertsByStatus(actor.getUserId(), superAdmin, siteId, fromAt, toAt)),
                 toAlertTypeCounts(statisticsMapper.countAlertsByType(actor.getUserId(), superAdmin, siteId, fromAt, toAt)),
                 toAlertSourceCounts(statisticsMapper.countAlertsBySource(actor.getUserId(), superAdmin, siteId, fromAt, toAt)),
-                statisticsMapper.countDailyAlerts(actor.getUserId(), superAdmin, siteId, fromAt, toAt)
+                statisticsMapper.countDailyAlerts(actor.getUserId(), superAdmin, siteId, fromAt, toAt),
+                toDailyResolutionRates(statisticsMapper.countDailyAlertResolutions(actor.getUserId(), superAdmin, siteId, fromAt, toAt))
         );
+    }
+
+    // 일자별 조치완료 비율 계산 — 발생 건수가 0인 날은 비율을 null로 내려 "0%"와 "데이터 없음"을 구분한다
+    private List<DailyResolutionRateRes> toDailyResolutionRates(List<DailyResolutionRow> rows) {
+        return rows.stream()
+                .map(row -> new DailyResolutionRateRes(
+                        row.getDate(),
+                        row.getTotalCount(),
+                        row.getResolvedCount(),
+                        row.getTotalCount() == 0
+                                ? null
+                                : Math.round(row.getResolvedCount() * 1000.0 / row.getTotalCount()) / 10.0
+                ))
+                .toList();
     }
 
     // AI 진단 통계 집계

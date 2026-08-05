@@ -9,6 +9,7 @@ import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
 import com.rayworld.firesafety.statistics.dto.req.StatisticsReq;
 import com.rayworld.firesafety.statistics.dto.res.CircuitCountRow;
 import com.rayworld.firesafety.statistics.dto.res.DailyAlertCountRes;
+import com.rayworld.firesafety.statistics.dto.res.DailyResolutionRow;
 import com.rayworld.firesafety.statistics.dto.res.InspectionCountRow;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsGroupCount;
 import com.rayworld.firesafety.statistics.dto.res.StatisticsSummaryRes;
@@ -136,6 +137,40 @@ class StatisticsServiceTest {
         assertThatThrownBy(() -> statisticsService.getStatistics(req))
                 .isInstanceOfSatisfying(BusinessException.class, e ->
                         assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_DATE_RANGE));
+    }
+
+    @Test
+    @DisplayName("API-024: 일자별 예방조치 이행률은 발생 건수 대비 조치완료 비율(%)로 계산되고, 발생 건수 0인 날은 null이다")
+    void dailyResolutionRateCalculated() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        StatisticsReq req = new StatisticsReq();
+        LocalDateTime fromAt = null;
+        LocalDateTime toAt = null;
+        when(statisticsMapper.countDailyAlertResolutions(1L, true, null, fromAt, toAt))
+                .thenReturn(List.of(
+                        resolutionRow(LocalDate.of(2026, 7, 23), 5, 4),
+                        resolutionRow(LocalDate.of(2026, 7, 24), 0, 0)
+                ));
+        when(statisticsMapper.countCircuitStats(1L, true, null, fromAt, toAt)).thenReturn(circuitCountRow(0, 0));
+        when(statisticsMapper.countInspectionStats(1L, true, null, fromAt, toAt)).thenReturn(inspectionCountRow(0, 0, 0));
+        when(statisticsMapper.findRecentInspections(1L, true, null, fromAt, toAt, 5)).thenReturn(List.of());
+
+        // when
+        StatisticsSummaryRes result = statisticsService.getStatistics(req);
+
+        // then
+        List<com.rayworld.firesafety.statistics.dto.res.DailyResolutionRateRes> rates = result.getAlerts().getDailyResolutionRates();
+        assertThat(rates.get(0).getRate()).isEqualTo(80.0);
+        assertThat(rates.get(1).getRate()).isNull();
+    }
+
+    private DailyResolutionRow resolutionRow(LocalDate date, long totalCount, long resolvedCount) {
+        DailyResolutionRow row = new DailyResolutionRow();
+        row.setDate(date);
+        row.setTotalCount(totalCount);
+        row.setResolvedCount(resolvedCount);
+        return row;
     }
 
     private void loginAs(Long userId, UserRole role) {
