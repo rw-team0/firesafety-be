@@ -1,5 +1,6 @@
 package com.rayworld.firesafety.alert.service;
 
+import com.rayworld.firesafety.alert.event.AlertBulkNotificationEvent;
 import com.rayworld.firesafety.alert.event.AlertNotificationEvent;
 import com.rayworld.firesafety.monitoring.service.MonitoringRealtimeService;
 import lombok.RequiredArgsConstructor;
@@ -21,5 +22,12 @@ public class AlertNotificationListener {
     public void handle(AlertNotificationEvent event) {
         monitoringRealtimeService.broadcastSiteRefresh(event.getSiteId(), event.getEventType());
         fcmPushService.sendAlert(event);
+    }
+
+    // 일괄 확인/조치완료 — 건마다 브로드캐스트하면 클라이언트 재조회가 폭주하므로 현장당 한 번만 보낸다.
+    // FCM은 일부러 안 보낸다(대량 처리 시 사용자별 수십~수백 건 푸시가 쏟아지는 걸 방지).
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void handleBulk(AlertBulkNotificationEvent event) {
+        event.getSiteIds().forEach(siteId -> monitoringRealtimeService.broadcastSiteRefresh(siteId, event.getEventType()));
     }
 }

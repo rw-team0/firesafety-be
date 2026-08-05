@@ -1,8 +1,10 @@
 package com.rayworld.firesafety.alert.service;
 
+import com.rayworld.firesafety.alert.dto.req.AlertBulkActionReq;
 import com.rayworld.firesafety.alert.dto.req.AlertListReq;
 import com.rayworld.firesafety.alert.dto.req.AlertPendingReq;
 import com.rayworld.firesafety.alert.dto.req.AlertResolveReq;
+import com.rayworld.firesafety.alert.dto.res.AlertBulkActionRes;
 import com.rayworld.firesafety.alert.dto.res.AlertExportRes;
 import com.rayworld.firesafety.alert.dto.res.AlertListPageRes;
 import com.rayworld.firesafety.alert.dto.res.AlertListRes;
@@ -23,7 +25,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -199,6 +204,84 @@ public class AlertService {
     // 기존 내부 호출이 생겨도 비고 없이 조치완료할 수 있게 유지
     public void resolveAlert(Long alertId) {
         resolveAlert(alertId, null);
+    }
+
+    // 경보 일괄 확인 처리 — 대상이 몇 건이든 WS 브로드캐스트는 현장당 한 번만 나간다(성능/부하 대응).
+    // 1. 대상 ID 검증 → 2. 건별로 접근권한/상태 확인 후 확인 처리(실패는 건너뛰고 사유만 모음) → 3. 영향받은 현장에 브로드캐스트
+    @Transactional
+    public AlertBulkActionRes bulkConfirmAlerts(AlertBulkActionReq req) {
+        UserPrincipal actor = getCurrentUser();
+        List<Long> alertIds = req == null ? null : req.getAlertIds();
+        validateAlertIds(alertIds);
+        if (alertIds == null || alertIds.isEmpty()) {
+            throw new BusinessException(AlertErrorCode.INVALID_ALERT_ID);
+        }
+
+        int successCount = 0;
+        List<String> failureReasons = new ArrayList<>();
+        Set<Long> siteIdsToNotify = new LinkedHashSet<>();
+
+        for (Long alertId : alertIds) {
+            try {
+                Alert alert = findAccessibleAlert(actor, alertId);
+                validateCanConfirm(alert);
+                int updatedRows = alertMapper.confirmAlert(alertId, actor.getUserId());
+                if (updatedRows == 0) {
+                    throw new BusinessException(AlertErrorCode.ALERT_CANNOT_CONFIRM);
+                }
+                successCount++;
+                Long siteId = alertMapper.findSiteIdByPanelId(alert.getPanelId());
+                if (siteId != null) {
+                    siteIdsToNotify.add(siteId);
+                }
+            } catch (BusinessException e) {
+                failureReasons.add(e.getMessage());
+            }
+        }
+
+        alertNotificationPublisher.publishBulkStatusChanged(siteIdsToNotify);
+        return new AlertBulkActionRes(successCount, alertIds.size() - successCount, dedupeReasons(failureReasons));
+    }
+
+    // 경보 일괄 조치완료 처리 — 확인 처리와 동일한 구조. 비고는 PC 다중선택 화면과 동일하게 개별 입력을 받지 않는다.
+    @Transactional
+    public AlertBulkActionRes bulkResolveAlerts(AlertBulkActionReq req) {
+        UserPrincipal actor = getCurrentUser();
+        List<Long> alertIds = req == null ? null : req.getAlertIds();
+        validateAlertIds(alertIds);
+        if (alertIds == null || alertIds.isEmpty()) {
+            throw new BusinessException(AlertErrorCode.INVALID_ALERT_ID);
+        }
+
+        int successCount = 0;
+        List<String> failureReasons = new ArrayList<>();
+        Set<Long> siteIdsToNotify = new LinkedHashSet<>();
+
+        for (Long alertId : alertIds) {
+            try {
+                Alert alert = findAccessibleAlert(actor, alertId);
+                validateCanResolve(alert);
+                int updatedRows = alertMapper.resolveAlert(alertId, actor.getUserId(), null);
+                if (updatedRows == 0) {
+                    throw new BusinessException(AlertErrorCode.ALERT_NOT_CONFIRMED);
+                }
+                successCount++;
+                Long siteId = alertMapper.findSiteIdByPanelId(alert.getPanelId());
+                if (siteId != null) {
+                    siteIdsToNotify.add(siteId);
+                }
+            } catch (BusinessException e) {
+                failureReasons.add(e.getMessage());
+            }
+        }
+
+        alertNotificationPublisher.publishBulkStatusChanged(siteIdsToNotify);
+        return new AlertBulkActionRes(successCount, alertIds.size() - successCount, dedupeReasons(failureReasons));
+    }
+
+    // 실패 사유 중복 제거(같은 사유가 여러 건이면 한 번만 노출)
+    private List<String> dedupeReasons(List<String> reasons) {
+        return reasons.stream().distinct().toList();
     }
 
     // 현재 사용자가 접근할 수 있는 경보만 조회

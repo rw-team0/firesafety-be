@@ -1,5 +1,6 @@
 package com.rayworld.firesafety.alert.service;
 
+import com.rayworld.firesafety.alert.event.AlertBulkNotificationEvent;
 import com.rayworld.firesafety.alert.event.AlertNotificationEvent;
 import com.rayworld.firesafety.alert.mapper.AlertMapper;
 import com.rayworld.firesafety.alert.model.Alert;
@@ -7,6 +8,8 @@ import com.rayworld.firesafety.alert.model.AlertStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +26,14 @@ public class AlertNotificationPublisher {
     // 경보 상태 변경 이벤트 발행
     public void publishStatusChanged(Alert alert, AlertStatus status) {
         publish(alert, status, "ALERT_STATUS_CHANGED");
+    }
+
+    // 일괄 확인/조치완료 전용 — 대상이 몇 건이든 현장당 WS 브로드캐스트를 한 번만 보낸다(FCM 미발송)
+    public void publishBulkStatusChanged(Set<Long> siteIds) {
+        if (siteIds == null || siteIds.isEmpty()) {
+            return;
+        }
+        applicationEventPublisher.publishEvent(new AlertBulkNotificationEvent(siteIds, "ALERT_STATUS_CHANGED"));
     }
 
     // panel_id로 현장을 찾아 담당자에게만 FCM을 보낼 수 있게 한다.

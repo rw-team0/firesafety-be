@@ -1,8 +1,10 @@
 package com.rayworld.firesafety.alert.controller;
 
+import com.rayworld.firesafety.alert.dto.req.AlertBulkActionReq;
 import com.rayworld.firesafety.alert.dto.req.AlertListReq;
 import com.rayworld.firesafety.alert.dto.req.AlertPendingReq;
 import com.rayworld.firesafety.alert.dto.req.AlertResolveReq;
+import com.rayworld.firesafety.alert.dto.res.AlertBulkActionRes;
 import com.rayworld.firesafety.alert.dto.res.AlertListPageRes;
 import com.rayworld.firesafety.alert.dto.res.AlertPendingPageRes;
 import com.rayworld.firesafety.alert.service.AlertService;
@@ -87,5 +89,22 @@ public class AlertController {
                                              @Valid @RequestBody(required = false) AlertResolveReq req) {
         alertService.resolveAlert(alertId, req);
         return ResultResponse.success("경보 조치완료 성공", null);
+    }
+
+    // 경보 일괄 확인 처리 (PATCH /api/alerts/bulk-confirm)
+    // 대상이 몇 건이든 WS 브로드캐스트는 현장당 한 번만 나간다(건별 반복 호출 시의 리페치 폭주 방지)
+    @Operation(summary = "경보 일괄 확인 처리", description = "UNCONFIRMED 상태인 대상만 CONFIRMED로 전환한다. 대상이 여러 건이어도 실시간 갱신 신호는 현장당 한 번만 전송된다.")
+    @PatchMapping("/bulk-confirm")
+    public ResultResponse<AlertBulkActionRes> bulkConfirmAlerts(@RequestBody AlertBulkActionReq req) {
+        AlertBulkActionRes result = alertService.bulkConfirmAlerts(req);
+        return ResultResponse.success(String.format("성공 %d건, 실패 %d건", result.getSuccessCount(), result.getFailCount()), result);
+    }
+
+    // 경보 일괄 조치완료 처리 (PATCH /api/alerts/bulk-resolve)
+    @Operation(summary = "경보 일괄 조치완료 처리", description = "CONFIRMED 상태인 대상만 RESOLVED로 전환한다. 개별 비고는 받지 않는다.")
+    @PatchMapping("/bulk-resolve")
+    public ResultResponse<AlertBulkActionRes> bulkResolveAlerts(@RequestBody AlertBulkActionReq req) {
+        AlertBulkActionRes result = alertService.bulkResolveAlerts(req);
+        return ResultResponse.success(String.format("성공 %d건, 실패 %d건", result.getSuccessCount(), result.getFailCount()), result);
     }
 }
