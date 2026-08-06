@@ -144,6 +144,7 @@ public class UserService {
         // 삭제된 사용자는 수정하지 않고 복구 API를 먼저 사용
         User targetUser = findActiveTargetUser(userId);
         validateUpdatableRole(actor, targetUser, req.getRole());
+        validateEmailChangePermission(actor, targetUser, email);
 
         if (!targetUser.getEmail().equals(email)
                 && authMapper.existsUserByEmail(email)) {
@@ -282,6 +283,14 @@ public class UserService {
         }
 
         throw new BusinessException(AuthErrorCode.FORBIDDEN_ROLE);
+    }
+
+    // 이메일은 로그인 아이디를 겸해 실수로 바꾸면 본인도 모르게 로그인이 막힐 수 있어 SUPER_ADMIN만 변경 가능(프론트 입력칸 비활성화와 동일 기준)
+    private void validateEmailChangePermission(UserPrincipal actor, User targetUser, String email) {
+        UserRole actorRole = UserRole.valueOf(actor.getRole());
+        if (actorRole != UserRole.SUPER_ADMIN && !targetUser.getEmail().equals(email)) {
+            throw new BusinessException(AuthErrorCode.EMAIL_UPDATE_FORBIDDEN);
+        }
     }
 
     // 단건 삭제 권한 확인

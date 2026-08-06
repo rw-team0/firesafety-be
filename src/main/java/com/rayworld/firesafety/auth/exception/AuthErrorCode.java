@@ -31,7 +31,8 @@ public enum AuthErrorCode implements ErrorCode {
     NAME_REQUIRED("AUTH-020", "이름을 입력해주세요", HttpStatus.BAD_REQUEST),
     ROLE_REQUIRED("AUTH-021", "역할을 선택해주세요", HttpStatus.BAD_REQUEST),
     FCM_TOKEN_REQUIRED("AUTH-022", "FCM 토큰 값이 없습니다", HttpStatus.BAD_REQUEST),
-    BULK_DELETE_INVALID_ID("AUTH-023", "삭제 대상 ID 값이 올바르지 않습니다", HttpStatus.BAD_REQUEST);
+    BULK_DELETE_INVALID_ID("AUTH-023", "삭제 대상 ID 값이 올바르지 않습니다", HttpStatus.BAD_REQUEST),
+    EMAIL_UPDATE_FORBIDDEN("AUTH-024", "이메일은 슈퍼관리자만 변경할 수 있습니다", HttpStatus.FORBIDDEN);
 
     private final String code;
     private final String message;

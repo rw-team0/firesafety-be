@@ -189,6 +189,49 @@ class UserServiceAuthTest {
     }
 
     @Test
+    @DisplayName("AUTH-024: SUPER_ADMIN은 계정 이메일을 변경할 수 있다")
+    void superAdminCanUpdateEmail() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        when(authMapper.findUserById(3L)).thenReturn(activeUser(3L, UserRole.ADMIN));
+        when(authMapper.existsUserByEmail("changed@example.com")).thenReturn(false);
+
+        // when
+        userService.updateUser(3L, new UserUpdateReq(
+                "changed@example.com",
+                "수정관리자",
+                "010-1111-2222",
+                UserRole.ADMIN
+        ));
+
+        // then
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(authMapper).updateUser(userCaptor.capture());
+        assertThat(userCaptor.getValue().getEmail()).isEqualTo("changed@example.com");
+    }
+
+    @Test
+    @DisplayName("AUTH-024: ADMIN은 같은 활성 현장에 배정된 계정이라도 이메일을 변경할 수 없다")
+    void adminCannotUpdateEmail() {
+        // given
+        loginAs(2L, UserRole.ADMIN);
+        when(authMapper.findUserById(3L)).thenReturn(activeUser(3L, UserRole.ADMIN));
+        when(authMapper.existsActiveSharedSiteAssignment(2L, 3L)).thenReturn(true);
+
+        // when & then
+        assertThatThrownBy(() -> userService.updateUser(3L, new UserUpdateReq(
+                "changed@example.com",
+                "수정관리자",
+                "010-1111-2222",
+                UserRole.ADMIN
+        )))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(AuthErrorCode.EMAIL_UPDATE_FORBIDDEN));
+
+        verify(authMapper, never()).updateUser(any());
+    }
+
+    @Test
     @DisplayName("ADMIN은 같은 활성 현장 배정이 없는 사용자를 수정할 수 없다")
     void adminCannotUpdateUserWithoutSharedSite() {
         // given
