@@ -202,6 +202,7 @@ class SiteRegistrationServiceTest {
         return new SiteWithAdminCreateReq(
                 "레이월드1",
                 "서울시 강남구",
+                null,
                 "06134",
                 "김관리",
                 "site-admin@example.com",

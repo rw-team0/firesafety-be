@@ -177,6 +177,7 @@ public class SiteService {
         Site site = new Site();
         site.setName(req.getName());
         site.setAddress(req.getAddress());
+        site.setAddressDetail(req.getAddressDetail());
         site.setZipCode(req.getZipCode());
         return site;
     }
@@ -185,6 +186,7 @@ public class SiteService {
     private void applyUpdate(Site site, SiteUpdateReq req) {
         site.setName(req.getName());
         site.setAddress(req.getAddress());
+        site.setAddressDetail(req.getAddressDetail());
         site.setZipCode(req.getZipCode());
     }
 

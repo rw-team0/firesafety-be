@@ -15,6 +15,8 @@ public class SiteWithAdminCreateReq {
     private String name;
     @Schema(description = "주소(필수)", example = "서울시 강남구 테헤란로 123")
     private String address;
+    @Schema(description = "상세주소(선택, 동/호수 등 검색 결과에 없는 나머지 주소)", example = "5층 501호")
+    private String addressDetail;
     @Schema(description = "우편번호(선택)", example = "06134")
     private String zipCode;
 

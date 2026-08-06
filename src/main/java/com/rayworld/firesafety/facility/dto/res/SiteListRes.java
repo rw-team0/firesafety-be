@@ -18,6 +18,8 @@ public class SiteListRes {
     private String name;
     @Schema(description = "주소", example = "서울시 강남구")
     private String address;
+    @Schema(description = "상세주소", example = "5층 501호")
+    private String addressDetail;
     @Schema(description = "우편번호", example = "06134")
     private String zipCode;
     @Schema(description = "등록일시", example = "2026-07-20T10:00:00")
@@ -28,6 +30,7 @@ public class SiteListRes {
                 site.getSiteId(),
                 site.getName(),
                 site.getAddress(),
+                site.getAddressDetail(),
                 site.getZipCode(),
                 site.getCreatedAt()
         );

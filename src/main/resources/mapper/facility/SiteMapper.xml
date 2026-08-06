@@ -7,6 +7,7 @@
         <id property="siteId" column="site_id"/>
         <result property="name" column="name"/>
         <result property="address" column="address"/>
+        <result property="addressDetail" column="address_detail"/>
         <result property="zipCode" column="zip_code"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
@@ -55,10 +56,12 @@
         INSERT INTO site (
             name,
             address,
+            address_detail,
             zip_code
         ) VALUES (
             #{name},
             #{address},
+            #{addressDetail},
             #{zipCode}
         )
     </insert>
@@ -69,6 +72,7 @@
             site_id,
             name,
             address,
+            address_detail,
             zip_code,
             created_at,
             updated_at,
@@ -84,6 +88,7 @@
             site_id,
             name,
             address,
+            address_detail,
             zip_code,
             created_at,
             updated_at,
@@ -99,6 +104,7 @@
             s.site_id,
             s.name,
             s.address,
+            s.address_detail,
             s.zip_code,
             s.created_at,
             s.updated_at,
@@ -142,6 +148,7 @@
         UPDATE site
         SET name = #{name},
             address = #{address},
+            address_detail = #{addressDetail},
             zip_code = #{zipCode},
             updated_at = CURRENT_TIMESTAMP
         WHERE site_id = #{siteId}

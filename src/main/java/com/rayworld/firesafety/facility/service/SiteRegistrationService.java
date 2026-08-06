@@ -53,7 +53,7 @@ public class SiteRegistrationService {
         }
 
         SiteCreateRes site = siteService.createSite(
-                new SiteCreateReq(req.getName(), req.getAddress(), req.getZipCode()));
+                new SiteCreateReq(req.getName(), req.getAddress(), req.getAddressDetail(), req.getZipCode()));
 
         UserCreateRes admin = userService.createUser(new UserCreateReq(
                 req.getAdminEmail(),

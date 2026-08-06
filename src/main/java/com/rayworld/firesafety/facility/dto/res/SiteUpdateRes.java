@@ -16,6 +16,8 @@ public class SiteUpdateRes {
     private String name;
     @Schema(description = "주소", example = "서울시 강남구")
     private String address;
+    @Schema(description = "상세주소", example = "5층 501호")
+    private String addressDetail;
     @Schema(description = "우편번호", example = "06134")
     private String zipCode;
 
@@ -24,6 +26,7 @@ public class SiteUpdateRes {
                 site.getSiteId(),
                 site.getName(),
                 site.getAddress(),
+                site.getAddressDetail(),
                 site.getZipCode()
         );
     }
