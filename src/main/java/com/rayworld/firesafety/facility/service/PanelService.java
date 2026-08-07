@@ -356,7 +356,9 @@ public class PanelService {
         panel.setDeviceSerial(req.getDeviceSerial());
         panel.setMNo(req.getMNo());
         panel.setInstalledAt(req.getInstalledAt());
-        panel.setStatus(PanelStatus.NORMAL);
+        // 등록 직후는 아직 통신 이력이 없어 "정상 확인됨"이 아니라 OFFLINE이 정확한 초기 상태다.
+        // 첫 센서 프레임이 들어오면 PanelStatusAggregationService가 그때 실제 상태로 재계산한다.
+        panel.setStatus(PanelStatus.OFFLINE);
         panel.setIsOnline(false);
         panel.setCircuitCount(req.getCircuitCount() == null ? 10 : req.getCircuitCount());
         panel.setLeakMaThreshold(defaultIfNull(req.getLeakMaThreshold(), DEFAULT_LEAK_MA_THRESHOLD));

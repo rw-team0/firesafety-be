@@ -181,6 +181,27 @@ class PanelServiceTest {
     }
 
     @Test
+    @DisplayName("등록 직후 분전반 상태는 통신 이력이 없으므로 OFFLINE으로 시작한다")
+    void newPanelStartsOffline() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        when(siteMapper.findActiveSiteById(1L)).thenReturn(site(1L));
+        when(panelMapper.existsPanelByDeviceSerial(any())).thenReturn(false);
+        when(panelMapper.findActivePanelById(any())).thenReturn(savedPanel());
+
+        PanelCreateReq req = createReq(3, null, null);
+
+        // when
+        panelService.createPanel(1L, req);
+
+        // then
+        ArgumentCaptor<Panel> captor = ArgumentCaptor.forClass(Panel.class);
+        verify(panelMapper).insertPanel(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(PanelStatus.OFFLINE);
+        assertThat(captor.getValue().getIsOnline()).isFalse();
+    }
+
+    @Test
     @DisplayName("정상 요청이면 분전반을 등록하고 감사 로그를 남긴다")
     void createPanelSuccess() {
         // given
