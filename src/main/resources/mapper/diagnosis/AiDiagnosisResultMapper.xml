@@ -27,7 +27,27 @@
         <result property="confidence" column="confidence"/>
         <result property="nSamples" column="n_samples"/>
         <result property="warning" column="warning"/>
+        <result property="triggerType" column="trigger_type"/>
         <result property="diagnosedAt" column="diagnosed_at"/>
+    </resultMap>
+
+    <resultMap id="panelDiagnosisRecentResultMap" type="com.rayworld.firesafety.diagnosis.dto.res.PanelDiagnosisRecentRes">
+        <id property="resultId" column="result_id"/>
+        <result property="circuitId" column="circuit_id"/>
+        <result property="channelNo" column="channel_no"/>
+        <result property="verdict" column="verdict"/>
+        <result property="confidence" column="confidence"/>
+        <result property="nSamples" column="n_samples"/>
+        <result property="warning" column="warning"/>
+        <result property="triggerType" column="trigger_type"/>
+        <result property="diagnosedAt" column="diagnosed_at"/>
+    </resultMap>
+
+    <resultMap id="panelDiagnosisSampleStatusResultMap" type="com.rayworld.firesafety.diagnosis.dto.res.PanelDiagnosisSampleStatusRes">
+        <id property="circuitId" column="circuit_id"/>
+        <result property="channelNo" column="channel_no"/>
+        <result property="sampleCount" column="sample_count"/>
+        <result property="requiredSampleCount" column="required_sample_count"/>
     </resultMap>
 
     <!-- AI 판정 결과 저장 -->
@@ -41,14 +61,16 @@
             verdict,
             confidence,
             n_samples,
-            warning
+            warning,
+            trigger_type
         ) VALUES (
             #{circuitId},
             #{frameId},
             #{verdict},
             #{confidence},
             #{nSamples},
-            #{warning}
+            #{warning},
+            #{triggerType}
         )
     </insert>
 
@@ -135,6 +157,7 @@
             confidence,
             n_samples,
             warning,
+            trigger_type,
             diagnosed_at
         FROM ai_diagnosis_result
         WHERE circuit_id = #{circuitId}
@@ -148,5 +171,86 @@
         SELECT COUNT(*)
         FROM ai_diagnosis_result
         WHERE circuit_id = #{circuitId}
+    </select>
+
+    <!-- 분전반의 최신 AI 진단 시각 -->
+    <select id="findLatestDiagnosedAtByPanelId" resultType="java.time.LocalDateTime">
+        SELECT MAX(ai.diagnosed_at)
+        FROM ai_diagnosis_result ai
+        INNER JOIN circuit c ON c.circuit_id = ai.circuit_id
+        WHERE c.panel_id = #{panelId}
+          AND c.deleted_at IS NULL
+    </select>
+
+    <select id="countActiveCircuitsByPanelId" resultType="long">
+        SELECT COUNT(*)
+        FROM circuit c
+        WHERE c.panel_id = #{panelId}
+          AND c.deleted_at IS NULL
+    </select>
+
+    <select id="countDiagnosedCircuitsByPanelId" resultType="long">
+        SELECT COUNT(DISTINCT ai.circuit_id)
+        FROM ai_diagnosis_result ai
+        INNER JOIN circuit c ON c.circuit_id = ai.circuit_id
+        WHERE c.panel_id = #{panelId}
+          AND c.deleted_at IS NULL
+    </select>
+
+    <select id="countPanelDiagnosesSince" resultType="long">
+        SELECT COUNT(*)
+        FROM ai_diagnosis_result ai
+        INNER JOIN circuit c ON c.circuit_id = ai.circuit_id
+        WHERE c.panel_id = #{panelId}
+          AND c.deleted_at IS NULL
+          AND ai.diagnosed_at &gt;= #{fromAt}
+          <if test="verdict != null">
+            AND ai.verdict = #{verdict}
+          </if>
+    </select>
+
+    <select id="findRecentPanelDiagnosisResults" resultMap="panelDiagnosisRecentResultMap">
+        SELECT
+            ai.result_id,
+            ai.circuit_id,
+            c.channel_no,
+            ai.verdict,
+            ai.confidence,
+            ai.n_samples,
+            ai.warning,
+            ai.trigger_type,
+            ai.diagnosed_at
+        FROM ai_diagnosis_result ai
+        INNER JOIN circuit c ON c.circuit_id = ai.circuit_id
+        WHERE c.panel_id = #{panelId}
+          AND c.deleted_at IS NULL
+          AND ai.diagnosed_at &gt;= #{fromAt}
+          <if test="verdict != null">
+            AND ai.verdict = #{verdict}
+          </if>
+        ORDER BY ai.diagnosed_at DESC, ai.result_id DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 마지막 AI 판정 이후 새로 쌓인 샘플이 자동 진단 최소 기준에 못 미치는 회로 -->
+    <select id="findSampleInsufficientCircuits" resultMap="panelDiagnosisSampleStatusResultMap">
+        SELECT
+            c.circuit_id,
+            c.channel_no,
+            COUNT(sfc.reading_id) AS sample_count,
+            #{minSampleSize} AS required_sample_count
+        FROM circuit c
+        LEFT JOIN sensor_frame_circuit sfc
+            ON sfc.circuit_id = c.circuit_id
+           AND sfc.frame_id &gt; COALESCE((
+                SELECT MAX(ai.frame_id)
+                FROM ai_diagnosis_result ai
+                WHERE ai.circuit_id = c.circuit_id
+           ), 0)
+        WHERE c.panel_id = #{panelId}
+          AND c.deleted_at IS NULL
+        GROUP BY c.circuit_id, c.channel_no
+        HAVING COUNT(sfc.reading_id) &lt; #{minSampleSize}
+        ORDER BY c.channel_no ASC
     </select>
 </mapper>

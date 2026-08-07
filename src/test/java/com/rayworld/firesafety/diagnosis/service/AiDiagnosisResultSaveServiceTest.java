@@ -3,6 +3,7 @@ package com.rayworld.firesafety.diagnosis.service;
 import com.rayworld.firesafety.alert.service.AiAlertService;
 import com.rayworld.firesafety.diagnosis.mapper.AiDiagnosisResultMapper;
 import com.rayworld.firesafety.diagnosis.model.AiDiagnosisResult;
+import com.rayworld.firesafety.diagnosis.model.DiagnosisTriggerType;
 import com.rayworld.firesafety.diagnosis.model.Verdict;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -44,7 +45,7 @@ class AiDiagnosisResultSaveServiceTest {
         }).when(aiDiagnosisResultMapper).insertAiDiagnosisResult(org.mockito.Mockito.any());
 
         // when
-        aiDiagnosisResultSaveService.save(10L, 20L, 30L, Verdict.ARC, 0.91, 60, null);
+        aiDiagnosisResultSaveService.save(10L, 20L, 30L, Verdict.ARC, 0.91, 60, null, DiagnosisTriggerType.MANUAL);
 
         // then
         ArgumentCaptor<AiDiagnosisResult> resultCaptor = ArgumentCaptor.forClass(AiDiagnosisResult.class);
@@ -58,13 +59,17 @@ class AiDiagnosisResultSaveServiceTest {
         assertThat(result.getConfidence()).isEqualTo(0.91f);
         assertThat(result.getNSamples()).isEqualTo(60);
         assertThat(result.getWarning()).isNull();
+        assertThat(result.getTriggerType()).isEqualTo(DiagnosisTriggerType.MANUAL);
     }
 
     @Test
     @DisplayName("FR-02-01: AI NORMAL 결과는 저장만 하고 경보를 만들지 않는다")
     void saveNormalResultWithoutAlert() {
         // when
-        aiDiagnosisResultSaveService.save(10L, 20L, 30L, Verdict.NORMAL, null, 45, "샘플 45개 — 60개 이상 권장 (정확도 저하 가능)");
+        aiDiagnosisResultSaveService.save(
+                10L, 20L, 30L, Verdict.NORMAL, null, 45,
+                "샘플 45개 — 60개 이상 권장 (정확도 저하 가능)", DiagnosisTriggerType.AUTO
+        );
 
         // then
         ArgumentCaptor<AiDiagnosisResult> resultCaptor = ArgumentCaptor.forClass(AiDiagnosisResult.class);
@@ -76,5 +81,6 @@ class AiDiagnosisResultSaveServiceTest {
         assertThat(result.getConfidence()).isNull();
         assertThat(result.getNSamples()).isEqualTo(45);
         assertThat(result.getWarning()).isEqualTo("샘플 45개 — 60개 이상 권장 (정확도 저하 가능)");
+        assertThat(result.getTriggerType()).isEqualTo(DiagnosisTriggerType.AUTO);
     }
 }

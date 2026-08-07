@@ -3,6 +3,7 @@ package com.rayworld.firesafety.diagnosis.service;
 import com.rayworld.firesafety.alert.service.AiAlertService;
 import com.rayworld.firesafety.diagnosis.mapper.AiDiagnosisResultMapper;
 import com.rayworld.firesafety.diagnosis.model.AiDiagnosisResult;
+import com.rayworld.firesafety.diagnosis.model.DiagnosisTriggerType;
 import com.rayworld.firesafety.diagnosis.model.Verdict;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,7 +20,7 @@ public class AiDiagnosisResultSaveService {
     // nSamples/warning은 AI 서버가 이번 판정에 실제 사용한 샘플 수·경고(예: 샘플 부족)다 - 이전엔 받아놓고 버렸음
     @Transactional
     public void save(Long panelId, Long circuitId, Long frameId, Verdict verdict, Double confidence,
-                      Integer nSamples, String warning) {
+                      Integer nSamples, String warning, DiagnosisTriggerType triggerType) {
         AiDiagnosisResult diagnosisResult = new AiDiagnosisResult();
         diagnosisResult.setCircuitId(circuitId);
         diagnosisResult.setFrameId(frameId);
@@ -27,6 +28,7 @@ public class AiDiagnosisResultSaveService {
         diagnosisResult.setConfidence(toFloat(confidence));
         diagnosisResult.setNSamples(nSamples);
         diagnosisResult.setWarning(warning);
+        diagnosisResult.setTriggerType(triggerType == null ? DiagnosisTriggerType.UNKNOWN : triggerType);
 
         aiDiagnosisResultMapper.insertAiDiagnosisResult(diagnosisResult);
 

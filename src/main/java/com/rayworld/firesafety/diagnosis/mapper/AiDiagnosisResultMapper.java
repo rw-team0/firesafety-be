@@ -2,12 +2,15 @@ package com.rayworld.firesafety.diagnosis.mapper;
 
 import com.rayworld.firesafety.diagnosis.dto.req.AiPredictionSampleReq;
 import com.rayworld.firesafety.diagnosis.dto.res.DiagnosisResultRes;
+import com.rayworld.firesafety.diagnosis.dto.res.PanelDiagnosisRecentRes;
+import com.rayworld.firesafety.diagnosis.dto.res.PanelDiagnosisSampleStatusRes;
 import com.rayworld.firesafety.diagnosis.model.AiDiagnosisResult;
 import com.rayworld.firesafety.diagnosis.model.AiPredictionCircuitTarget;
 import com.rayworld.firesafety.diagnosis.model.AiPredictionPanelTarget;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 // AI 판정 결과 저장/조회용
@@ -38,4 +41,23 @@ public interface AiDiagnosisResultMapper {
 
     // 회로별 AI 판정 이력 개수 조회
     long countDiagnosisResults(@Param("circuitId") Long circuitId);
+
+    // 분전반 AI 진단 현황 요약용 집계
+    LocalDateTime findLatestDiagnosedAtByPanelId(@Param("panelId") Long panelId);
+
+    long countActiveCircuitsByPanelId(@Param("panelId") Long panelId);
+
+    long countDiagnosedCircuitsByPanelId(@Param("panelId") Long panelId);
+
+    long countPanelDiagnosesSince(@Param("panelId") Long panelId,
+                                  @Param("fromAt") LocalDateTime fromAt,
+                                  @Param("verdict") String verdict);
+
+    List<PanelDiagnosisRecentRes> findRecentPanelDiagnosisResults(@Param("panelId") Long panelId,
+                                                                  @Param("fromAt") LocalDateTime fromAt,
+                                                                  @Param("verdict") String verdict,
+                                                                  @Param("limit") int limit);
+
+    List<PanelDiagnosisSampleStatusRes> findSampleInsufficientCircuits(@Param("panelId") Long panelId,
+                                                                       @Param("minSampleSize") int minSampleSize);
 }

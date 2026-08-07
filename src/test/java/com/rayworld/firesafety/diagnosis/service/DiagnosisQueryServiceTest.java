@@ -5,11 +5,15 @@ import com.rayworld.firesafety.common.exception.BusinessException;
 import com.rayworld.firesafety.common.exception.CommonErrorCode;
 import com.rayworld.firesafety.common.security.JwtUser;
 import com.rayworld.firesafety.common.security.UserPrincipal;
+import com.rayworld.firesafety.diagnosis.config.AiPredictionProperties;
 import com.rayworld.firesafety.diagnosis.dto.req.DiagnosisResultListReq;
-import com.rayworld.firesafety.diagnosis.dto.res.AiModelInfoRes;
 import com.rayworld.firesafety.diagnosis.dto.res.DiagnosisResultPageRes;
 import com.rayworld.firesafety.diagnosis.dto.res.DiagnosisResultRes;
+import com.rayworld.firesafety.diagnosis.dto.res.PanelDiagnosisRecentRes;
+import com.rayworld.firesafety.diagnosis.dto.res.PanelDiagnosisSummaryRes;
 import com.rayworld.firesafety.diagnosis.mapper.AiDiagnosisResultMapper;
+import com.rayworld.firesafety.diagnosis.model.DiagnosisTriggerType;
+import com.rayworld.firesafety.diagnosis.model.Verdict;
 import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
 import com.rayworld.firesafety.facility.mapper.CircuitMapper;
 import com.rayworld.firesafety.facility.mapper.PanelMapper;
@@ -27,10 +31,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -57,12 +64,15 @@ class DiagnosisQueryServiceTest {
 
     @BeforeEach
     void setUp() {
+        AiPredictionProperties aiPredictionProperties = new AiPredictionProperties();
+        aiPredictionProperties.setMinSampleSize(30);
         diagnosisQueryService = new DiagnosisQueryService(
                 aiDiagnosisResultMapper,
                 circuitMapper,
                 panelMapper,
                 siteMapper,
-                aiPredictionService
+                aiPredictionService,
+                aiPredictionProperties
         );
     }
 
@@ -237,19 +247,38 @@ class DiagnosisQueryServiceTest {
     }
 
     @Test
-    @DisplayName("AI 모델 메타정보 조회는 회로/현장 접근 검증 없이 위임만 한다")
-    void getModelInfoDelegatesToAiPredictionService() {
+    @DisplayName("분전반 AI 진단 현황은 권한 확인 후 최근 판정과 샘플 부족 회로를 반환한다")
+    void getPanelDiagnosisSummary() {
         // given
-        AiModelInfoRes modelInfo = new AiModelInfoRes();
-        modelInfo.setSklearnVersion("1.9.0");
-        when(aiPredictionService.getModelInfo()).thenReturn(modelInfo);
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        when(panelMapper.findActivePanelById(10L)).thenReturn(panel());
+        when(siteMapper.findActiveSiteById(3L)).thenReturn(site());
+
+        PanelDiagnosisRecentRes normalResult = panelDiagnosisRecent(Verdict.NORMAL, 0.1f);
+        PanelDiagnosisRecentRes arcResult = panelDiagnosisRecent(Verdict.ARC, 0.91f);
+        when(aiDiagnosisResultMapper.findRecentPanelDiagnosisResults(eq(10L), any(LocalDateTime.class), eq(null), eq(200)))
+                .thenReturn(List.of(normalResult));
+        when(aiDiagnosisResultMapper.findRecentPanelDiagnosisResults(eq(10L), any(LocalDateTime.class), eq(Verdict.ARC.name()), eq(200)))
+                .thenReturn(List.of(arcResult));
+        when(aiDiagnosisResultMapper.findLatestDiagnosedAtByPanelId(10L)).thenReturn(LocalDateTime.of(2026, 8, 7, 10, 0));
+        when(aiDiagnosisResultMapper.countActiveCircuitsByPanelId(10L)).thenReturn(10L);
+        when(aiDiagnosisResultMapper.countDiagnosedCircuitsByPanelId(10L)).thenReturn(8L);
+        when(aiDiagnosisResultMapper.countPanelDiagnosesSince(eq(10L), any(LocalDateTime.class), eq(null))).thenReturn(12L);
+        when(aiDiagnosisResultMapper.countPanelDiagnosesSince(eq(10L), any(LocalDateTime.class), eq(Verdict.NORMAL.name()))).thenReturn(10L);
+        when(aiDiagnosisResultMapper.countPanelDiagnosesSince(eq(10L), any(LocalDateTime.class), eq(Verdict.ARC.name()))).thenReturn(2L);
+        when(aiDiagnosisResultMapper.findSampleInsufficientCircuits(10L, 30)).thenReturn(List.of());
 
         // when
-        AiModelInfoRes result = diagnosisQueryService.getModelInfo();
+        PanelDiagnosisSummaryRes result = diagnosisQueryService.getPanelDiagnosisSummary(10L);
 
         // then
-        assertThat(result.getSklearnVersion()).isEqualTo("1.9.0");
-        verify(aiPredictionService).getModelInfo();
+        assertThat(result.getTotalCircuitCount()).isEqualTo(10L);
+        assertThat(result.getDiagnosedCircuitCount()).isEqualTo(8L);
+        assertThat(result.getLast24hTotalCount()).isEqualTo(12L);
+        assertThat(result.getLast24hNormalCount()).isEqualTo(10L);
+        assertThat(result.getLast24hArcCount()).isEqualTo(2L);
+        assertThat(result.getRecentResults().get(0).getConfidence()).isEqualTo(0.9f);
+        assertThat(result.getRecentArcResults().get(0).getTriggerType()).isEqualTo(DiagnosisTriggerType.AUTO);
     }
 
     private void loginAs(Long userId, UserRole role) {
@@ -284,6 +313,17 @@ class DiagnosisQueryServiceTest {
         DiagnosisResultRes res = new DiagnosisResultRes();
         res.setResultId(100L);
         res.setCircuitId(20L);
+        return res;
+    }
+
+    private PanelDiagnosisRecentRes panelDiagnosisRecent(Verdict verdict, Float confidence) {
+        PanelDiagnosisRecentRes res = new PanelDiagnosisRecentRes();
+        res.setResultId(200L);
+        res.setCircuitId(20L);
+        res.setChannelNo(1);
+        res.setVerdict(verdict);
+        res.setConfidence(confidence);
+        res.setTriggerType(DiagnosisTriggerType.AUTO);
         return res;
     }
 }

@@ -1,21 +1,19 @@
-package com.rayworld.firesafety.diagnosis.model;
+package com.rayworld.firesafety.diagnosis.dto.res;
 
-import lombok.AllArgsConstructor;
+import com.rayworld.firesafety.diagnosis.model.DiagnosisTriggerType;
+import com.rayworld.firesafety.diagnosis.model.Verdict;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-public class AiDiagnosisResult {
+public class PanelDiagnosisRecentRes {
 
     private Long resultId;
     private Long circuitId;
-    private Long frameId;
+    private Integer channelNo;
     private Verdict verdict;
     private Float confidence;
     private Integer nSamples;

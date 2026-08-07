@@ -3,7 +3,6 @@ package com.rayworld.firesafety.diagnosis.controller;
 import com.rayworld.firesafety.common.response.ResultResponse;
 import com.rayworld.firesafety.config.swagger.OpenApiConfig;
 import com.rayworld.firesafety.diagnosis.dto.req.DiagnosisResultListReq;
-import com.rayworld.firesafety.diagnosis.dto.res.AiModelInfoRes;
 import com.rayworld.firesafety.diagnosis.dto.res.AiPredictionTriggerRes;
 import com.rayworld.firesafety.diagnosis.dto.res.DiagnosisResultPageRes;
 import com.rayworld.firesafety.diagnosis.service.DiagnosisQueryService;
@@ -46,12 +45,4 @@ public class DiagnosisController {
         return ResultResponse.success("AI 진단 요청 성공", new AiPredictionTriggerRes(true));
     }
 
-    // AI 모델 메타정보 조회 (GET /api/circuits/model-info) - AI 서버 GET /model-info 프록시, 프론트는 AI 서버 직접 호출 안 함
-    // 회로별 라우트({circuitId}/diagnosis)와 세그먼트 형태가 달라 경로 충돌 없음
-    @Operation(summary = "AI 모델 메타정보 조회", description = "AI 서버의 모델 메타정보(버전, LOLO 평가 지표 등)를 그대로 프록시해서 반환한다.")
-    @GetMapping("/model-info")
-    public ResultResponse<AiModelInfoRes> getModelInfo() {
-        AiModelInfoRes modelInfo = diagnosisQueryService.getModelInfo();
-        return ResultResponse.success("AI 모델 메타정보 조회 성공", modelInfo);
-    }
 }

@@ -5,13 +5,13 @@ import com.rayworld.firesafety.diagnosis.config.AiPredictionProperties;
 import com.rayworld.firesafety.diagnosis.dto.req.AiPredictionCircuitReq;
 import com.rayworld.firesafety.diagnosis.dto.req.AiPredictionReq;
 import com.rayworld.firesafety.diagnosis.dto.req.AiPredictionSampleReq;
-import com.rayworld.firesafety.diagnosis.dto.res.AiModelInfoRes;
 import com.rayworld.firesafety.diagnosis.dto.res.AiPredictionRes;
 import com.rayworld.firesafety.diagnosis.dto.res.AiPredictionResultRes;
 import com.rayworld.firesafety.diagnosis.exception.DiagnosisErrorCode;
 import com.rayworld.firesafety.diagnosis.mapper.AiDiagnosisResultMapper;
 import com.rayworld.firesafety.diagnosis.model.AiPredictionCircuitTarget;
 import com.rayworld.firesafety.diagnosis.model.AiPredictionPanelTarget;
+import com.rayworld.firesafety.diagnosis.model.DiagnosisTriggerType;
 import com.rayworld.firesafety.diagnosis.model.Verdict;
 import com.rayworld.firesafety.facility.model.Circuit;
 import com.rayworld.firesafety.facility.model.Panel;
@@ -62,7 +62,7 @@ public class AiPredictionService {
         AiPredictionReq request = buildRequest(panel.getMNo(), circuits);
         AiPredictionRes response = aiPredictionClient.predict(request);
 
-        int savedCount = saveResponse(panel.getPanelId(), circuits, response);
+        int savedCount = saveResponse(panel.getPanelId(), circuits, response, DiagnosisTriggerType.AUTO);
         if (savedCount > 0) {
             panelStatusAggregationService.aggregatePanelStatus(panel.getPanelId());
         }
@@ -97,18 +97,10 @@ public class AiPredictionService {
         AiPredictionReq request = new AiPredictionReq(panel.getMNo(), List.of(circuitRequest));
         AiPredictionRes response = aiPredictionClient.predict(request);
 
-        int savedCount = saveResponse(panel.getPanelId(), List.of(target), response);
+        int savedCount = saveResponse(panel.getPanelId(), List.of(target), response, DiagnosisTriggerType.MANUAL);
         if (savedCount > 0) {
             panelStatusAggregationService.aggregatePanelStatus(panel.getPanelId());
         }
-    }
-
-    // AI 서버 모델 메타정보(성능 지표) 조회 - 회로/현장 스코프 없는 전역 정보라 predictCircuit과 달리 권한 검증은 상위(Controller)에서 로그인 여부만 확인
-    public AiModelInfoRes getModelInfo() {
-        if (!aiPredictionProperties.isReady()) {
-            throw new BusinessException(DiagnosisErrorCode.AI_PREDICTION_UNAVAILABLE);
-        }
-        return aiPredictionClient.getModelInfo();
     }
 
     // AI 요청 DTO 생성
@@ -129,7 +121,8 @@ public class AiPredictionService {
     }
 
     // AI 응답을 회로별 진단결과로 저장
-    private int saveResponse(Long panelId, List<AiPredictionCircuitTarget> circuits, AiPredictionRes response) {
+    private int saveResponse(Long panelId, List<AiPredictionCircuitTarget> circuits, AiPredictionRes response,
+                             DiagnosisTriggerType triggerType) {
         if (response == null || response.getResults() == null || response.getResults().isEmpty()) {
             return 0;
         }
@@ -152,7 +145,8 @@ public class AiPredictionService {
                     verdict,
                     result.getProba(),
                     result.getNSamples(),
-                    result.getWarning()
+                    result.getWarning(),
+                    triggerType
             );
             savedCount++;
         }

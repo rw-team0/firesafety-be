@@ -2,6 +2,7 @@ package com.rayworld.firesafety.diagnosis.service;
 
 import com.rayworld.firesafety.diagnosis.mapper.AiDiagnosisResultMapper;
 import com.rayworld.firesafety.diagnosis.model.AiPredictionCircuitTarget;
+import com.rayworld.firesafety.diagnosis.model.DiagnosisTriggerType;
 import com.rayworld.firesafety.diagnosis.model.Verdict;
 import com.rayworld.firesafety.facility.mapper.PanelMapper;
 import com.rayworld.firesafety.facility.model.Panel;
@@ -66,7 +67,7 @@ public class MockAiPredictionScheduler {
         try {
             aiDiagnosisResultSaveService.save(
                     panel.getPanelId(), circuit.getCircuitId(), circuit.getLatestFrameId(), Verdict.ARC, confidence,
-                    null, null
+                    null, null, DiagnosisTriggerType.MOCK
             );
         } catch (RuntimeException e) {
             log.warn("Mock AI 판정 저장 실패 - panelId={}, circuitId={}, message={}",

@@ -4,10 +4,12 @@ import com.rayworld.firesafety.auth.model.UserRole;
 import com.rayworld.firesafety.common.exception.BusinessException;
 import com.rayworld.firesafety.common.exception.CommonErrorCode;
 import com.rayworld.firesafety.common.security.UserPrincipal;
+import com.rayworld.firesafety.diagnosis.config.AiPredictionProperties;
 import com.rayworld.firesafety.diagnosis.dto.req.DiagnosisResultListReq;
-import com.rayworld.firesafety.diagnosis.dto.res.AiModelInfoRes;
 import com.rayworld.firesafety.diagnosis.dto.res.DiagnosisResultPageRes;
 import com.rayworld.firesafety.diagnosis.dto.res.DiagnosisResultRes;
+import com.rayworld.firesafety.diagnosis.dto.res.PanelDiagnosisRecentRes;
+import com.rayworld.firesafety.diagnosis.dto.res.PanelDiagnosisSummaryRes;
 import com.rayworld.firesafety.diagnosis.mapper.AiDiagnosisResultMapper;
 import com.rayworld.firesafety.diagnosis.model.Verdict;
 import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
@@ -23,6 +25,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -32,12 +35,15 @@ public class DiagnosisQueryService {
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
     private static final int MAX_SIZE = 100;
+    private static final int RECENT_24H_RESULT_LIMIT = 200;
+    private static final int RECENT_24H_ARC_LIMIT = 200;
 
     private final AiDiagnosisResultMapper aiDiagnosisResultMapper;
     private final CircuitMapper circuitMapper;
     private final PanelMapper panelMapper;
     private final SiteMapper siteMapper;
     private final AiPredictionService aiPredictionService;
+    private final AiPredictionProperties aiPredictionProperties;
 
     // 회로 진단결과 조회
     // 1. 현재 사용자 확인 → 2. 회로/상위 설비 확인 → 3. 현장 접근 권한 확인 → 4. AI 판정 이력 조회
@@ -84,9 +90,41 @@ public class DiagnosisQueryService {
         aiPredictionService.predictCircuit(panel, circuit);
     }
 
-    // AI 모델 메타정보 조회 위임 - 회로/현장에 매인 정보가 아니라 별도 접근 검증 없이 로그인 사용자면 조회 가능
-    public AiModelInfoRes getModelInfo() {
-        return aiPredictionService.getModelInfo();
+    // 분전반 단위 AI 진단 현황 조회
+    @Transactional(readOnly = true)
+    public PanelDiagnosisSummaryRes getPanelDiagnosisSummary(Long panelId) {
+        UserPrincipal actor = getCurrentUser();
+        Panel panel = findActivePanel(panelId);
+        validateSiteAccess(actor, panel.getSiteId());
+
+        LocalDateTime fromAt = LocalDateTime.now().minusHours(24);
+        List<PanelDiagnosisRecentRes> recentResults =
+                aiDiagnosisResultMapper.findRecentPanelDiagnosisResults(panelId, fromAt, null, RECENT_24H_RESULT_LIMIT);
+        List<PanelDiagnosisRecentRes> recentArcResults =
+                aiDiagnosisResultMapper.findRecentPanelDiagnosisResults(panelId, fromAt, Verdict.ARC.name(), RECENT_24H_ARC_LIMIT);
+        recentResults.forEach(this::applyVerdictConfidence);
+        recentArcResults.forEach(this::applyVerdictConfidence);
+
+        return new PanelDiagnosisSummaryRes(
+                aiDiagnosisResultMapper.findLatestDiagnosedAtByPanelId(panelId),
+                aiDiagnosisResultMapper.countActiveCircuitsByPanelId(panelId),
+                aiDiagnosisResultMapper.countDiagnosedCircuitsByPanelId(panelId),
+                aiDiagnosisResultMapper.countPanelDiagnosesSince(panelId, fromAt, null),
+                aiDiagnosisResultMapper.countPanelDiagnosesSince(panelId, fromAt, Verdict.NORMAL.name()),
+                aiDiagnosisResultMapper.countPanelDiagnosesSince(panelId, fromAt, Verdict.ARC.name()),
+                recentResults,
+                recentArcResults,
+                aiDiagnosisResultMapper.findSampleInsufficientCircuits(panelId, aiPredictionProperties.getMinSampleSize())
+        );
+    }
+
+    private void applyVerdictConfidence(PanelDiagnosisRecentRes result) {
+        if (result.getConfidence() == null) {
+            return;
+        }
+        if (result.getVerdict() == Verdict.NORMAL) {
+            result.setConfidence(1f - result.getConfidence());
+        }
     }
 
     // null 요청도 기본 목록 조회로 처리
@@ -131,6 +169,9 @@ public class DiagnosisQueryService {
 
     // 활성 분전반 조회
     private Panel findActivePanel(Long panelId) {
+        if (panelId == null) {
+            throw new BusinessException(CommonErrorCode.MISSING_ID);
+        }
         Panel panel = panelMapper.findActivePanelById(panelId);
         if (panel == null) {
             throw new BusinessException(FacilityErrorCode.PANEL_NOT_FOUND);

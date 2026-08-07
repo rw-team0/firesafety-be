@@ -10,6 +10,7 @@ import com.rayworld.firesafety.diagnosis.exception.DiagnosisErrorCode;
 import com.rayworld.firesafety.diagnosis.mapper.AiDiagnosisResultMapper;
 import com.rayworld.firesafety.diagnosis.model.AiPredictionCircuitTarget;
 import com.rayworld.firesafety.diagnosis.model.AiPredictionPanelTarget;
+import com.rayworld.firesafety.diagnosis.model.DiagnosisTriggerType;
 import com.rayworld.firesafety.diagnosis.model.Verdict;
 import com.rayworld.firesafety.facility.model.Circuit;
 import com.rayworld.firesafety.facility.model.Panel;
@@ -93,7 +94,7 @@ class AiPredictionServiceTest {
         assertThat(request.getCircuits().get(0).getCircuit()).isEqualTo(1);
         assertThat(request.getCircuits().get(0).getSamples()).hasSize(1);
 
-        verify(aiDiagnosisResultSaveService).save(10L, 20L, 30L, Verdict.ARC, 0.87, 60, null);
+        verify(aiDiagnosisResultSaveService).save(10L, 20L, 30L, Verdict.ARC, 0.87, 60, null, DiagnosisTriggerType.AUTO);
         verify(panelStatusAggregationService).aggregatePanelStatus(10L);
     }
 
@@ -136,7 +137,7 @@ class AiPredictionServiceTest {
         aiPredictionService.predictCircuit(panel(), circuit());
 
         // then
-        verify(aiDiagnosisResultSaveService).save(10L, 20L, 500L, Verdict.ARC, 0.87, 60, null);
+        verify(aiDiagnosisResultSaveService).save(10L, 20L, 500L, Verdict.ARC, 0.87, 60, null, DiagnosisTriggerType.MANUAL);
         verify(panelStatusAggregationService).aggregatePanelStatus(10L);
     }
 

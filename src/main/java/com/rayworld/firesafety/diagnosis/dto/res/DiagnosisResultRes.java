@@ -1,6 +1,7 @@
 package com.rayworld.firesafety.diagnosis.dto.res;
 
 import com.rayworld.firesafety.diagnosis.model.Verdict;
+import com.rayworld.firesafety.diagnosis.model.DiagnosisTriggerType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
@@ -34,6 +35,9 @@ public class DiagnosisResultRes {
 
     @Schema(description = "AI 서버 경고 메시지(예: 샘플 부족). 없으면 null", example = "샘플 45개 — 60개 이상 권장 (정확도 저하 가능)")
     private String warning;
+
+    @Schema(description = "진단 실행 방식. AUTO=자동 스케줄러, MANUAL=수동 실행, MOCK=데모, UNKNOWN=기존 데이터", example = "AUTO")
+    private DiagnosisTriggerType triggerType;
 
     @Schema(description = "AI 진단 저장 시각", example = "2026-07-23T14:35:00")
     private LocalDateTime diagnosedAt;
