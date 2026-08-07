@@ -21,6 +21,12 @@ public class StatisticsAlertRes {
     private List<StatisticsCountRes> sourceCounts;
     @Schema(description = "일자별 경보 발생 수 목록")
     private List<DailyAlertCountRes> dailyCounts;
-    @Schema(description = "일자별 예방조치 이행률(조치완료 비율) 추이 — 화면 목표선은 90%")
+    @Schema(description = "조회 기간 내 주의(CAUTION) 알림 발생 수", example = "12")
+    private long cautionAlertCount;
+    @Schema(description = "조회 기간 내 주의(CAUTION) 알림 조치완료 수", example = "9")
+    private long cautionResolvedCount;
+    @Schema(description = "조치완료 후 24시간 안에 같은 분전반·유형이 위험(RISK)으로 전환된 수(예방 실패)", example = "1")
+    private long cautionEscalatedCount;
+    @Schema(description = "일자별 예방조치 이행률 추이 — 화면 목표선은 90%")
     private List<DailyResolutionRateRes> dailyResolutionRates;
 }

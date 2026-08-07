@@ -17,6 +17,7 @@
         <result property="date" column="stat_date"/>
         <result property="totalCount" column="total_count"/>
         <result property="resolvedCount" column="resolved_count"/>
+        <result property="preventedCount" column="prevented_count"/>
     </resultMap>
 
     <resultMap id="circuitCountRowResultMap" type="com.rayworld.firesafety.statistics.dto.res.CircuitCountRow">
@@ -39,6 +40,33 @@
 
     <sql id="alertStatisticsFilter">
         <where>
+            <if test="siteId != null">
+                AND p.site_id = #{siteId}
+            </if>
+            <if test="fromAt != null">
+                AND a.triggered_at &gt;= #{fromAt}
+            </if>
+            <if test="toAt != null">
+                AND a.triggered_at &lt; #{toAt}
+            </if>
+            <if test="!superAdmin">
+                AND EXISTS (
+                    SELECT 1
+                    FROM user_site us
+                    WHERE us.user_id = #{userId}
+                      AND us.site_id = p.site_id
+                      AND us.deleted_at IS NULL
+                )
+            </if>
+        </where>
+    </sql>
+
+    <!-- alertStatisticsFilter와 동일하되 주의(CAUTION) 알림만 스코프 — 예방조치 이행률 집계 전용.
+         countAlerts 등 다른 메서드는 severity 파라미터를 안 받으므로 공용 필터에 severity 분기를 넣으면
+         MyBatis ParamMap이 "Parameter 'severity' not found"로 터진다(실제로 겪음) — 그래서 별도 fragment로 분리한다. -->
+    <sql id="cautionAlertStatisticsFilter">
+        <where>
+            AND a.severity = 'CAUTION'
             <if test="siteId != null">
                 AND p.site_id = #{siteId}
             </if>
@@ -173,15 +201,30 @@
         ORDER BY stat_date ASC
     </select>
 
-    <!-- 일자별 경보 발생/조치완료 개수 조회 (예방조치 이행률 추이용) -->
+    <!-- 일자별 주의(CAUTION) 알림 발생/조치완료/예방성공 개수 조회 (예방조치 이행률 추이용)
+         예방 성공 = 조치완료(RESOLVED) 되었고, 조치완료 시각 이후 24시간 안에 같은 분전반·같은 유형의 RISK 경보가 새로 발생하지 않은 경우.
+         위험 전환(예방 실패) 건수는 서비스에서 resolved_count - prevented_count로 계산한다. -->
     <select id="countDailyAlertResolutions" resultMap="dailyResolutionRowResultMap">
         SELECT
             DATE(a.triggered_at) AS stat_date,
             COUNT(*) AS total_count,
-            SUM(CASE WHEN a.status = 'RESOLVED' THEN 1 ELSE 0 END) AS resolved_count
+            SUM(CASE WHEN a.status = 'RESOLVED' THEN 1 ELSE 0 END) AS resolved_count,
+            SUM(
+                CASE WHEN a.status = 'RESOLVED'
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM alert risk_alert
+                        WHERE risk_alert.panel_id = a.panel_id
+                          AND risk_alert.type = a.type
+                          AND risk_alert.severity = 'RISK'
+                          AND risk_alert.triggered_at &gt; a.resolved_at
+                          AND risk_alert.triggered_at &lt;= DATE_ADD(a.resolved_at, INTERVAL 24 HOUR)
+                    )
+                THEN 1 ELSE 0 END
+            ) AS prevented_count
         FROM alert a
         LEFT JOIN panel p ON p.panel_id = a.panel_id
-        <include refid="alertStatisticsFilter"/>
+        <include refid="cautionAlertStatisticsFilter"/>
         GROUP BY DATE(a.triggered_at)
         ORDER BY stat_date ASC
     </select>

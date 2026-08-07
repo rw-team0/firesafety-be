@@ -140,7 +140,7 @@ class StatisticsServiceTest {
     }
 
     @Test
-    @DisplayName("API-024: 일자별 예방조치 이행률은 발생 건수 대비 조치완료 비율(%)로 계산되고, 발생 건수 0인 날은 null이다")
+    @DisplayName("API-024: 일자별 예방조치 이행률은 주의 알림 발생 건수 대비 예방성공(조치완료+위험미전환) 비율(%)로 계산되고, 발생 건수 0인 날은 null이다")
     void dailyResolutionRateCalculated() {
         // given
         loginAs(1L, UserRole.SUPER_ADMIN);
@@ -149,8 +149,8 @@ class StatisticsServiceTest {
         LocalDateTime toAt = null;
         when(statisticsMapper.countDailyAlertResolutions(1L, true, null, fromAt, toAt))
                 .thenReturn(List.of(
-                        resolutionRow(LocalDate.of(2026, 7, 23), 5, 4),
-                        resolutionRow(LocalDate.of(2026, 7, 24), 0, 0)
+                        resolutionRow(LocalDate.of(2026, 7, 23), 5, 4, 4),
+                        resolutionRow(LocalDate.of(2026, 7, 24), 0, 0, 0)
                 ));
         when(statisticsMapper.countCircuitStats(1L, true, null, fromAt, toAt)).thenReturn(circuitCountRow(0, 0));
         when(statisticsMapper.countInspectionStats(1L, true, null, fromAt, toAt)).thenReturn(inspectionCountRow(0, 0, 0));
@@ -163,13 +163,43 @@ class StatisticsServiceTest {
         List<com.rayworld.firesafety.statistics.dto.res.DailyResolutionRateRes> rates = result.getAlerts().getDailyResolutionRates();
         assertThat(rates.get(0).getRate()).isEqualTo(80.0);
         assertThat(rates.get(1).getRate()).isNull();
+        assertThat(result.getAlerts().getCautionAlertCount()).isEqualTo(5L);
+        assertThat(result.getAlerts().getCautionResolvedCount()).isEqualTo(4L);
+        assertThat(result.getAlerts().getCautionEscalatedCount()).isZero();
     }
 
-    private DailyResolutionRow resolutionRow(LocalDate date, long totalCount, long resolvedCount) {
+    @Test
+    @DisplayName("API-024: 조치완료 후 24시간 내 위험 전환된 건수는 위험 전환 건수로 집계되고 예방성공에서 제외된다")
+    void escalatedCautionExcludedFromPreventionRate() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        StatisticsReq req = new StatisticsReq();
+        LocalDateTime fromAt = null;
+        LocalDateTime toAt = null;
+        // 발생 5건, 조치완료 4건, 그중 1건은 조치완료 후 24시간 내 위험 전환 → 예방성공은 3건
+        when(statisticsMapper.countDailyAlertResolutions(1L, true, null, fromAt, toAt))
+                .thenReturn(List.of(resolutionRow(LocalDate.of(2026, 7, 23), 5, 4, 3)));
+        when(statisticsMapper.countCircuitStats(1L, true, null, fromAt, toAt)).thenReturn(circuitCountRow(0, 0));
+        when(statisticsMapper.countInspectionStats(1L, true, null, fromAt, toAt)).thenReturn(inspectionCountRow(0, 0, 0));
+        when(statisticsMapper.findRecentInspections(1L, true, null, fromAt, toAt, 5)).thenReturn(List.of());
+
+        // when
+        StatisticsSummaryRes result = statisticsService.getStatistics(req);
+
+        // then
+        List<com.rayworld.firesafety.statistics.dto.res.DailyResolutionRateRes> rates = result.getAlerts().getDailyResolutionRates();
+        assertThat(rates.get(0).getRate()).isEqualTo(60.0);
+        assertThat(result.getAlerts().getCautionAlertCount()).isEqualTo(5L);
+        assertThat(result.getAlerts().getCautionResolvedCount()).isEqualTo(4L);
+        assertThat(result.getAlerts().getCautionEscalatedCount()).isEqualTo(1L);
+    }
+
+    private DailyResolutionRow resolutionRow(LocalDate date, long totalCount, long resolvedCount, long preventedCount) {
         DailyResolutionRow row = new DailyResolutionRow();
         row.setDate(date);
         row.setTotalCount(totalCount);
         row.setResolvedCount(resolvedCount);
+        row.setPreventedCount(preventedCount);
         return row;
     }
 

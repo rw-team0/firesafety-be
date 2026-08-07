@@ -8,15 +8,15 @@ import java.time.LocalDate;
 
 @Getter
 @AllArgsConstructor
-@Schema(description = "일자별 예방조치(경보 조치완료) 이행률")
+@Schema(description = "일자별 예방조치 이행률 — 그날 발생한 주의(CAUTION) 알림 중 위험 전환 없이 예방 성공한 비율")
 public class DailyResolutionRateRes {
 
     @Schema(description = "날짜", example = "2026-07-23")
     private LocalDate date;
-    @Schema(description = "해당 날짜 발생 경보 수", example = "5")
+    @Schema(description = "해당 날짜 발생 주의(CAUTION) 알림 수", example = "5")
     private long totalCount;
-    @Schema(description = "그중 조치완료(RESOLVED) 수", example = "4")
-    private long resolvedCount;
-    @Schema(description = "조치완료 비율(0~100, 소수점 첫째자리 반올림). 발생 건수가 0이면 null", example = "80.0")
+    @Schema(description = "그중 예방 성공(조치완료 + 24시간 내 위험 미전환) 수", example = "4")
+    private long preventedCount;
+    @Schema(description = "예방조치 이행률(0~100, 소수점 첫째자리 반올림). 발생 건수가 0이면 null", example = "80.0")
     private Double rate;
 }

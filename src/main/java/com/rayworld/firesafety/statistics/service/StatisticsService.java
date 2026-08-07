@@ -34,6 +34,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
 
 @Service
@@ -75,26 +76,39 @@ public class StatisticsService {
                                                   Long siteId,
                                                   LocalDateTime fromAt,
                                                   LocalDateTime toAt) {
+        // 예방조치 이행률 추이는 주의(CAUTION) 알림만 대상 — 일자별 집계 1건으로 추이(dailyResolutionRates)와
+        // 상단 지표(주의 알림 발생/조치완료/위험 전환 건수)를 함께 만든다(N+1 방지, 백엔드가 미리 계산).
+        List<DailyResolutionRow> cautionRows = statisticsMapper.countDailyAlertResolutions(
+                actor.getUserId(), superAdmin, siteId, fromAt, toAt);
+
         return new StatisticsAlertRes(
                 statisticsMapper.countAlerts(actor.getUserId(), superAdmin, siteId, fromAt, toAt),
                 toAlertStatusCounts(statisticsMapper.countAlertsByStatus(actor.getUserId(), superAdmin, siteId, fromAt, toAt)),
                 toAlertTypeCounts(statisticsMapper.countAlertsByType(actor.getUserId(), superAdmin, siteId, fromAt, toAt)),
                 toAlertSourceCounts(statisticsMapper.countAlertsBySource(actor.getUserId(), superAdmin, siteId, fromAt, toAt)),
                 statisticsMapper.countDailyAlerts(actor.getUserId(), superAdmin, siteId, fromAt, toAt),
-                toDailyResolutionRates(statisticsMapper.countDailyAlertResolutions(actor.getUserId(), superAdmin, siteId, fromAt, toAt))
+                sumCount(cautionRows, DailyResolutionRow::getTotalCount),
+                sumCount(cautionRows, DailyResolutionRow::getResolvedCount),
+                sumCount(cautionRows, row -> row.getResolvedCount() - row.getPreventedCount()),
+                toDailyResolutionRates(cautionRows)
         );
     }
 
-    // 일자별 조치완료 비율 계산 — 발생 건수가 0인 날은 비율을 null로 내려 "0%"와 "데이터 없음"을 구분한다
+    // 일자별 행 목록에서 특정 값을 합산 — 상단 지표는 일자별 집계를 다시 조회하지 않고 그대로 합산해서 구한다
+    private long sumCount(List<DailyResolutionRow> rows, ToLongFunction<DailyResolutionRow> extractor) {
+        return rows.stream().mapToLong(extractor).sum();
+    }
+
+    // 일자별 예방조치 이행률 계산 — 발생 건수가 0인 날은 비율을 null로 내려 "0%"와 "데이터 없음"을 구분한다
     private List<DailyResolutionRateRes> toDailyResolutionRates(List<DailyResolutionRow> rows) {
         return rows.stream()
                 .map(row -> new DailyResolutionRateRes(
                         row.getDate(),
                         row.getTotalCount(),
-                        row.getResolvedCount(),
+                        row.getPreventedCount(),
                         row.getTotalCount() == 0
                                 ? null
-                                : Math.round(row.getResolvedCount() * 1000.0 / row.getTotalCount()) / 10.0
+                                : Math.round(row.getPreventedCount() * 1000.0 / row.getTotalCount()) / 10.0
                 ))
                 .toList();
     }

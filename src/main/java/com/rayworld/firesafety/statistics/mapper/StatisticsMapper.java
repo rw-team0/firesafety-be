@@ -57,7 +57,7 @@ public interface StatisticsMapper {
                                               @Param("fromAt") LocalDateTime fromAt,
                                               @Param("toAt") LocalDateTime toAt);
 
-    // 일자별 경보 발생/조치완료 개수 조회 (예방조치 이행률 추이용)
+    // 일자별 주의(CAUTION) 알림 발생/조치완료/예방성공 개수 조회 (예방조치 이행률 추이용, CAUTION만 스코프)
     List<DailyResolutionRow> countDailyAlertResolutions(@Param("userId") Long userId,
                                                         @Param("superAdmin") boolean superAdmin,
                                                         @Param("siteId") Long siteId,
