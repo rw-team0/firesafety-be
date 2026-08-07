@@ -9,6 +9,7 @@ import com.rayworld.firesafety.diagnosis.dto.res.AiModelInfoRes;
 import com.rayworld.firesafety.diagnosis.dto.res.DiagnosisResultPageRes;
 import com.rayworld.firesafety.diagnosis.dto.res.DiagnosisResultRes;
 import com.rayworld.firesafety.diagnosis.mapper.AiDiagnosisResultMapper;
+import com.rayworld.firesafety.diagnosis.model.Verdict;
 import com.rayworld.firesafety.facility.exception.FacilityErrorCode;
 import com.rayworld.firesafety.facility.mapper.CircuitMapper;
 import com.rayworld.firesafety.facility.mapper.PanelMapper;
@@ -53,9 +54,22 @@ public class DiagnosisQueryService {
         validateSiteAccess(actor, panel.getSiteId());
 
         List<DiagnosisResultRes> content = aiDiagnosisResultMapper.findDiagnosisResults(circuitId, size, offset);
+        content.forEach(this::applyVerdictConfidence);
         long totalElements = aiDiagnosisResultMapper.countDiagnosisResults(circuitId);
 
         return new DiagnosisResultPageRes(content, totalElements, page, size);
+    }
+
+    // DB에는 AI 서버 원본 proba(아크일 확률)를 그대로 저장해두고, 화면에 내려줄 때만
+    // 실제 판정(verdict)에 대한 확신도로 바꾼다 — NORMAL 판정에 낮은 proba를 그대로 보여주면
+    // "신뢰도가 낮다"로 오해하기 쉽다(사실은 아크가 아니라고 강하게 확신한다는 뜻).
+    private void applyVerdictConfidence(DiagnosisResultRes result) {
+        if (result.getConfidence() == null) {
+            return;
+        }
+        if (result.getVerdict() == Verdict.NORMAL) {
+            result.setConfidence(1f - result.getConfidence());
+        }
     }
 
     // AI 진단 수동 실행 (REQ-102)

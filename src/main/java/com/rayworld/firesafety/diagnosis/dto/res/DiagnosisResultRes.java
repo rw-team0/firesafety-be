@@ -24,7 +24,9 @@ public class DiagnosisResultRes {
     @Schema(description = "AI 이진 분류 결과. NORMAL=정상, ARC=아크", example = "ARC")
     private Verdict verdict;
 
-    @Schema(description = "AI 응답 확률값. AI 서버가 proba를 주는 경우 저장", example = "0.92")
+    @Schema(description = "verdict에 대한 확신도(0~1). DB에는 AI 서버 원본 proba(아크일 확률)를 저장하지만, " +
+            "verdict=NORMAL인 응답은 조회 시 (1-proba)로 변환해서 내려준다 — 즉 이 값은 항상 " +
+            "'표시된 verdict가 맞을 확률'이다", example = "0.92")
     private Float confidence;
 
     @Schema(description = "AI 서버가 이번 판정에 실제 사용한 샘플 개수", example = "60")

@@ -116,6 +116,48 @@ class DiagnosisQueryServiceTest {
     }
 
     @Test
+    @DisplayName("API-017: verdict=NORMAL이면 원본 proba를 (1-proba)로 바꿔서 확신도로 내려준다")
+    void normalVerdictConfidenceIsInverted() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        when(circuitMapper.findActiveCircuitById(20L)).thenReturn(circuit());
+        when(panelMapper.findActivePanelById(10L)).thenReturn(panel());
+        when(siteMapper.findActiveSiteById(3L)).thenReturn(site());
+        DiagnosisResultRes normalResult = diagnosisResult();
+        normalResult.setVerdict(com.rayworld.firesafety.diagnosis.model.Verdict.NORMAL);
+        normalResult.setConfidence(0.0000217681f);
+        when(aiDiagnosisResultMapper.findDiagnosisResults(20L, 20, 0)).thenReturn(List.of(normalResult));
+        when(aiDiagnosisResultMapper.countDiagnosisResults(20L)).thenReturn(1L);
+
+        // when
+        DiagnosisResultPageRes result = diagnosisQueryService.getDiagnosisResults(20L, new DiagnosisResultListReq());
+
+        // then
+        assertThat(result.getContent().get(0).getConfidence()).isCloseTo(0.99998f, org.assertj.core.data.Offset.offset(0.0001f));
+    }
+
+    @Test
+    @DisplayName("API-017: verdict=ARC이면 원본 proba를 그대로 확신도로 내려준다")
+    void arcVerdictConfidenceIsUnchanged() {
+        // given
+        loginAs(1L, UserRole.SUPER_ADMIN);
+        when(circuitMapper.findActiveCircuitById(20L)).thenReturn(circuit());
+        when(panelMapper.findActivePanelById(10L)).thenReturn(panel());
+        when(siteMapper.findActiveSiteById(3L)).thenReturn(site());
+        DiagnosisResultRes arcResult = diagnosisResult();
+        arcResult.setVerdict(com.rayworld.firesafety.diagnosis.model.Verdict.ARC);
+        arcResult.setConfidence(0.97f);
+        when(aiDiagnosisResultMapper.findDiagnosisResults(20L, 20, 0)).thenReturn(List.of(arcResult));
+        when(aiDiagnosisResultMapper.countDiagnosisResults(20L)).thenReturn(1L);
+
+        // when
+        DiagnosisResultPageRes result = diagnosisQueryService.getDiagnosisResults(20L, new DiagnosisResultListReq());
+
+        // then
+        assertThat(result.getContent().get(0).getConfidence()).isEqualTo(0.97f);
+    }
+
+    @Test
     @DisplayName("API-017: 담당 현장이 아니면 AI 진단결과를 조회할 수 없다")
     void unassignedSiteDiagnosisResultsAreForbidden() {
         // given
