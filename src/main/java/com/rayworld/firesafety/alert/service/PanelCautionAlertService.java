@@ -2,30 +2,37 @@ package com.rayworld.firesafety.alert.service;
 
 import com.rayworld.firesafety.alert.mapper.AlertMapper;
 import com.rayworld.firesafety.alert.model.Alert;
+import com.rayworld.firesafety.alert.model.AlertSeverity;
 import com.rayworld.firesafety.alert.model.AlertSource;
 import com.rayworld.firesafety.alert.model.AlertStatus;
 import com.rayworld.firesafety.alert.model.AlertType;
-import com.rayworld.firesafety.alert.model.AlertSeverity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class SystemAlertService {
+public class PanelCautionAlertService {
 
     private final AlertMapper alertMapper;
     private final AlertNotificationPublisher alertNotificationPublisher;
 
-    // 통신두절 SYSTEM 경보 생성
-    // 이미 미조치 통신두절 경보가 있으면 같은 경보를 반복해서 쌓지 않는다.
-    @Transactional
-    public void createCommunicationLostAlert(Long panelId) {
+    // 서버가 계산한 CAUTION 전환 알림. AI ARC는 AiAlertService가 회로별로 이미 생성하므로 여기서는 센서/임계값 주의만 다룬다.
+    public void createPanelCautionAlerts(Long panelId, List<AlertType> types) {
+        if (panelId == null || types == null || types.isEmpty()) {
+            return;
+        }
+
+        types.stream().distinct().forEach(type -> createPanelCautionAlert(panelId, type));
+    }
+
+    private void createPanelCautionAlert(Long panelId, AlertType type) {
         boolean exists = alertMapper.existsUnresolvedAlert(
                 panelId,
                 AlertSource.SYSTEM.name(),
-                AlertType.COMM_LOST.name(),
-                AlertSeverity.RISK.name()
+                type.name(),
+                AlertSeverity.CAUTION.name()
         );
         if (exists) {
             return;
@@ -34,8 +41,8 @@ public class SystemAlertService {
         Alert alert = new Alert();
         alert.setPanelId(panelId);
         alert.setSource(AlertSource.SYSTEM);
-        alert.setType(AlertType.COMM_LOST);
-        alert.setSeverity(AlertSeverity.RISK);
+        alert.setType(type);
+        alert.setSeverity(AlertSeverity.CAUTION);
         alert.setStatus(AlertStatus.UNCONFIRMED);
         alertMapper.insertAlert(alert);
         alertNotificationPublisher.publishCreated(alert);

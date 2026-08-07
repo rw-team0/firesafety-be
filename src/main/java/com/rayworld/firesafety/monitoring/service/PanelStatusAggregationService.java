@@ -1,5 +1,7 @@
 package com.rayworld.firesafety.monitoring.service;
 
+import com.rayworld.firesafety.alert.model.AlertType;
+import com.rayworld.firesafety.alert.service.PanelCautionAlertService;
 import com.rayworld.firesafety.common.exception.BusinessException;
 import com.rayworld.firesafety.common.exception.CommonErrorCode;
 import com.rayworld.firesafety.diagnosis.model.Verdict;
@@ -13,6 +15,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -24,6 +27,7 @@ public class PanelStatusAggregationService {
     private static final long THRESHOLD_CAUTION_SECONDS = 30L;
 
     private final PanelStatusAggregationMapper panelStatusAggregationMapper;
+    private final PanelCautionAlertService panelCautionAlertService;
     private final Clock clock;
 
     // 분전반 상태 집계
@@ -37,10 +41,36 @@ public class PanelStatusAggregationService {
         String latestErrorBits = panelStatusAggregationMapper.findLatestErrorBitsByPanelId(panelId);
         Boolean latestDoorStatus = panelStatusAggregationMapper.findLatestDoorStatusByPanelId(panelId);
         List<CircuitStatusSnapshot> snapshots = panelStatusAggregationMapper.findCircuitStatusSnapshots(panelId);
+        PanelStatus previousStatus = parsePanelStatus(panelStatusAggregationMapper.findCurrentPanelStatus(panelId));
         PanelStatus status = resolvePanelStatus(panelId, latestErrorBits, latestDoorStatus, snapshots);
 
         panelStatusAggregationMapper.updatePanelStatus(panelId, status.name());
+        publishCautionTransition(panelId, previousStatus, status, latestDoorStatus);
         return status;
+    }
+
+    private void publishCautionTransition(Long panelId, PanelStatus previousStatus, PanelStatus status, Boolean latestDoorStatus) {
+        if (status != PanelStatus.CAUTION || previousStatus == PanelStatus.CAUTION || previousStatus == PanelStatus.RISK) {
+            return;
+        }
+
+        List<AlertType> types = new ArrayList<>();
+        if (Boolean.TRUE.equals(latestDoorStatus)) {
+            types.add(AlertType.DOOR_OPEN);
+        }
+        LocalDateTime thresholdAt = LocalDateTime.now(clock).minusSeconds(THRESHOLD_CAUTION_SECONDS);
+        panelStatusAggregationMapper.findSustainedThresholdCautionTypes(panelId, thresholdAt).stream()
+                .map(AlertType::valueOf)
+                .forEach(types::add);
+
+        panelCautionAlertService.createPanelCautionAlerts(panelId, types);
+    }
+
+    private PanelStatus parsePanelStatus(String status) {
+        if (!StringUtils.hasText(status)) {
+            return null;
+        }
+        return PanelStatus.valueOf(status);
     }
 
     // 하드웨어 위험은 AI 결과보다 우선한다.

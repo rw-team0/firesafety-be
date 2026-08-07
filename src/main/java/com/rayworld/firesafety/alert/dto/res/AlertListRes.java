@@ -2,6 +2,7 @@ package com.rayworld.firesafety.alert.dto.res;
 
 import com.rayworld.firesafety.alert.model.AlertStatus;
 import com.rayworld.firesafety.alert.model.AlertType;
+import com.rayworld.firesafety.alert.model.AlertSeverity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
@@ -23,6 +24,8 @@ public class AlertListRes {
     private Integer circuitNo;
     @Schema(description = "경보 유형", example = "ARC")
     private AlertType type;
+    @Schema(description = "경보 심각도(CAUTION/RISK)", example = "RISK")
+    private AlertSeverity severity;
     @Schema(description = "상태(UNCONFIRMED/CONFIRMED/RESOLVED)", example = "UNCONFIRMED")
     private AlertStatus status;
     @Schema(description = "발생 시각", example = "2026-07-23T14:30:00")

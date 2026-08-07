@@ -46,6 +46,7 @@ public class AlertNotificationPublisher {
                 alert.getCircuitId(),
                 alert.getSource(),
                 alert.getType(),
+                alert.getSeverity(),
                 status,
                 eventType
         ));

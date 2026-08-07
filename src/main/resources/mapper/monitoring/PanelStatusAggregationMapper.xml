@@ -19,6 +19,13 @@
         LIMIT 1
     </select>
 
+    <select id="findCurrentPanelStatus" resultType="string">
+        SELECT p.status
+        FROM panel p
+        WHERE p.panel_id = #{panelId}
+          AND p.deleted_at IS NULL
+    </select>
+
     <!-- 분전반의 가장 최근 수신 프레임 door_status 조회 -->
     <select id="findLatestDoorStatusByPanelId" resultType="boolean">
         SELECT sf.door_status
@@ -147,6 +154,122 @@
                   )
               )
         )
+    </select>
+
+    <select id="findSustainedThresholdCautionTypes" resultType="string">
+        SELECT 'LEAKAGE'
+        FROM panel p
+        WHERE p.panel_id = #{panelId}
+          AND p.deleted_at IS NULL
+          AND EXISTS (
+              SELECT 1
+              FROM sensor_frame start_sf
+              WHERE start_sf.panel_id = p.panel_id
+                AND start_sf.received_at &lt;= #{thresholdAt}
+                AND start_sf.leak_ma &gt;= p.leak_ma_threshold
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM sensor_frame recover_sf
+                    WHERE recover_sf.panel_id = p.panel_id
+                      AND recover_sf.received_at &gt; start_sf.received_at
+                      AND recover_sf.leak_ma &lt; p.leak_ma_threshold
+                )
+          )
+        UNION
+        SELECT 'OVERHEAT'
+        FROM panel p
+        WHERE p.panel_id = #{panelId}
+          AND p.deleted_at IS NULL
+          AND EXISTS (
+              SELECT 1
+              FROM sensor_frame start_sf
+              WHERE start_sf.panel_id = p.panel_id
+                AND start_sf.received_at &lt;= #{thresholdAt}
+                AND start_sf.temperature &gt;= p.temp_threshold
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM sensor_frame recover_sf
+                    WHERE recover_sf.panel_id = p.panel_id
+                      AND recover_sf.received_at &gt; start_sf.received_at
+                      AND recover_sf.temperature &lt; p.temp_threshold
+                )
+          )
+        UNION
+        SELECT 'HUMIDITY'
+        FROM panel p
+        WHERE p.panel_id = #{panelId}
+          AND p.deleted_at IS NULL
+          AND EXISTS (
+              SELECT 1
+              FROM sensor_frame start_sf
+              WHERE start_sf.panel_id = p.panel_id
+                AND start_sf.received_at &lt;= #{thresholdAt}
+                AND start_sf.humidity &gt;= p.humidity_threshold
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM sensor_frame recover_sf
+                    WHERE recover_sf.panel_id = p.panel_id
+                      AND recover_sf.received_at &gt; start_sf.received_at
+                      AND recover_sf.humidity &lt; p.humidity_threshold
+                )
+          )
+        UNION
+        SELECT 'OVERCURRENT'
+        FROM panel p
+        WHERE p.panel_id = #{panelId}
+          AND p.deleted_at IS NULL
+          AND EXISTS (
+              SELECT 1
+              FROM sensor_frame start_sf
+              WHERE start_sf.panel_id = p.panel_id
+                AND start_sf.received_at &lt;= #{thresholdAt}
+                AND start_sf.total_current &gt;= p.overcurrent_threshold
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM sensor_frame recover_sf
+                    WHERE recover_sf.panel_id = p.panel_id
+                      AND recover_sf.received_at &gt; start_sf.received_at
+                      AND recover_sf.total_current &lt; p.overcurrent_threshold
+                )
+          )
+        UNION
+        SELECT 'GAS'
+        FROM panel p
+        WHERE p.panel_id = #{panelId}
+          AND p.deleted_at IS NULL
+          AND EXISTS (
+              SELECT 1
+              FROM sensor_frame start_sf
+              WHERE start_sf.panel_id = p.panel_id
+                AND start_sf.received_at &lt;= #{thresholdAt}
+                AND start_sf.gas_raw &gt;= p.gas_threshold
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM sensor_frame recover_sf
+                    WHERE recover_sf.panel_id = p.panel_id
+                      AND recover_sf.received_at &gt; start_sf.received_at
+                      AND recover_sf.gas_raw &lt; p.gas_threshold
+                )
+          )
+        UNION
+        SELECT 'FIRE'
+        FROM panel p
+        WHERE p.panel_id = #{panelId}
+          AND p.deleted_at IS NULL
+          AND EXISTS (
+              SELECT 1
+              FROM sensor_frame start_sf
+              WHERE start_sf.panel_id = p.panel_id
+                AND start_sf.received_at &lt;= #{thresholdAt}
+                AND start_sf.fire_raw &gt;= p.fire_threshold
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM sensor_frame recover_sf
+                    WHERE recover_sf.panel_id = p.panel_id
+                      AND recover_sf.received_at &gt; start_sf.received_at
+                      AND recover_sf.fire_raw &lt; p.fire_threshold
+                )
+          )
     </select>
 
     <!-- 집계 결과를 분전반 현재 상태로 저장 -->

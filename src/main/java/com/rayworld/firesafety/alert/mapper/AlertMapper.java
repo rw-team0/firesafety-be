@@ -63,12 +63,14 @@ public interface AlertMapper {
     // 같은 대상의 미조치 경보 존재 여부 확인
     boolean existsUnresolvedAlert(@Param("panelId") Long panelId,
                                   @Param("source") String source,
-                                  @Param("type") String type);
+                                  @Param("type") String type,
+                                  @Param("severity") String severity);
 
     // 같은 회로의 미조치 경보 존재 여부 확인
     boolean existsUnresolvedCircuitAlert(@Param("circuitId") Long circuitId,
                                          @Param("source") String source,
-                                         @Param("type") String type);
+                                         @Param("type") String type,
+                                         @Param("severity") String severity);
 
     // 경보가 속한 분전반의 현장 ID 조회
     Long findSiteIdByPanelId(@Param("panelId") Long panelId);

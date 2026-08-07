@@ -1,6 +1,7 @@
 package com.rayworld.firesafety.alert.service;
 
 import com.rayworld.firesafety.alert.event.AlertNotificationEvent;
+import com.rayworld.firesafety.alert.model.AlertSeverity;
 import com.rayworld.firesafety.alert.model.AlertSource;
 import com.rayworld.firesafety.alert.model.AlertStatus;
 import com.rayworld.firesafety.alert.model.AlertType;
@@ -49,6 +50,7 @@ class FcmPushServiceTest {
                 20L,
                 AlertSource.DEVICE,
                 AlertType.ARC,
+                AlertSeverity.RISK,
                 AlertStatus.UNCONFIRMED,
                 "ALERT_CREATED"
         );

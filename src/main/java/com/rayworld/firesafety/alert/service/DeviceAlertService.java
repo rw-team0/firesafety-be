@@ -5,6 +5,7 @@ import com.rayworld.firesafety.alert.model.Alert;
 import com.rayworld.firesafety.alert.model.AlertSource;
 import com.rayworld.firesafety.alert.model.AlertStatus;
 import com.rayworld.firesafety.alert.model.AlertType;
+import com.rayworld.firesafety.alert.model.AlertSeverity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -32,9 +33,29 @@ public class DeviceAlertService {
         alerts.addAll(createAlarmAlerts(panelId, aerror));
 
         for (Alert alert : alerts) {
+            if (hasUnresolvedRiskAlert(alert)) {
+                continue;
+            }
             alertMapper.insertAlert(alert);
             alertNotificationPublisher.publishCreated(alert);
         }
+    }
+
+    private boolean hasUnresolvedRiskAlert(Alert alert) {
+        if (alert.getCircuitId() != null) {
+            return alertMapper.existsUnresolvedCircuitAlert(
+                    alert.getCircuitId(),
+                    alert.getSource().name(),
+                    alert.getType().name(),
+                    alert.getSeverity().name()
+            );
+        }
+        return alertMapper.existsUnresolvedAlert(
+                alert.getPanelId(),
+                alert.getSource().name(),
+                alert.getType().name(),
+                alert.getSeverity().name()
+        );
     }
 
     // byte0/byte1 ARC bit는 회로별 아크 경보
@@ -88,6 +109,7 @@ public class DeviceAlertService {
         alert.setCircuitId(circuitId);
         alert.setSource(AlertSource.DEVICE);
         alert.setType(type);
+        alert.setSeverity(AlertSeverity.RISK);
         alert.setStatus(AlertStatus.UNCONFIRMED);
         return alert;
     }

@@ -38,7 +38,7 @@ class AiAlertServiceTest {
     @DisplayName("FR-02-01: AI ARC 판정이면 AI 소스 경보를 생성한다")
     void createAiArcAlert() {
         // given
-        when(alertMapper.existsUnresolvedCircuitAlert(20L, "AI", "ARC")).thenReturn(false);
+        when(alertMapper.existsUnresolvedCircuitAlert(20L, "AI", "ARC", "CAUTION")).thenReturn(false);
 
         // when
         aiAlertService.createArcAlert(10L, 20L, 30L);
@@ -61,7 +61,7 @@ class AiAlertServiceTest {
     @DisplayName("FR-02-01: 같은 회로의 미조치 AI ARC 경보가 있으면 중복 생성하지 않는다")
     void skipDuplicatedAiArcAlert() {
         // given
-        when(alertMapper.existsUnresolvedCircuitAlert(20L, "AI", "ARC")).thenReturn(true);
+        when(alertMapper.existsUnresolvedCircuitAlert(20L, "AI", "ARC", "CAUTION")).thenReturn(true);
 
         // when
         aiAlertService.createArcAlert(10L, 20L, 30L);

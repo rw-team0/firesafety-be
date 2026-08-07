@@ -38,7 +38,7 @@ class SystemAlertServiceTest {
     @DisplayName("FR-01-04: 통신두절 SYSTEM 경보를 생성한다")
     void createCommunicationLostAlert() {
         // given
-        when(alertMapper.existsUnresolvedAlert(10L, "SYSTEM", "COMM_LOST")).thenReturn(false);
+        when(alertMapper.existsUnresolvedAlert(10L, "SYSTEM", "COMM_LOST", "RISK")).thenReturn(false);
 
         // when
         systemAlertService.createCommunicationLostAlert(10L);
@@ -59,7 +59,7 @@ class SystemAlertServiceTest {
     @DisplayName("FR-01-04: 미조치 통신두절 경보가 있으면 중복 생성하지 않는다")
     void skipDuplicatedCommunicationLostAlert() {
         // given
-        when(alertMapper.existsUnresolvedAlert(10L, "SYSTEM", "COMM_LOST")).thenReturn(true);
+        when(alertMapper.existsUnresolvedAlert(10L, "SYSTEM", "COMM_LOST", "RISK")).thenReturn(true);
 
         // when
         systemAlertService.createCommunicationLostAlert(10L);

@@ -9,6 +9,7 @@
         <result property="panelId" column="panel_id"/>
         <result property="source" column="source"/>
         <result property="type" column="type"/>
+        <result property="severity" column="severity"/>
         <result property="resultId" column="result_id"/>
         <result property="status" column="status"/>
         <result property="triggeredAt" column="triggered_at"/>
@@ -25,6 +26,7 @@
         <result property="panelName" column="panel_name"/>
         <result property="circuitNo" column="circuit_no"/>
         <result property="type" column="type"/>
+        <result property="severity" column="severity"/>
         <result property="status" column="status"/>
         <result property="triggeredAt" column="triggered_at"/>
         <result property="confirmedByName" column="confirmed_by_name"/>
@@ -40,6 +42,7 @@
         <result property="panelName" column="panel_name"/>
         <result property="circuitNo" column="circuit_no"/>
         <result property="type" column="type"/>
+        <result property="severity" column="severity"/>
         <result property="source" column="source"/>
         <result property="status" column="status"/>
         <result property="triggeredAt" column="triggered_at"/>
@@ -92,6 +95,7 @@
         <result property="panelId" column="panel_id"/>
         <result property="panelName" column="panel_name"/>
         <result property="type" column="type"/>
+        <result property="severity" column="severity"/>
         <result property="status" column="status"/>
         <result property="triggeredAt" column="triggered_at"/>
         <result property="elapsedHours" column="elapsed_hours"/>
@@ -168,6 +172,7 @@
             panel_id,
             source,
             type,
+            severity,
             result_id,
             status
         ) VALUES (
@@ -175,6 +180,7 @@
             #{panelId},
             #{source},
             #{type},
+            #{severity},
             #{resultId},
             #{status}
         )
@@ -188,6 +194,7 @@
             p.name AS panel_name,
             c.channel_no AS circuit_no,
             a.type,
+            a.severity,
             a.status,
             a.triggered_at,
             confirmer.name AS confirmed_by_name,
@@ -217,6 +224,7 @@
             p.name AS panel_name,
             c.channel_no AS circuit_no,
             a.type,
+            a.severity,
             a.source,
             a.status,
             a.triggered_at,
@@ -239,6 +247,7 @@
             a.panel_id,
             a.source,
             a.type,
+            a.severity,
             a.result_id,
             a.status,
             a.triggered_at,
@@ -290,6 +299,7 @@
             WHERE panel_id = #{panelId}
               AND source = #{source}
               AND type = #{type}
+              AND severity = #{severity}
               AND status IN ('UNCONFIRMED', 'CONFIRMED')
         )
     </select>
@@ -302,6 +312,7 @@
             WHERE circuit_id = #{circuitId}
               AND source = #{source}
               AND type = #{type}
+              AND severity = #{severity}
               AND status IN ('UNCONFIRMED', 'CONFIRMED')
         )
     </select>
@@ -320,6 +331,7 @@
             a.panel_id,
             p.name AS panel_name,
             a.type,
+            a.severity,
             a.status,
             a.triggered_at,
             TIMESTAMPDIFF(HOUR, a.triggered_at, CURRENT_TIMESTAMP) AS elapsed_hours

@@ -1,5 +1,6 @@
 package com.rayworld.firesafety.monitoring.service;
 
+import com.rayworld.firesafety.alert.service.PanelCautionAlertService;
 import com.rayworld.firesafety.diagnosis.model.Verdict;
 import com.rayworld.firesafety.facility.model.PanelStatus;
 import com.rayworld.firesafety.monitoring.mapper.PanelStatusAggregationMapper;
@@ -26,6 +27,9 @@ class PanelStatusAggregationServiceTest {
     @Mock
     private PanelStatusAggregationMapper panelStatusAggregationMapper;
 
+    @Mock
+    private PanelCautionAlertService panelCautionAlertService;
+
     private PanelStatusAggregationService panelStatusAggregationService;
     private LocalDateTime thresholdAt;
 
@@ -38,7 +42,8 @@ class PanelStatusAggregationServiceTest {
         );
 
         thresholdAt = fixedNow.minusSeconds(30);
-        panelStatusAggregationService = new PanelStatusAggregationService(panelStatusAggregationMapper, fixedClock);
+        panelStatusAggregationService =
+                new PanelStatusAggregationService(panelStatusAggregationMapper, panelCautionAlertService, fixedClock);
     }
 
     @Test

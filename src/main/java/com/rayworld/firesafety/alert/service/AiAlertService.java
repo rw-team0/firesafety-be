@@ -5,6 +5,7 @@ import com.rayworld.firesafety.alert.model.Alert;
 import com.rayworld.firesafety.alert.model.AlertSource;
 import com.rayworld.firesafety.alert.model.AlertStatus;
 import com.rayworld.firesafety.alert.model.AlertType;
+import com.rayworld.firesafety.alert.model.AlertSeverity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +24,8 @@ public class AiAlertService {
         boolean exists = alertMapper.existsUnresolvedCircuitAlert(
                 circuitId,
                 AlertSource.AI.name(),
-                AlertType.ARC.name()
+                AlertType.ARC.name(),
+                AlertSeverity.CAUTION.name()
         );
         if (exists) {
             return;
@@ -35,6 +37,7 @@ public class AiAlertService {
         alert.setResultId(resultId);
         alert.setSource(AlertSource.AI);
         alert.setType(AlertType.ARC);
+        alert.setSeverity(AlertSeverity.CAUTION);
         alert.setStatus(AlertStatus.UNCONFIRMED);
         alertMapper.insertAlert(alert);
         alertNotificationPublisher.publishCreated(alert);

@@ -18,6 +18,7 @@ public class Alert {
     private Long panelId;
     private AlertSource source;
     private AlertType type;
+    private AlertSeverity severity;
     private Long resultId;
     private AlertStatus status;
     private LocalDateTime triggeredAt;

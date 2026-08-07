@@ -48,11 +48,12 @@ public class FcmPushService {
             // data-only 메시지로만 보내서 서비스워커가 정확히 한 번만 표시하게 한다.
             MulticastMessage message = MulticastMessage.builder()
                     .addAllTokens(tokens)
-                    .putData("title", "ArcGuard 경보 발생")
+                    .putData("title", buildTitle(event))
                     .putData("body", buildBody(event))
                     .putData("eventType", event.getEventType())
                     .putData("alertId", String.valueOf(event.getAlertId()))
                     .putData("panelId", String.valueOf(event.getPanelId()))
+                    .putData("severity", event.getSeverity().name())
                     .build();
 
             BatchResponse response = getFirebaseMessaging().sendEachForMulticast(message);
@@ -108,7 +109,11 @@ public class FcmPushService {
     }
 
     // 사용자에게 보여줄 짧은 푸시 본문 생성
+    private String buildTitle(AlertNotificationEvent event) {
+        return "[%s] ArcGuard 경보 발생".formatted(event.getSeverity().getLabel());
+    }
+
     private String buildBody(AlertNotificationEvent event) {
-        return event.getSource().name() + " " + event.getType().name() + " 경보가 발생했습니다";
+        return event.getSource().getLabel() + " " + event.getType().getLabel() + " 경보가 발생했습니다";
     }
 }
