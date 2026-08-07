@@ -14,6 +14,9 @@ public interface PanelStatusAggregationMapper {
     // 분전반의 최신 수신 프레임 error_bits 조회
     String findLatestErrorBitsByPanelId(@Param("panelId") Long panelId);
 
+    // 분전반의 최신 도어 상태 조회
+    Boolean findLatestDoorStatusByPanelId(@Param("panelId") Long panelId);
+
     // 분전반 회로별 최신 하드웨어/AI 판정 조회
     List<CircuitStatusSnapshot> findCircuitStatusSnapshots(@Param("panelId") Long panelId);
 

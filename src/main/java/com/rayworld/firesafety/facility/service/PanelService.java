@@ -181,6 +181,7 @@ public class PanelService {
                 latestFrame == null ? null : latestFrame.getVoltV(),
                 latestFrame == null ? null : latestFrame.getTotalPower(),
                 latestFrame == null ? null : latestFrame.getDoorStatus(),
+                alarmBits[5],
                 latestFrame == null ? null : latestFrame.getTemperature(),
                 latestFrame == null ? null : latestFrame.getHumidity(),
                 latestFrame == null ? null : latestFrame.getFireRaw(),

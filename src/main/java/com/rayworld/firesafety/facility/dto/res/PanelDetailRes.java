@@ -59,6 +59,8 @@ public class PanelDetailRes {
     private Integer totalPower;
     @Schema(description = "최신 도어 상태. true=열림, false=닫힘", example = "false")
     private Boolean doorStatus;
+    @Schema(description = "하드웨어 도어 알람 비트 활성 여부(aerror ALARM byte bit5). true면 도어를 하드웨어 위험으로 판단한 상태", example = "false")
+    private Boolean doorAlarm;
     @Schema(description = "최신 온도(도)", example = "35.0")
     private BigDecimal temperature;
     @Schema(description = "최신 습도(%)", example = "35.35")
@@ -90,6 +92,7 @@ public class PanelDetailRes {
                                        BigDecimal voltV,
                                        Integer totalPower,
                                        Boolean doorStatus,
+                                       Boolean doorAlarm,
                                        BigDecimal temperature,
                                        BigDecimal humidity,
                                        Integer fireRaw,
@@ -124,6 +127,7 @@ public class PanelDetailRes {
                 voltV,
                 totalPower,
                 doorStatus,
+                doorAlarm,
                 temperature,
                 humidity,
                 fireRaw,

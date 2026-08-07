@@ -19,6 +19,15 @@
         LIMIT 1
     </select>
 
+    <!-- 분전반의 가장 최근 수신 프레임 door_status 조회 -->
+    <select id="findLatestDoorStatusByPanelId" resultType="boolean">
+        SELECT sf.door_status
+        FROM sensor_frame sf
+        WHERE sf.panel_id = #{panelId}
+        ORDER BY sf.frame_id DESC
+        LIMIT 1
+    </select>
+
     <!-- 회로별 최신 하드웨어 ARC flag와 최신 AI 판정 조회 -->
     <select id="findCircuitStatusSnapshots" resultMap="circuitStatusSnapshotResultMap">
         SELECT

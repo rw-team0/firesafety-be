@@ -72,6 +72,22 @@ class PanelStatusAggregationServiceTest {
     }
 
     @Test
+    @DisplayName("FR-03-03: 도어가 열려 있으면 하드웨어 알람 bit가 없어도 분전반 상태를 CAUTION으로 집계한다")
+    void openDoorAggregatesPanelAsCaution() {
+        // given
+        when(panelStatusAggregationMapper.findLatestErrorBitsByPanelId(10L)).thenReturn("00000000");
+        when(panelStatusAggregationMapper.findLatestDoorStatusByPanelId(10L)).thenReturn(true);
+        when(panelStatusAggregationMapper.findCircuitStatusSnapshots(10L)).thenReturn(List.of(snapshot(false, Verdict.NORMAL)));
+
+        // when
+        PanelStatus status = panelStatusAggregationService.aggregatePanelStatus(10L);
+
+        // then
+        assertThat(status).isEqualTo(PanelStatus.CAUTION);
+        verify(panelStatusAggregationMapper).updatePanelStatus(10L, "CAUTION");
+    }
+
+    @Test
     @DisplayName("FR-03-03: 하드웨어와 AI가 모두 정상이면 분전반 상태를 NORMAL로 집계한다")
     void normalSignalsAggregatePanelAsNormal() {
         // given

@@ -35,17 +35,21 @@ public class PanelStatusAggregationService {
         }
 
         String latestErrorBits = panelStatusAggregationMapper.findLatestErrorBitsByPanelId(panelId);
+        Boolean latestDoorStatus = panelStatusAggregationMapper.findLatestDoorStatusByPanelId(panelId);
         List<CircuitStatusSnapshot> snapshots = panelStatusAggregationMapper.findCircuitStatusSnapshots(panelId);
-        PanelStatus status = resolvePanelStatus(panelId, latestErrorBits, snapshots);
+        PanelStatus status = resolvePanelStatus(panelId, latestErrorBits, latestDoorStatus, snapshots);
 
         panelStatusAggregationMapper.updatePanelStatus(panelId, status.name());
         return status;
     }
 
     // 하드웨어 위험은 AI 결과보다 우선한다.
-    private PanelStatus resolvePanelStatus(Long panelId, String latestErrorBits, List<CircuitStatusSnapshot> snapshots) {
+    private PanelStatus resolvePanelStatus(Long panelId, String latestErrorBits, Boolean latestDoorStatus, List<CircuitStatusSnapshot> snapshots) {
         if (hasDeviceRisk(latestErrorBits) || hasDeviceArc(snapshots)) {
             return PanelStatus.RISK;
+        }
+        if (Boolean.TRUE.equals(latestDoorStatus)) {
+            return PanelStatus.CAUTION;
         }
         if (hasAiArc(snapshots)) {
             return PanelStatus.CAUTION;
